@@ -1,5 +1,6 @@
 * {
   box-sizing: border-box;
+  font-family: lato;
 }
 
 p,
@@ -13,7 +14,7 @@ h3 {
 }
 
 h2 {
-  font-size: 13px;
+  font-size: 16px;
 }
 
 body {
@@ -21,4 +22,8 @@ body {
   padding: 0;
   background-color: #ececec;
   font-family: Arial;
+}
+
+::-webkit-scrollbar {
+  display: none;
 }

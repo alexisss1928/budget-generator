@@ -1,7 +1,7 @@
 // import { useRef } from 'react';
 // import MoreIcon from '../../assets/ellipsis-vertical-solid.svg';
 // import EditIcon from '../../assets/pen-solid.svg';
-import DeleteIcon from '../../assets/trash-solid.svg';
+import DeleteIcon from '../../assets/icons/trash-solid.svg';
 // import CloseIcon from '../../assets/xmark-solid.svg';
 import styled from 'styled-components';
 
@@ -30,6 +30,7 @@ const ItemPresupuesto = styled.div`
     }
 
     button {
+      background-color: transparent;
       cursor: pointer;
       border: none;
       margin-left: 20px;
@@ -76,30 +77,8 @@ export default function ItemPresupuestoComponent({
   Delete,
   insuranceCoverageisActive,
 }: any) {
-  // const ItemOptionsRef = useRef<any>();
-
-  /* const HideUnhideOptions = () => {
-    ItemOptionsRef.current.classList.toggle('hide');
-  }; */
-
   return (
     <ItemPresupuesto>
-      {/* <ItemOptions className="hide" ref={ItemOptionsRef}>
-        <div onClick={() => alert(`Edit ${item.nombre}`)}>
-          <img src={EditIcon} alt="" />
-        </div>
-        <div
-          onClick={() => {
-            Delete(index);
-            HideUnhideOptions();
-          }}
-        >
-          <img src={DeleteIcon} alt="" />
-        </div>
-        <div onClick={HideUnhideOptions}>
-          <img src={CloseIcon} alt="" />
-        </div>
-      </ItemOptions> */}
       <div className="data">
         <p>
           {item.nombre} x {item.quantity}
