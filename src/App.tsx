@@ -1,278 +1,126 @@
+// Packages imports
 import { useState, useRef, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import styled from 'styled-components';
+
+// Components imports
 import professionalData from '../src/commons/professionalData';
-import ItemPresupuesto from './components/ItemPresupuesto';
+import Report from './components/Report';
+import Budget from './components/Budget';
+import BudgetReportPrint from './components/BudgetReportPrint';
+import RecipePrint from './components/RecipePrint';
 import ConfigComponent from './components/SettingsComponent';
-import Logo from '../src/assets/personalAssets/logo.png';
-import LogoB from '../src/assets/personalAssets/logo2.png';
-import IsoLogo from '../src/assets/personalAssets/IsoLogo.png';
+import ConfigMedicines from './components/SettingsComponent/MedicinesSettings';
+import Recipe from './components/Recipe';
+
+// Images imports
+import Logo from '../src/assets/leafAssets/logo.png';
 import LogoLeafWeb from '../src/assets/leafAssets/logo_horz.png';
 import LogoJarabito from '../src/assets/leafAssets/logo-jarabito.png';
-import Sello from '../src/assets/personalAssets/Sello.png';
-import Firma from '../src/assets/personalAssets/Firma.png';
 import SaveIcon from '../src/assets/icons/file-pdf-solid.svg';
 import MenuBar from '../src/assets/icons/bars-solid.svg';
 import ConfigIcon from '../src/assets/icons/gear-solid.svg';
 import BudgetIcon from '../src/assets/icons/file-invoice-dollar-solid.svg';
 import ReportIcon from '../src/assets/icons/file-medical-solid.svg';
+import PrescriptionIcon from '../src/assets/icons/file-prescription-solid.svg';
+import CloseIcon from '../src/assets/icons/circle-xmark-solid.svg';
 
-const Wrapper = styled.div`
-  height: 100vh;
-  display: grid;
-  grid-template-rows: 80px 1fr 50px;
+// Common imports
+import PacientData from './components/PacientData';
+import {
+  Wrapper,
+  Footer,
+  LogoWrapper,
+  SaveWrapper,
+  Menu,
+  Presupuesto,
+  InputBox,
+  Page,
+} from './components/Styles';
 
-  h3 {
-    text-align: center;
-  }
+//Types
+type TreatmentInLocalStorage = {
+  nombre: string;
+  precio: string;
+  insuranceCoverage: string;
+};
 
-  .button-charge-treatments {
-    position: absolute;
-    width: 100%;
-    top: 80px;
-    background-color: ${professionalData.primaryColor};
-    padding: 0 20px 20px 20px;
-    text-align: center;
-    transition: 0.4s;
-    color: #fff;
-    z-index: 1;
+type MedicinesInLocalStorage = {
+  nombre: string;
+  indicaciones: string;
+};
 
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      li {
-        padding: 20px;
-        font-size: 12px;
-        font-family: lato;
-        letter-spacing: 2px;
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        justify-content: center;
-
-        &:hover {
-          background-color: #555;
-          border-radius: 5px;
-        }
-
-        img {
-          width: 15px;
-        }
-      }
-    }
-  }
-
-  .hide {
-    top: -280px;
-  }
-`;
-
-const Footer = styled.div`
-  background-color: ${professionalData.primaryColor};
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #fff;
-  font-size: 12px;
-
-  img {
-    width: 80px;
-  }
-`;
-
-const LogoWrapper = styled.div`
-  display: flex;
-  width: 100%;
-  justify-content: space-between;
-  align-items: center;
-
-  & > * {
-    flex: 1;
-  }
-
-  div:nth-child(2) {
-    text-align: center;
-  }
-
-  button {
-    margin-left: auto;
-
-    img {
-      margin-left: auto;
-    }
-  }
-
-  div {
-    img {
-      width: 70px;
-    }
-  }
-
-  div button {
-    padding: 0;
-
-    img {
-      margin-left: auto;
-      width: auto;
-    }
-  }
-`;
-
-const SaveWrapper = styled.button`
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 60px;
-  height: 60px;
-  background-color: #7e9c7f;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  border: none;
-  align-items: center;
-  cursor: pointer;
-  z-index: 10;
-  transition-duration: 0.2s;
-  box-shadow: 2px 2px 10px -5px #fff;
-
-  &:hover {
-    transform: scale(1.1);
-  }
-
-  img {
-    width: 60%;
-    position: relative;
-    left: 2px;
-  }
-`;
-
-const Menu = styled.div`
-  position: relative;
-  height: 80px;
-  background-color: ${professionalData.primaryColor};
-  color: #d4d4d4;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  z-index: 10;
-
-  h2 {
-    margin: 20px;
-  }
-`;
-
-const Presupuesto = styled.div`
-  margin-left: auto;
-  margin-right: auto;
-  width: 100vw;
-  max-width: 600px;
-  padding: 30px;
-  padding-bottom: 50px;
-  height: calc(100vh - 130px);
-  overflow: auto;
-
-  h3 {
-    margin-top: 0;
-  }
-`;
-
-const InputBox = styled.div`
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-
-  label {
-    color: #000;
-    font-weight: 700;
-  }
-
-  input,
-  select,
-  textarea {
-    margin-top: 5px;
-    border: none;
-    padding: 10px;
-    border-radius: 5px;
-  }
-
-  input[type='submit'] {
-    background-color: #7e9c7f;
-    color: #fff;
-    cursor: pointer;
-  }
-
-  input[type='checkbox'] {
-    cursor: pointer;
-  }
-`;
-
-const AddBox = styled.div`
-  background-color: #dbdbdb;
-  border-radius: 5px;
-  padding: 20px;
-  margin-top: 10px;
-  margin-bottom: 10px;
-`;
-
-const Page = styled.div`
-  width: 841px;
-  height: 1189px;
-`;
+type CurrentTreatmentListItem = {
+  nombre: string;
+  precio: string;
+  insuranceCoverage: string;
+  quantity: string;
+  observations: string;
+};
 
 function App() {
-  const [section, setSection] = useState('Presupuesto');
+  ///////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////// Commons ///////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  const [opacityMenuButtonController, setOpacityMenuButtonController] =
+    useState(true);
 
-  const formRef = useRef<any>();
+  const sections = {
+    presupuesto: 'Presupuesto',
+    informe: 'Informe',
+    recipes: 'Recipes',
+    config: 'Configuracion',
+  };
+  const [section, setSection] = useState<string>(sections.presupuesto);
 
-  const loadTreatmentsRef = useRef<any>();
+  const handleChangeSection = (section: string) => {
+    setSection(section);
+    menuToggleRef.current?.classList.toggle('hide');
+    setOpacityMenuButtonController(!opacityMenuButtonController);
+  };
 
-  const componentRef = useRef<any>();
+  const menuToggleRef = useRef<null | HTMLDivElement>(null);
 
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
-  });
+  const HideUnhideLoadTreatments = () => {
+    menuToggleRef.current?.classList.toggle('hide');
+    setOpacityMenuButtonController(!opacityMenuButtonController);
+  };
+  -9;
 
+  ///////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////// Presupuesto ///////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // Estado para guardar si es o no paciente de seguro
+  const [insuranceCoverageisActive /* setInsuranceCoverageisActive */] =
+    useState(false);
+
+  // Maneja si el check esta seleccionado o no y cambia el estado
   /* const handleCheck = (event: any) => {
     setInsuranceCoverageisActive(event.target.checked);
   }; */
 
-  const date = new Date();
+  // Lista de tratamientos disponibles
+  const [myTreatments, setMyTreatments] = useState<TreatmentInLocalStorage[]>(
+    []
+  );
 
-  const [insuranceCoverageisActive /* setInsuranceCoverageisActive */] =
-    useState(false);
-
-  const [myTreatments, setMyTreatments] = useState<any>([]);
-
-  const [personalData, setPersonalData] = useState({
-    name: '',
-    identification: '',
-  });
-
-  const [report, setReport] = useState('');
-
-  const [currentBudget, setCurrentBudget] = useState({
+  // Tratamiento seleccionado de la lista
+  const [currentBudget, setCurrentBudget] = useState<CurrentTreatmentListItem>({
     nombre: '',
-    precio: 0,
-    insuranceCoverage: 0,
-    quantity: 0,
+    precio: '',
+    insuranceCoverage: '',
+    quantity: '',
     observations: '',
   });
 
-  const [treatmentsList, setTreatmentsList] = useState<any>([]);
+  // Tratamientos agregados al presupuesto actual
+  const [treatmentsList, setTreatmentsList] = useState<
+    CurrentTreatmentListItem[]
+  >([]);
 
-  const handlePersonalData = (event: any) => {
-    const { name, value } = event.target;
-
-    setPersonalData({
-      ...personalData,
-      [name]: value,
-    });
-  };
-
-  const handleCurrentBudget = (event: any) => {
-    const { name, value } = event.target;
+  // Funcion que maneja los campos del tratamiento seleccionado (Tratamiento, cantidad, observaciones)
+  const handleCurrentBudget = (e: React.ChangeEvent<HTMLFormElement>) => {
+    const { name, value } = e.target;
 
     name === 'treatment'
       ? setCurrentBudget({
@@ -287,55 +135,13 @@ function App() {
         });
   };
 
-  const handleReportData = (event: any) => setReport(`${event.target.value}`);
-
-  const HideUnhideLoadTreatments = () => {
-    loadTreatmentsRef.current.classList.toggle('hide');
-  };
-
-  const AddTreatment = (e: any) => {
-    e.preventDefault();
-    let NewArr = [...treatmentsList];
-    NewArr.unshift(currentBudget);
-    setTreatmentsList(NewArr);
-    setCurrentBudget({
-      ...currentBudget,
-      observations: '',
-    });
-    formRef.current.reset();
-  };
-
-  const DeleteTreatment = (index: any) => {
-    let NewArr = [...treatmentsList];
-
-    NewArr.splice(index, 1);
-
-    setTreatmentsList(NewArr);
-  };
-
-  const getPageMargins = () => {
-    return `@page { margin: ${'20px'} ${'50px'} ${'20px'} ${'50px'} !important; }`;
-  };
-
-  const Bold = {
-    fontWeight: '700',
-    color: '#21213c',
-  };
-
-  const InsuranceCoverage = {
-    color: '#58c36b',
-  };
-
-  const handleChangeSection = (section: string) => {
-    setSection(section);
-    loadTreatmentsRef.current.classList.toggle('hide');
-  };
-
+  // Limpia los campos para iniciar un nuevo presupuesto
   const newBudget = () => {
     setTreatmentsList([]);
     setPersonalData({ name: '', identification: '' });
   };
 
+  // Captura los tratamientos que estan guardados en localStorage para agregarlos al estado
   const getTreatmentsfromLocalStorage = () => {
     const listInLocalStorage = localStorage.getItem('myTreatmentsList');
 
@@ -344,26 +150,198 @@ function App() {
     }
   };
 
+  // Agregar un tratamiento de la lista al presupuesto actual
+  const AddTreatment = (e: React.ChangeEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    let NewArr: CurrentTreatmentListItem[] = [...treatmentsList];
+    NewArr.unshift(currentBudget);
+    setTreatmentsList(NewArr);
+    setCurrentBudget({
+      ...currentBudget,
+      observations: '',
+    });
+    e.target.reset();
+  };
+
+  const DeleteTreatment = (index: number) => {
+    let NewArr = [...treatmentsList];
+
+    NewArr.splice(index, 1);
+
+    setTreatmentsList(NewArr);
+  };
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /////////////////////////// PersonalDataPacients //////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+
+  const [personalData, setPersonalData] = useState({
+    name: '',
+    identification: '',
+  });
+
+  const handlePersonalData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+
+    setPersonalData({
+      ...personalData,
+      [name]: value,
+    });
+  };
+
+  ///////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////// Reports //////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+
+  const [report, setReport] = useState<string>('');
+
+  const handleReportData = (event: React.ChangeEvent<HTMLInputElement>) =>
+    setReport(`${event.target.value}`);
+
+  ///////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////// Recipe /////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  // Captura los tratamientos que estan guardados en localStorage para agregarlos al estado
+  const getMedicinesfromLocalStorage = () => {
+    const listInLocalStorage = localStorage.getItem('medicinesList');
+
+    if (listInLocalStorage) {
+      setMedicinesList(JSON.parse(listInLocalStorage));
+    }
+  };
+
+  const [medicinesList, setMedicinesList] = useState<MedicinesInLocalStorage[]>(
+    []
+  );
+
+  const [currentMedicineSelected, setCurrentMedicineSelected] = useState<any>({
+    nombre: '',
+    indicaciones: '',
+  });
+
+  const [currentRecipe, setCurrentRecipe] = useState<any>([]);
+
+  // Funcion que maneja los campos del tratamiento seleccionado (Tratamiento, cantidad, observaciones)
+  const handleCurrentRecipe = (e: React.ChangeEvent<HTMLFormElement>) => {
+    const { name, value } = e.target;
+
+    if (name === 'nombre') {
+      setCurrentMedicineSelected({
+        ...currentMedicineSelected,
+        nombre: value,
+      });
+      return;
+    }
+
+    if (name === 'indicaciones') {
+      setCurrentMedicineSelected({
+        ...currentMedicineSelected,
+        indicaciones: value,
+      });
+      return;
+    }
+
+    setCurrentMedicineSelected({
+      nombre: medicinesList[value].nombre,
+      indicaciones: medicinesList[value].indicaciones,
+    });
+  };
+
+  // Agregar un tratamiento de la lista al presupuesto actual
+  const AddMedicine = (e: React.ChangeEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    let NewArr = [...currentRecipe];
+    NewArr.unshift(currentMedicineSelected);
+    setCurrentRecipe(NewArr);
+    setCurrentMedicineSelected({
+      nombre: '',
+      indicaciones: '',
+    });
+    // e.target.reset();
+  };
+
+  const DeleteMedicine = (index: number) => {
+    let NewArr = [...currentRecipe];
+
+    NewArr.splice(index, 1);
+
+    setCurrentRecipe(NewArr);
+  };
+
+  // Limpia los campos para iniciar un nuevo presupuesto
+  const newRecipe = () => {
+    setCurrentRecipe([]);
+    setPersonalData({ name: '', identification: '' });
+  };
+
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////// Print ///////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+
+  const componentToPrintRef = useRef<null | HTMLDivElement>(null);
+
+  const getPageMargins = () => {
+    return `@page { margin: ${'20px'} ${'50px'} ${'20px'} ${'50px'} !important; }`;
+  };
+
+  const handlePrint = useReactToPrint({
+    content: () => componentToPrintRef.current,
+  });
+
+  ///////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////// UseEffects /////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+
   useEffect(() => {
     getTreatmentsfromLocalStorage();
+    getMedicinesfromLocalStorage();
   }, []);
 
   return (
     <Wrapper>
-      <div ref={loadTreatmentsRef} className="button-charge-treatments  hide">
+      <div ref={menuToggleRef} className="button-charge-treatments  hide">
         <ul>
-          <li onClick={() => handleChangeSection('Presupuesto')}>
+          <li
+            onClick={() => handleChangeSection('Presupuesto')}
+            className="onHover"
+          >
             <img src={BudgetIcon} alt="" />
             Presupuesto
           </li>
-          <li onClick={() => handleChangeSection('Informe')}>
+          <li
+            onClick={() => handleChangeSection('Informe')}
+            className="onHover"
+          >
             <img src={ReportIcon} alt="" />
             Informe
           </li>
-          <li onClick={() => handleChangeSection('Configuración')}>
+          <li
+            onClick={() => handleChangeSection('Recipes')}
+            className="onHover"
+          >
+            <img src={PrescriptionIcon} alt="" />
+            Recipes
+          </li>
+          <li style={{ paddingBottom: '10px' }} className="noHover">
             <img src={ConfigIcon} alt="" />
             Configuración
           </li>
+          <ul>
+            <li
+              className="onHover"
+              style={{ fontSize: '10px', color: '#a2a2a2', padding: '10px' }}
+              onClick={() => handleChangeSection('Administrar tratamientos')}
+            >
+              Administrar tratamientos
+            </li>
+            <li
+              className="onHover"
+              style={{ fontSize: '10px', color: '#a2a2a2', padding: '10px' }}
+              onClick={() => handleChangeSection('Administrar medicamentos')}
+            >
+              Administrar medicamentos
+            </li>
+          </ul>
         </ul>
         <hr />
         <h2 style={{ marginTop: '30px' }}>Otras herramientas</h2>
@@ -413,225 +391,157 @@ function App() {
                 fontWeight: '700',
                 display: 'flex',
                 cursor: 'pointer',
+                position: 'relative',
               }}
               onClick={HideUnhideLoadTreatments}
             >
-              <img src={MenuBar} alt="" style={{ height: '30px' }} />
+              <img
+                src={MenuBar}
+                className={`menuButton ${
+                  !opacityMenuButtonController ? 'opacity' : null
+                }`}
+                alt=""
+                style={{ height: '30px' }}
+              />
+              <img
+                src={CloseIcon}
+                className={`menuButton ${
+                  opacityMenuButtonController ? 'opacity' : null
+                }`}
+                alt=""
+                style={{ height: '30px', position: 'absolute', left: '-2px' }}
+              />
             </button>
           </div>
         </LogoWrapper>
       </Menu>
-      {section === 'Configuración' ? (
+      {section === 'Presupuesto' && (
+        <Presupuesto>
+          <InputBox>
+            <input
+              type="submit"
+              value="Nuevo presupuesto"
+              style={{
+                backgroundColor: 'transparent',
+                border: `solid 2px ${professionalData.primaryColor}`,
+                margin: '0 0 40px 0',
+                color: professionalData.primaryColor,
+              }}
+              onClick={() => newBudget()}
+            />
+          </InputBox>
+          <h3>Datos del paciente</h3>
+          <div>
+            <PacientData
+              personalData={personalData}
+              handlePersonalData={handlePersonalData}
+            />
+            {/* <InputBox>
+              <label htmlFor="insuranceCoverageisActive">
+                Paciente de seguro{' '}
+                <input
+                  style={{
+                    position: 'relative',
+                    top: '2px',
+                  }}
+                  type="checkbox"
+                  name="insuranceCoverageisActive"
+                  onClick={handleCheck}
+                />
+              </label>
+            </InputBox> */}
+            <InputBox></InputBox>
+          </div>
+          <Budget
+            AddTreatment={AddTreatment}
+            handleCurrentBudget={handleCurrentBudget}
+            myTreatments={myTreatments}
+            treatmentsList={treatmentsList}
+            DeleteTreatment={DeleteTreatment}
+            insuranceCoverageisActive={insuranceCoverageisActive}
+          />
+        </Presupuesto>
+      )}
+      {section === 'Informe' && (
+        <Presupuesto>
+          <h3>Datos del paciente</h3>
+          <div>
+            <PacientData
+              personalData={personalData}
+              handlePersonalData={handlePersonalData}
+            />
+            <InputBox></InputBox>
+          </div>
+          <Report
+            report={report}
+            setReport={setReport}
+            handleReportData={handleReportData}
+          />
+        </Presupuesto>
+      )}
+      {section === 'Recipes' && (
+        <Presupuesto>
+          <InputBox>
+            <input
+              type="submit"
+              value="Nuevo recipe"
+              style={{
+                backgroundColor: 'transparent',
+                border: `solid 2px ${professionalData.primaryColor}`,
+                margin: '0 0 40px 0',
+                color: professionalData.primaryColor,
+              }}
+              onClick={() => newRecipe()}
+            />
+          </InputBox>
+          <h3>Datos del paciente</h3>
+          <div>
+            <PacientData
+              personalData={personalData}
+              handlePersonalData={handlePersonalData}
+            />
+            <InputBox></InputBox>
+          </div>
+          <Recipe
+            AddMedicine={AddMedicine}
+            handleCurrentRecipe={handleCurrentRecipe}
+            medicinesList={medicinesList}
+            currentRecipe={currentRecipe}
+            DeleteMedicine={DeleteMedicine}
+            currentMedicineSelected={currentMedicineSelected}
+            setCurrentMedicineSelected={setCurrentMedicineSelected}
+          />
+        </Presupuesto>
+      )}
+      {section === 'Administrar medicamentos' && (
+        <ConfigMedicines
+          setMyTreatments={getMedicinesfromLocalStorage}
+          myTreatments={medicinesList}
+        />
+      )}
+      {section === 'Administrar tratamientos' && (
         <ConfigComponent
           setMyTreatments={getTreatmentsfromLocalStorage}
           myTreatments={myTreatments}
         />
-      ) : (
-        <>
-          <Presupuesto>
-            {section === 'Presupuesto' ? (
-              <InputBox>
-                <input
-                  type="submit"
-                  value="Nuevo presupuesto"
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: `solid 2px ${professionalData.primaryColor}`,
-                    margin: '0 0 40px 0',
-                    color: professionalData.primaryColor,
-                  }}
-                  onClick={() => newBudget()}
-                />
-              </InputBox>
-            ) : null}
-            <h3>Datos del paciente</h3>
-            <div>
-              <InputBox>
-                <label htmlFor="name">Nombre del paciente</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={personalData.name}
-                  onChange={handlePersonalData}
-                  autoComplete="off"
-                  placeholder="Esriba el nombre o razón social del paciente"
-                />
-              </InputBox>
-              <InputBox>
-                <label htmlFor="identification">Numero de cedula</label>
-                <input
-                  type="text"
-                  name="identification"
-                  value={personalData.identification}
-                  onChange={handlePersonalData}
-                  autoComplete="off"
-                  placeholder="Escriba el número de identificación del paciente"
-                />
-              </InputBox>
-              <InputBox>
-                {/* <label htmlFor="insuranceCoverageisActive">
-              Paciente de seguro{' '}
-              <input
-                style={{
-                  position: 'relative',
-                  top: '2px',
-                }}
-                type="checkbox"
-                name="insuranceCoverageisActive"
-                value="Bike"
-                onClick={handleCheck}
-              />
-            </label> */}
-                <br></br>
-              </InputBox>
-            </div>
-            {section === 'Presupuesto' ? (
-              <>
-                <AddBox>
-                  <h3>Agregar un procedimiento</h3>
-                  <form action="" onSubmit={AddTreatment} ref={formRef}>
-                    <InputBox>
-                      <label htmlFor="treatment">
-                        Seleccione el procedimiento:
-                      </label>
-                      <select
-                        name="treatment"
-                        onChange={handleCurrentBudget}
-                        defaultValue=""
-                        required
-                      >
-                        <option value="" disabled>
-                          {myTreatments.length !== 0
-                            ? 'Selecciona un procedimiento'
-                            : 'Ve a Configuración para agregar tus procedimientos'}
-                        </option>
-                        {myTreatments
-                          ?.sort((a: any, b: any) => {
-                            const nameA = a.nombre.toUpperCase();
-                            const nameB = b.nombre.toUpperCase();
-                            if (nameA < nameB) {
-                              return -1;
-                            }
-                            if (nameA > nameB) {
-                              return 1;
-                            }
-                            return 0;
-                          })
-                          .map((procedimiento: any, index: any) => {
-                            return (
-                              <option value={index} key={index}>
-                                {procedimiento.nombre}
-                                {' > '}
-                                {procedimiento.precio}$
-                              </option>
-                            );
-                          })}
-                      </select>
-                    </InputBox>
-                    <InputBox>
-                      <label htmlFor="quantity">Cantidad</label>
-                      <input
-                        type="number"
-                        name="quantity"
-                        onChange={handleCurrentBudget}
-                        required
-                        autoComplete="off"
-                      />
-                    </InputBox>
-                    <InputBox>
-                      <label htmlFor="observations">Observaciones</label>
-                      <input
-                        type="text"
-                        name="observations"
-                        onChange={handleCurrentBudget}
-                        autoComplete="off"
-                      />
-                    </InputBox>
-                    <InputBox>
-                      <input
-                        type="submit"
-                        value="Agregar"
-                        style={{
-                          backgroundColor: professionalData.primaryColor,
-                        }}
-                      />
-                    </InputBox>
-                  </form>
-                </AddBox>
-                <h3>Plan de tratamiento</h3>
-                {treatmentsList.length > 0 ? null : (
-                  <p
-                    style={{
-                      textAlign: 'center',
-                      color: 'grey',
-                    }}
-                  >
-                    Agrega un tratamiento
-                  </p>
-                )}
-                {treatmentsList.map((item: any, index: any) => {
-                  return (
-                    <ItemPresupuesto
-                      item={item}
-                      key={index}
-                      index={3}
-                      Delete={() => DeleteTreatment(index)}
-                      insuranceCoverageisActive={insuranceCoverageisActive}
-                    />
-                  );
-                })}
-              </>
-            ) : null}
-            {section === 'Informe' ? (
-              <>
-                <InputBox>
-                  <label htmlFor="identification">Redacte el informe</label>
-                  <textarea
-                    name="informe"
-                    value={report}
-                    onChange={handleReportData}
-                    rows={20}
-                    cols={50}
-                    autoComplete="off"
-                  />
-                </InputBox>
-                <a
-                  href="/"
-                  style={{
-                    color: '#8e8e8e',
-                    position: 'relative',
-                    top: '10px',
-                    right: '0',
-                    fontSize: '12px',
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setReport('');
-                  }}
-                >
-                  Borrar informe
-                </a>
-              </>
-            ) : null}
-          </Presupuesto>
-          {report !== '' || treatmentsList.length !== 0 ? (
-            <SaveWrapper
-              style={{
-                backgroundColor: professionalData.primaryColor,
-              }}
-            >
-              <img src={SaveIcon} onClick={handlePrint} />
-            </SaveWrapper>
-          ) : null}
-        </>
       )}
+      {report !== '' ||
+      treatmentsList.length !== 0 ||
+      currentRecipe.length !== 0 ? (
+        <SaveWrapper
+          style={{
+            backgroundColor: professionalData.primaryColor,
+          }}
+        >
+          <img src={SaveIcon} onClick={handlePrint} />
+        </SaveWrapper>
+      ) : null}
       <Page
         style={{
           display: 'none',
         }}
       >
         <div
-          className="page"
           style={{
             width: '841px',
             height: '1189px',
@@ -640,402 +550,24 @@ function App() {
             position: 'relative',
             color: '#4c4c4c',
           }}
-          ref={componentRef}
+          ref={componentToPrintRef}
         >
-          <img
-            src={LogoB}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate( -50%, -50%) scale(1.5)',
-              filter: 'opacity(.2)',
-              zIndex: '-1',
-            }}
-          />
           <style>{getPageMargins()}</style>
-          <div
-            className="header"
-            style={{
-              display: 'flex',
-              width: '100%',
-              justifyContent: 'space-between',
-              marginTop: '30px',
-              alignItems: 'center',
-            }}
-          >
-            <div>
-              <img
-                src={IsoLogo}
-                style={{
-                  width: '120px',
-                }}
-                alt=""
-              />
-            </div>
-            <div
-              style={{
-                position: 'relative',
-                left: '-150px',
-              }}
-            >
-              <h1
-                style={{
-                  margin: '0',
-                  color: professionalData.primaryColor,
-                  fontSize: '24px',
-                }}
-              >
-                {professionalData.title}
-              </h1>
-
-              <h2
-                style={{
-                  textAlign: 'left',
-                  fontSize: '16px',
-                  marginBottom: '0',
-                  color: '#212121',
-                  marginTop: '0',
-                  fontWeight: '400',
-                }}
-              >
-                {professionalData.name}
-                <br />
-                <span style={{ color: '#868686' }}>
-                  {professionalData.especiality}
-                  <br />
-                  <span>COV:</span> {professionalData.COV} <span>MPPS:</span>{' '}
-                  {professionalData.MPPS}
-                </span>
-              </h2>
-              {/* <h2
-                style={{
-                  textAlign: 'left',
-                  fontSize: '16px',
-                  marginTop: '8px',
-                  marginBottom: '0',
-                }}
-              >
-                
-              </h2> */}
-              <div style={{ display: 'flex', gap: '20px' }}>
-                <p></p>
-                <p></p>
-              </div>
-            </div>
-            <div
-              style={{
-                alignSelf: 'baseline',
-              }}
-            >
-              <p>
-                <span style={Bold}>Fecha:</span> {date.toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-          <div className="body" style={{ marginTop: '20px' }}>
-            <div
-              style={{
-                display: 'flex',
-                width: '100%',
-                justifyContent: 'space-between',
-                backgroundColor: professionalData.primaryColor,
-                color: professionalData.accentColor,
-                padding: '0 20px',
-                borderRadius: '5px',
-              }}
-            >
-              <p
-                style={{
-                  ...Bold,
-                  color: professionalData.accentColor,
-                }}
-              >
-                Paciente:
-                <span
-                  style={{
-                    color: '#fff',
-                    fontWeight: '300',
-                  }}
-                >
-                  {' '}
-                  {personalData.name}
-                </span>
-              </p>
-              <p
-                style={{
-                  ...Bold,
-                  color: professionalData.accentColor,
-                }}
-              >
-                R.I.F./C.I.:{' '}
-                <span
-                  style={{
-                    color: '#fff',
-                    fontWeight: '300',
-                  }}
-                >
-                  {personalData.identification}
-                </span>{' '}
-              </p>
-            </div>
-            {section === 'Presupuesto' ? (
-              <>
-                <div
-                  style={{
-                    display: 'flex',
-                    textAlign: 'center',
-                    marginTop: '20px',
-                  }}
-                >
-                  <h3
-                    style={{
-                      flex: '2',
-                      textAlign: 'left',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Procedimiento
-                  </h3>
-                  <h3
-                    style={{
-                      flex: '1',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Cantidad
-                  </h3>
-                  <h3
-                    style={{
-                      flex: '1',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Precio Unidad
-                  </h3>
-                  <h3
-                    style={{
-                      flex: '1',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Sub-total
-                  </h3>
-                  <h3
-                    style={{
-                      flex: '2',
-                      textDecoration: 'underline',
-                      textAlign: 'right',
-                    }}
-                  >
-                    Detalle
-                  </h3>
-                </div>
-                {treatmentsList.map((treatment: any, i: any) => {
-                  return (
-                    <div
-                      style={{
-                        display: 'flex',
-                        width: '100%',
-                        textAlign: 'center',
-                      }}
-                      key={i}
-                    >
-                      <p
-                        style={{
-                          flex: '2',
-                          textAlign: 'left',
-                        }}
-                      >
-                        {treatment.nombre}
-                      </p>
-                      <p
-                        style={{
-                          flex: '1',
-                        }}
-                      >
-                        {treatment.quantity}
-                      </p>
-                      <p
-                        style={{
-                          flex: '1',
-                        }}
-                      >
-                        {treatment.precio}${' '}
-                        {insuranceCoverageisActive ? (
-                          <span style={InsuranceCoverage}>
-                            ({treatment.insuranceCoverage}$)
-                          </span>
-                        ) : null}
-                      </p>
-                      <p
-                        style={{
-                          flex: '1',
-                        }}
-                      >
-                        {treatment.quantity * treatment.precio}${' '}
-                        {insuranceCoverageisActive ? (
-                          <span style={InsuranceCoverage}>
-                            ({treatment.quantity * treatment.insuranceCoverage}
-                            $)
-                          </span>
-                        ) : null}
-                      </p>
-                      <p
-                        style={{
-                          flex: '2',
-                          textAlign: 'right',
-                        }}
-                      >
-                        {treatment.observations}
-                      </p>
-                    </div>
-                  );
-                })}
-                <div
-                  style={{
-                    display: 'flex',
-                    width: '100%',
-                    textAlign: 'center',
-                  }}
-                >
-                  <p
-                    style={{
-                      flex: '2',
-                      textAlign: 'left',
-                    }}
-                  ></p>
-                  <p
-                    style={{
-                      flex: '1',
-                    }}
-                  ></p>
-                  <p
-                    style={{
-                      ...Bold,
-                      flex: '1',
-                      backgroundColor: professionalData.primaryColor,
-                      color: '#fff',
-                      padding: '10px',
-                      borderRadius: '5px 0 0 5px',
-                    }}
-                  >
-                    Total:
-                  </p>
-                  <p
-                    style={{
-                      flex: '1',
-                      backgroundColor: professionalData.secondaryColor,
-                      color: '#fff',
-                      padding: '10px',
-                      borderRadius: '0 5px 5px 0',
-                    }}
-                  >
-                    {treatmentsList.reduce(function (
-                      valAnt: number,
-                      valAct: any
-                    ) {
-                      return valAnt + valAct.precio * valAct.quantity;
-                    },
-                    0)}
-                    ${' '}
-                    {insuranceCoverageisActive ? (
-                      <span style={InsuranceCoverage}>
-                        {' '}
-                        (
-                        {treatmentsList.reduce(function (
-                          valAnt: number,
-                          valAct: any
-                        ) {
-                          return (
-                            valAnt + valAct.insuranceCoverage * valAct.quantity
-                          );
-                        },
-                        0)}
-                        $)
-                      </span>
-                    ) : null}
-                  </p>
-                  <p
-                    style={{
-                      flex: '2',
-                      textAlign: 'right',
-                    }}
-                  ></p>
-                </div>
-              </>
-            ) : null}
-            {section === 'Informe'
-              ? report.split('\n').map((parrafo) => {
-                  return (
-                    <>
-                      <p
-                        style={{
-                          marginTop: '30px',
-                          marginBottom: '0',
-                          fontSize: '16px',
-                          textIndent: '30px',
-                        }}
-                      >
-                        {parrafo}
-                      </p>
-                    </>
-                  );
-                })
-              : null}
-          </div>
-          <div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <div style={{ textAlign: 'center' }}>
-                <img src={Firma} style={{ width: '150px' }} />
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <img src={Sello} style={{ width: '150px' }} />
-              </div>
-            </div>
-            <p style={{ textAlign: 'center' }}>
-              Este presupuesto tiene una validez de 30 dias desde la fecha en
-              que fue emitido.
-            </p>
-            <div
-              className="footer"
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-              }}
-            >
-              {/* <p>
-                <span style={Bold}>Telefono:</span> {professionalData.tlfno}
-              </p>
-              <p>
-                <span style={Bold}>E-mail:</span> {professionalData.mail}
-              </p>
-              <p>
-                <span style={Bold}>Instagram:</span> {professionalData.ig}
-              </p>
-            </div>
-            <p style={{ ...Bold, textAlign: 'center' }}>
-              {professionalData.direccion}
-            </p> */}
-
-              <p style={{ textAlign: 'center' }}>
-                <span style={Bold}>Dirección:</span>{' '}
-                {professionalData.direccion}
-                <br />
-                <span style={Bold}>Teléfono:</span> {professionalData.tlfno}
-                {', '}
-                <span style={Bold}>e-mail:</span> {professionalData.mail}
-                {', '}
-                <span style={Bold}>Instagram:</span> {professionalData.ig}
-              </p>
-            </div>
-          </div>
+          {section === 'Recipes' && (
+            <RecipePrint
+              personalData={personalData}
+              currentRecipe={currentRecipe}
+            />
+          )}
+          {section === 'Presupuesto' || section === 'Informe' ? (
+            <BudgetReportPrint
+              personalData={personalData}
+              section={section}
+              report={report}
+              treatmentsList={treatmentsList}
+              insuranceCoverageisActive={insuranceCoverageisActive}
+            />
+          ) : null}
         </div>
       </Page>
       <Footer>

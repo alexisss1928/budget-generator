@@ -113,21 +113,20 @@ const InputBox = styled.div`
   }
 `;
 
-type TreatmentListItem = {
+type MedicinesInLocalStorage = {
   nombre: string;
-  precio: string;
-  insuranceCoverage?: string;
+  indicaciones: string;
 };
 
 type ConfigType = {
   setMyTreatments: () => void;
-  myTreatments: TreatmentListItem[];
+  myTreatments: MedicinesInLocalStorage[];
 };
 
 const ConfigComponent = ({ setMyTreatments, myTreatments }: ConfigType) => {
   const [newTreatment, setNewTreatment] = useState({
     nombre: '',
-    precio: '',
+    indicaciones: '',
   });
 
   const handleNewTreatment = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,17 +145,14 @@ const ConfigComponent = ({ setMyTreatments, myTreatments }: ConfigType) => {
         complete: function (results) {
           if (
             results.meta.fields?.includes('nombre') &&
-            results.meta.fields?.includes('precio')
+            results.meta.fields?.includes('indicaciones')
           ) {
-            localStorage.setItem(
-              'myTreatmentsList',
-              JSON.stringify(results.data)
-            );
+            localStorage.setItem('medicinesList', JSON.stringify(results.data));
             setMyTreatments();
-            toast.success('Costos cargados');
+            toast.success('Medicamentos cargados');
           } else {
             alert(
-              'Los campos del archivo no son los correctos, verifica que sean "nombre" y "precio", y que no tengan espacios.'
+              'Los campos del archivo no son los correctos, verifica que sean "nombre" e "indicaciones", y que no tengan espacios.'
             );
           }
         },
@@ -165,19 +161,19 @@ const ConfigComponent = ({ setMyTreatments, myTreatments }: ConfigType) => {
   };
 
   const handleDownload = () => {
-    const data = `nombre,precio
-Consulta Inicial,10
-Tartrectomia e Higiene,20
-Aplicación Tópica de Fluor,10
-Resina Tipo I,30
-Resina Tipo II,45
-Resina Tipo III,110
-Resina Clase V,30`;
+    const data = `nombre,indicaciones
+    Ibuprofeno - 400 mg,"400 mg cada 6 horas, 600 mg cada 8 horas por 3 dias si hay dolor"
+    Acetaminofen - 500 mg,500 mg cada 6 horas
+    Ketoprofeno - 100 mg,100 mg cada 4 a 6 horas
+    Amoxicilina - 500 mg,500 mg cada 8 horas por 7 dias
+    Amoxicilina + Ac. Clavulanico - 500 mg/125 mg,1 tab cada 8 horas por 5 a 10 dias.
+    Clindamicina - 300 mg,300 mg cada 6 horas por 7 dias
+    Azitromicina - 500 mg,500 mg diarios por 3 dias`;
     const blob = new Blob([data], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', 'ModeloParaCostos.csv');
+    a.setAttribute('download', 'ModeloParaMedicamentos.csv');
     a.click();
   };
 
@@ -191,7 +187,7 @@ Resina Clase V,30`;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.setAttribute('href', url);
-      a.setAttribute('download', 'MisCostos.csv');
+      a.setAttribute('download', 'MisMedicamentoss.csv');
       a.click();
     }
   };
@@ -201,11 +197,11 @@ Resina Clase V,30`;
 
     myPrices.push(newTreatment);
 
-    localStorage.setItem('myTreatmentsList', JSON.stringify(myPrices));
+    localStorage.setItem('medicinesList', JSON.stringify(myPrices));
 
     setNewTreatment({
       nombre: '',
-      precio: '',
+      indicaciones: '',
     });
 
     setMyTreatments();
@@ -214,71 +210,84 @@ Resina Clase V,30`;
   const DeleteTreatment = (treatmentToDelete: string) => {
     let myPrices = myTreatments;
 
-    const myPricesfiltered = myPrices.filter((item: TreatmentListItem) => {
-      return item.nombre != treatmentToDelete;
-    });
+    const myPricesfiltered = myPrices.filter(
+      (item: MedicinesInLocalStorage) => {
+        return item.nombre != treatmentToDelete;
+      }
+    );
 
-    localStorage.setItem('myTreatmentsList', JSON.stringify(myPricesfiltered));
+    localStorage.setItem('medicinesList', JSON.stringify(myPricesfiltered));
 
     setMyTreatments();
   };
 
   return (
     <Wrapper>
-      <h3>Mi lista de tratamientos</h3>
+      <h3>Mi lista de medicamentos</h3>
       {myTreatments.length === 0 ? (
-        <p style={{ color: '#b3b3b3' }}>No hay tratamientos guardados aun</p>
+        <p style={{ color: '#b3b3b3' }}>No hay medicamentos guardados aun</p>
       ) : (
-        myTreatments.map((treatment: TreatmentListItem, index: number) => {
-          return (
-            <TreatmentListItem key={index}>
-              <div>{treatment.nombre}</div>
-              <div
-                className="priceDelete"
-                style={{ display: 'flex', alignItems: 'center' }}
-              >
-                <div>{treatment.precio}$</div>
-                <button
-                  onClick={() => {
-                    DeleteTreatment(treatment.nombre);
-                  }}
+        myTreatments.map(
+          (treatment: MedicinesInLocalStorage, index: number) => {
+            return (
+              <TreatmentListItem key={index}>
+                <div>
+                  {treatment.nombre} <br />
+                  <span style={{ color: '#a2a2a2' }}>
+                    {treatment.indicaciones}
+                  </span>
+                </div>
+                <div
+                  className="priceDelete"
+                  style={{ display: 'flex', alignItems: 'center' }}
                 >
-                  <img src={DeleteIcon} alt="" />
-                </button>
-              </div>
-            </TreatmentListItem>
-          );
-        })
+                  {' '}
+                  <button
+                    onClick={() => {
+                      DeleteTreatment(treatment.nombre);
+                    }}
+                  >
+                    <img src={DeleteIcon} alt="" />
+                  </button>
+                </div>
+              </TreatmentListItem>
+            );
+          }
+        )
       )}
-      <h3>Agrega un nuevo tratamiento</h3>
+      <h3>Agrega un nuevo medicamento</h3>
       <div className="addTreatment subir-archivo-costos">
-        <InputBox style={{ margin: '0px' }}>
-          <input
-            type="text"
-            name="nombre"
-            value={newTreatment.nombre}
-            onChange={handleNewTreatment}
-            autoComplete="off"
-            placeholder="Nombre del tratamiento"
-          />
-          <input
-            type="number"
-            name="precio"
-            value={newTreatment.precio}
-            onChange={handleNewTreatment}
-            autoComplete="off"
-            placeholder="Precio"
-          />
-          <button onClick={AddTreatment}>
+        <div style={{ display: 'flex', width: '100%', marginTop: '0' }}>
+          <div style={{ flex: '9' }}>
+            <InputBox style={{ margin: '0px', flex: '9' }}>
+              <input
+                type="text"
+                name="nombre"
+                value={newTreatment.nombre}
+                onChange={handleNewTreatment}
+                autoComplete="off"
+                placeholder="Nombre del medicamento"
+              />
+            </InputBox>
+            <InputBox style={{ marginTop: '10px' }}>
+              <input
+                type="text"
+                name="indicaciones"
+                value={newTreatment.indicaciones}
+                onChange={handleNewTreatment}
+                autoComplete="off"
+                placeholder="Indicaciones"
+              />
+            </InputBox>
+          </div>
+          <button onClick={AddTreatment} style={{ marginLeft: '10px' }}>
             <img src={AddIcon} alt="" />
           </button>
-        </InputBox>
+        </div>
       </div>
-      <h3>Cargar tratamientos y costos</h3>
+      <h3>Cargar medicamentos</h3>
       <div className="subir-archivo-costos">
-        <label htmlFor="">
-          Seleciona el archivo CSV con los procedimientos y costos
-        </label>
+        <label htmlFor="">Seleciona el archivo CSV con los medicamentos</label>
 
         <br />
         <input type="file" name="profilePicture" onChange={HandleFileSelect} />
@@ -290,7 +299,7 @@ Resina Clase V,30`;
           Descargar modelo de archivo CSV
         </button>
       </div>
-      <h3>Descargar mi lista de tratamientos y costos</h3>
+      <h3>Descargar mi lista de medicamentos</h3>
       <div className="subir-archivo-costos">
         <button
           onClick={() => DownloadMyPrices()}

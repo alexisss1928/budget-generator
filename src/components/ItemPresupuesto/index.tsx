@@ -71,12 +71,27 @@ const ItemPresupuesto = styled.div`
   }
 `; */
 
+type CurrentTreatmentListItem = {
+  nombre: string;
+  precio: string;
+  insuranceCoverage: string;
+  quantity: string;
+  observations: string;
+};
+
+type ItemPresupuestoType = {
+  item: CurrentTreatmentListItem;
+  index: number;
+  Delete: (index: number) => void;
+  insuranceCoverageisActive: boolean;
+};
+
 export default function ItemPresupuestoComponent({
   item,
   index,
   Delete,
   insuranceCoverageisActive,
-}: any) {
+}: ItemPresupuestoType) {
   return (
     <ItemPresupuesto>
       <div className="data">
@@ -98,12 +113,12 @@ export default function ItemPresupuestoComponent({
           ) : null}
         </p>
         <p>
-          {item.precio * item.quantity}
+          {+item.precio * +item.quantity}
           {insuranceCoverageisActive ? (
             <>
               <br />
               <span className="insuranceCoverage">
-                ({item.insuranceCoverage * item.quantity})
+                ({+item.insuranceCoverage * +item.quantity})
               </span>
             </>
           ) : null}

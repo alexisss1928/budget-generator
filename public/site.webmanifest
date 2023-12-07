@@ -1,7 +1,7 @@
 {
   "name": "Doctor Companion",
-  "short_name": "Tools for dentist and more",
-  "description": "An app that can help you in your daily tasks",
+  "short_name": "DC",
+  "description": "Tools for dentist and more",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",

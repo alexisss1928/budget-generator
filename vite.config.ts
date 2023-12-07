@@ -1,16 +1,19 @@
 import { VitePWA, VitePWAOptions } from 'vite-plugin-pwa';
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 
 const manifestForPlugin: Partial<VitePWAOptions> = {
   registerType: 'autoUpdate',
+  injectRegister: 'auto',
+  devOptions: {
+    enabled: true,
+  },
   workbox: {
     globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
   },
   includeAssets: ['**/*'],
   manifest: {
     name: 'Doctor Companion',
-    short_name: 'Tools for dentist and more',
+    short_name: 'DC',
     description: 'An app that can help you in your daily tasks',
     icons: [
       {
@@ -42,5 +45,5 @@ const manifestForPlugin: Partial<VitePWAOptions> = {
 // https://vitejs.dev/config/
 export default defineConfig({
   base: './',
-  plugins: [react(), VitePWA(manifestForPlugin)],
+  plugins: [VitePWA(manifestForPlugin)],
 });
