@@ -1,18 +1,28 @@
-import IsoLogo from '../../assets/personalAssets/IsoLogo.png';
-import Sello from '../../assets/personalAssets/Sello.png';
-import Firma from '../../assets/personalAssets/Firma.png';
+import { DoctorProfile, DEFAULT_DOCTOR_PROFILE } from '../../db/clinicDB';
+
+interface PrintContentLayoutProps {
+  professionalData?: DoctorProfile;
+  personalData: { name: string; identification: string };
+  currentRecipe?: any[];
+  children: React.ReactNode;
+}
 
 const PrintContentLayout = ({
-  professionalData,
+  professionalData = DEFAULT_DOCTOR_PROFILE,
   personalData,
   children,
-}: any) => {
+}: PrintContentLayoutProps) => {
   const date = new Date();
 
   const Bold = {
     fontWeight: '700',
     color: '#21213c',
   };
+
+  const logoSrc = professionalData.logoDataUrl;
+  const selloSrc = professionalData.selloDataUrl;
+  const firmaSrc = professionalData.firmaDataUrl;
+  const doctorName = `${professionalData.prefix} ${professionalData.nombre} ${professionalData.apellido}`;
 
   return (
     <>
@@ -26,21 +36,16 @@ const PrintContentLayout = ({
           fontSize: '8px',
         }}
       >
-        <div>
-          <img
-            src={IsoLogo}
-            style={{
-              width: '80px',
-            }}
-            alt=""
-          />
-        </div>
-        <div
-          style={{
-            position: 'relative',
-            left: '10px',
-          }}
-        >
+        {logoSrc && (
+          <div>
+            <img
+              src={logoSrc}
+              style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+              alt="Logo"
+            />
+          </div>
+        )}
+        <div style={{ position: 'relative', left: logoSrc ? '10px' : '0' }}>
           <h1
             style={{
               margin: '0',
@@ -48,9 +53,13 @@ const PrintContentLayout = ({
               fontSize: '14px',
             }}
           >
-            {professionalData.title}
+            {professionalData.clinicTitle}
           </h1>
-
+          {professionalData.lema && (
+            <p style={{ margin: '1px 0', fontSize: '9px', color: '#868686', fontStyle: 'italic' }}>
+              {professionalData.lema}
+            </p>
+          )}
           <h2
             style={{
               textAlign: 'left',
@@ -61,21 +70,22 @@ const PrintContentLayout = ({
               fontWeight: '400',
             }}
           >
-            {professionalData.name !== '' && (
+            {doctorName && (
               <>
-                {professionalData.name}
+                {doctorName}
                 <br />
               </>
             )}
             <span style={{ color: '#868686' }}>
-              {professionalData.especiality}
+              {professionalData.especialidad}
               <br />
-              <span>COV:</span> {professionalData.COV} <span>MPPS:</span>{' '}
-              {professionalData.MPPS}
+              <span>COV:</span> {professionalData.cov}{' '}
+              <span>MPPS:</span> {professionalData.mpps}
             </span>
           </h2>
         </div>
       </div>
+
       <div className="body" style={{ marginTop: '20px' }}>
         <div
           style={{
@@ -88,36 +98,13 @@ const PrintContentLayout = ({
             borderRadius: '5px',
           }}
         >
-          <p
-            style={{
-              ...Bold,
-              color: professionalData.accentColor,
-            }}
-          >
+          <p style={{ ...Bold, color: professionalData.accentColor }}>
             Paciente:
-            <span
-              style={{
-                color: '#fff',
-              }}
-            >
-              {' '}
-              {personalData.name}
-            </span>
+            <span style={{ color: '#fff' }}> {personalData.name}</span>
           </p>
-          <p
-            style={{
-              ...Bold,
-              color: professionalData.accentColor,
-            }}
-          >
+          <p style={{ ...Bold, color: professionalData.accentColor }}>
             R.I.F./C.I.:{' '}
-            <span
-              style={{
-                color: '#fff',
-              }}
-            >
-              {personalData.identification}
-            </span>{' '}
+            <span style={{ color: '#fff' }}>{personalData.identification}</span>{' '}
           </p>
         </div>
         <p style={{ textAlign: 'right' }}>
@@ -125,37 +112,39 @@ const PrintContentLayout = ({
         </p>
         {children}
       </div>
+
       <div>
         <div
           style={{
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
+            gap: '20px',
           }}
         >
-          <div style={{ textAlign: 'center' }}>
-            <img src={Firma} style={{ width: '100px' }} />
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <img src={Sello} style={{ width: '100px' }} />
-          </div>
+          {firmaSrc && (
+            <div style={{ textAlign: 'center' }}>
+              <img src={firmaSrc} style={{ width: '100px' }} alt="Firma" />
+            </div>
+          )}
+          {selloSrc && (
+            <div style={{ textAlign: 'center' }}>
+              <img src={selloSrc} style={{ width: '100px' }} alt="Sello" />
+            </div>
+          )}
         </div>
         <div
           className="footer"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            width: '100%',
-          }}
+          style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}
         >
           <p style={{ textAlign: 'center', width: '100%', fontSize: '10px' }}>
             <span style={Bold}>Dirección:</span> {professionalData.direccion}.
             <br />
-            <span style={Bold}>Teléfono:</span> {professionalData.tlfno}
+            <span style={Bold}>Teléfono:</span> {professionalData.telefono}
             {', '}
-            <span style={Bold}>e-mail:</span> {professionalData.mail}
+            <span style={Bold}>e-mail:</span> {professionalData.email}
             {', '}
-            <span style={Bold}>Instagram:</span> {professionalData.ig}.
+            <span style={Bold}>Instagram:</span> {professionalData.instagram}.
           </p>
         </div>
       </div>

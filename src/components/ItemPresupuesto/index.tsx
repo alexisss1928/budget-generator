@@ -1,75 +1,85 @@
-// import { useRef } from 'react';
-// import MoreIcon from '../../assets/ellipsis-vertical-solid.svg';
-// import EditIcon from '../../assets/pen-solid.svg';
-import DeleteIcon from '../../assets/icons/trash-solid.svg';
-// import CloseIcon from '../../assets/xmark-solid.svg';
 import styled from 'styled-components';
+import { Trash2 } from 'lucide-react';
 
-const ItemPresupuesto = styled.div`
+const ListItem = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  margin-top: 10px;
-  position: relative;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
 
-  .description,
-  .unitPrice {
-    color: #8b8b8b;
+  &:last-child {
+    border-bottom: none;
   }
 
-  .data p {
-    margin: 5px;
+  &:hover {
+    background: var(--surface-alt);
+  }
+
+  .data {
+    flex: 1;
+    
+    .title {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 600;
+      margin: 0 0 4px 0;
+    }
+    
+    .description {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.3;
+      margin: 0;
+    }
   }
 
   .prices {
     display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: 12px;
 
-    p {
-      margin-left: 20px;
-      text-align: center;
+    .price-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      
+      span {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      strong {
+        font-size: 13px;
+        color: var(--text);
+      }
+      .insurance {
+        font-size: 10px;
+        color: #58c36b;
+        font-weight: 600;
+      }
     }
 
     button {
-      background-color: transparent;
-      cursor: pointer;
+      background: transparent;
       border: none;
-      margin-left: 20px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.15s;
+      margin-left: 4px;
 
-      img {
-        width: 12px;
-        filter: opacity(0.5);
+      &:hover {
+        background: #ffebee;
+        color: #e53935;
       }
     }
   }
-
-  p {
-    font-weight: 300;
-  }
-
-  .insuranceCoverage {
-    color: #58c36b;
-  }
 `;
-
-/* const ItemOptions = styled.div`
-  position: absolute;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  border-radius: 5px;
-  right: 0;
-  height: 100%;
-  background-color: #fff;
-
-  div {
-    display: flex;
-  }
-
-  img {
-    height: 15px;
-    margin: 10px;
-  }
-`; */
 
 type CurrentTreatmentListItem = {
   nombre: string;
@@ -93,44 +103,35 @@ export default function ItemPresupuestoComponent({
   insuranceCoverageisActive,
 }: ItemPresupuestoType) {
   return (
-    <ItemPresupuesto>
+    <ListItem>
       <div className="data">
-        <p>
-          {item.nombre} x {item.quantity}
+        <p className="title">
+          {item.nombre} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>× {item.quantity}</span>
         </p>
-        <p className="description">{item.observations}</p>
+        {item.observations && <p className="description">{item.observations}</p>}
       </div>
+      
       <div className="prices">
-        <p className="unitPrice">
-          {item.precio}
-          {insuranceCoverageisActive ? (
-            <>
-              <br />
-              <span className="insuranceCoverage">
-                ({item.insuranceCoverage})
-              </span>
-            </>
-          ) : null}
-        </p>
-        <p>
-          {+item.precio * +item.quantity}
-          {insuranceCoverageisActive ? (
-            <>
-              <br />
-              <span className="insuranceCoverage">
-                ({+item.insuranceCoverage * +item.quantity})
-              </span>
-            </>
-          ) : null}
-        </p>
-        <button
-          onClick={() => {
-            Delete(index);
-          }}
-        >
-          <img src={DeleteIcon} alt="" />
+        <div className="price-col">
+          <span>Unidad</span>
+          <strong>${item.precio}</strong>
+          {insuranceCoverageisActive && (
+            <span className="insurance">(${item.insuranceCoverage})</span>
+          )}
+        </div>
+        
+        <div className="price-col" style={{ width: 60 }}>
+          <span>Subtotal</span>
+          <strong style={{ color: 'var(--accent)' }}>${+item.precio * +item.quantity}</strong>
+          {insuranceCoverageisActive && (
+            <span className="insurance">(${+item.insuranceCoverage * +item.quantity})</span>
+          )}
+        </div>
+
+        <button onClick={() => Delete(index)} title="Eliminar">
+          <Trash2 size={16} />
         </button>
       </div>
-    </ItemPresupuesto>
+    </ListItem>
   );
 }

@@ -1,5 +1,5 @@
-import professionalData from '../../commons/professionalData';
 import PrintContentLayout from './PrintContentLayout';
+import { DoctorProfile } from '../../db/clinicDB';
 
 type PersonalDataType = {
   name: string;
@@ -14,9 +14,10 @@ type Medicine = {
 type RecipePrintType = {
   personalData: PersonalDataType;
   currentRecipe: Medicine[];
+  doctorProfile?: DoctorProfile;
 };
 
-const RecipePrint = ({ personalData, currentRecipe }: RecipePrintType) => {
+const RecipePrint = ({ personalData, currentRecipe, doctorProfile }: RecipePrintType) => {
   return (
     <>
       <div style={{ height: '20px' }}></div>
@@ -34,20 +35,15 @@ const RecipePrint = ({ personalData, currentRecipe }: RecipePrintType) => {
           }}
         >
           <PrintContentLayout
-            professionalData={professionalData}
+            professionalData={doctorProfile}
             personalData={personalData}
-            currentRecipe={currentRecipe}
           >
             <h2 style={{ textDecoration: 'underline' }}>RP.:</h2>
-            {currentRecipe.map((medicine: any) => {
-              return (
-                <>
-                  <p style={{ fontSize: '13px', fontWeight: '700' }}>
-                    {medicine.nombre}
-                  </p>
-                </>
-              );
-            })}
+            {currentRecipe.map((medicine, i) => (
+              <p key={i} style={{ fontSize: '13px', fontWeight: '700' }}>
+                {medicine.nombre}
+              </p>
+            ))}
           </PrintContentLayout>
         </div>
         <div
@@ -63,25 +59,20 @@ const RecipePrint = ({ personalData, currentRecipe }: RecipePrintType) => {
           }}
         >
           <PrintContentLayout
-            professionalData={professionalData}
+            professionalData={doctorProfile}
             personalData={personalData}
-            currentRecipe={currentRecipe}
           >
             <h2 style={{ textDecoration: 'underline' }}>Indicaciones:</h2>
-            {currentRecipe.map((medicine) => {
-              return (
-                <>
-                  <p style={{ fontSize: '13px', fontWeight: '700' }}>
-                    {medicine.nombre}
-                    <br />
-                    <span style={{ fontSize: '13px', fontWeight: '300' }}>
-                      {'* '}
-                      {medicine.indicaciones}
-                    </span>
-                  </p>
-                </>
-              );
-            })}
+            {currentRecipe.map((medicine, i) => (
+              <p key={i} style={{ fontSize: '13px', fontWeight: '700' }}>
+                {medicine.nombre}
+                <br />
+                <span style={{ fontSize: '13px', fontWeight: '300' }}>
+                  {'* '}
+                  {medicine.indicaciones}
+                </span>
+              </p>
+            ))}
           </PrintContentLayout>
         </div>
       </div>

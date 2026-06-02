@@ -1,8 +1,16 @@
 // Packages imports
-import { useState, useRef, useEffect } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { toPng } from 'html-to-image';
+import styled, { keyframes } from 'styled-components';
+import {
+  Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Save,
+} from 'lucide-react';
 
-// Components imports
+// Context
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+
+// Components
 import professionalData from '../src/commons/professionalData';
 import Report from './components/Report';
 import Budget from './components/Budget';
@@ -11,43 +19,28 @@ import RecipePrint from './components/RecipePrint';
 import ConfigComponent from './components/SettingsComponent';
 import ConfigMedicines from './components/SettingsComponent/MedicinesSettings';
 import Recipe from './components/Recipe';
+import History from './components/History';
+import HomeScreen from './components/HomeScreen';
+import PacientData from './components/PacientData';
+import DoctorSettings from './components/DoctorSettings';
 
-// Images imports
+// Branding
 import Logo from '../src/assets/leafAssets/logo.png';
 import LogoLeafWeb from '../src/assets/leafAssets/logo_horz.png';
-import LogoJarabito from '../src/assets/leafAssets/logo-jarabito.png';
-import SaveIcon from '../src/assets/icons/file-pdf-solid.svg';
-import MenuBar from '../src/assets/icons/bars-solid.svg';
-import ConfigIcon from '../src/assets/icons/gear-solid.svg';
-import BudgetIcon from '../src/assets/icons/file-invoice-dollar-solid.svg';
-import ReportIcon from '../src/assets/icons/file-medical-solid.svg';
-import PrescriptionIcon from '../src/assets/icons/file-prescription-solid.svg';
-import CloseIcon from '../src/assets/icons/circle-xmark-solid.svg';
 
-// Common imports
-import PacientData from './components/PacientData';
+// DB
 import {
-  Wrapper,
-  Footer,
-  LogoWrapper,
-  SaveWrapper,
-  Menu,
-  Presupuesto,
-  InputBox,
-  Page,
-} from './components/Styles';
+  getAllTreatments,
+  getAllMedicines,
+  saveToHistory,
+  getDoctorProfile,
+  TreatmentRecord,
+  MedicineRecord,
+  DoctorProfile,
+  DEFAULT_DOCTOR_PROFILE,
+} from './db/clinicDB';
 
-//Types
-type TreatmentInLocalStorage = {
-  nombre: string;
-  precio: string;
-  insuranceCoverage: string;
-};
-
-type MedicinesInLocalStorage = {
-  nombre: string;
-  indicaciones: string;
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type CurrentTreatmentListItem = {
   nombre: string;
@@ -57,526 +50,568 @@ type CurrentTreatmentListItem = {
   observations: string;
 };
 
-function App() {
-  ///////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////// Commons ///////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-  const [opacityMenuButtonController, setOpacityMenuButtonController] =
-    useState(true);
+type MedicinesInState = {
+  nombre: string;
+  indicaciones: string;
+};
 
-  const sections = {
-    presupuesto: 'Presupuesto',
-    informe: 'Informe',
-    recipes: 'Recipes',
-    config: 'Configuracion',
-  };
-  const [section, setSection] = useState<string>(sections.presupuesto);
+// ─── Styled Components ────────────────────────────────────────────────────────
 
-  const handleChangeSection = (section: string) => {
-    setSection(section);
-    menuToggleRef.current?.classList.toggle('hide');
-    setOpacityMenuButtonController(!opacityMenuButtonController);
-  };
+const fadeIn = keyframes`from{opacity:0}to{opacity:1}`;
+const slideUp = keyframes`from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}`;
 
-  const menuToggleRef = useRef<null | HTMLDivElement>(null);
+const AppShell = styled.div`
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+`;
 
-  const HideUnhideLoadTreatments = () => {
-    menuToggleRef.current?.classList.toggle('hide');
-    setOpacityMenuButtonController(!opacityMenuButtonController);
-  };
-  -9;
+const Backdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.52);
+  z-index: 200;
+  animation: ${fadeIn} 0.2s ease;
+  backdrop-filter: blur(2px);
+`;
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////// Presupuesto ///////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
+const DrawerContainer = styled.aside<{ $open: boolean }>`
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: min(288px, 82vw);
+  background: ${professionalData.primaryColor};
+  transform: translateX(${(p) => (p.$open ? '0' : '-100%')});
+  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-shadow: 4px 0 30px rgba(0,0,0,0.25);
+`;
 
-  // Estado para guardar si es o no paciente de seguro
-  const [insuranceCoverageisActive /* setInsuranceCoverageisActive */] =
-    useState(false);
+const DrawerHead = styled.div`
+  padding: 52px 18px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    img { width: 30px; filter: brightness(0) invert(1); }
+    span { font-size: 15px; font-weight: 700; color: #fff; }
+  }
+`;
 
-  // Maneja si el check esta seleccionado o no y cambia el estado
-  /* const handleCheck = (event: any) => {
-    setInsuranceCoverageisActive(event.target.checked);
-  }; */
+const DrawerCloseBtn = styled.button`
+  width: 30px; height: 30px;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.8);
+  transition: background 0.15s;
+  &:hover { background: rgba(255,255,255,0.22); color: #fff; }
+`;
 
-  // Lista de tratamientos disponibles
-  const [myTreatments, setMyTreatments] = useState<TreatmentInLocalStorage[]>(
-    []
-  );
+const DrawerNav = styled.nav`
+  flex: 1;
+  padding: 10px 0;
+`;
 
-  // Tratamiento seleccionado de la lista
+const DrawerItem = styled.button<{ $active?: boolean }>`
+  width: 100%;
+  display: flex; align-items: center; gap: 13px;
+  padding: 13px 18px;
+  background: ${(p) => p.$active ? 'rgba(255,255,255,0.16)' : 'transparent'};
+  border: none;
+  border-left: 3px solid ${(p) => p.$active ? 'rgba(255,255,255,0.8)' : 'transparent'};
+  cursor: pointer;
+  color: ${(p) => p.$active ? '#fff' : 'rgba(255,255,255,0.7)'};
+  font-size: 13px;
+  font-weight: ${(p) => p.$active ? '600' : '400'};
+  font-family: 'Inter', sans-serif;
+  text-align: left;
+  transition: all 0.15s;
+  svg { flex-shrink: 0; opacity: ${(p) => p.$active ? 1 : 0.65}; }
+  &:hover { background: rgba(255,255,255,0.1); color: #fff; svg { opacity: 1; } }
+`;
+
+const DrawerDivider = styled.div`
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 8px 18px;
+`;
+
+const DrawerSubLabel = styled.p`
+  padding: 10px 18px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  letter-spacing: 1.8px;
+`;
+
+const DrawerFooter = styled.div`
+  padding: 14px 18px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  text-align: center;
+`;
+
+const Navbar = styled.header`
+  height: 60px;
+  flex: 0 0 60px;
+  background: ${professionalData.primaryColor};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+`;
+
+const NavBtn = styled.button`
+  width: 40px; height: 40px;
+  border: none; background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  color: rgba(255,255,255,0.85);
+  transition: background 0.15s, color 0.15s;
+  &:hover { background: rgba(255,255,255,0.14); color: #fff; }
+`;
+
+const NavCenter = styled.div`
+  display: flex; align-items: center; gap: 9px;
+  flex: 1; justify-content: center;
+  img { width: 26px; filter: brightness(0) invert(1); }
+  span { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.2px; }
+`;
+
+const ContentArea = styled.main`
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+`;
+
+const SectionView = styled.div`
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg);
+  animation: ${slideUp} 0.25s ease;
+`;
+
+const SectionInner = styled.div`
+  margin: 0 auto;
+  width: 100vw;
+  max-width: 600px;
+  padding: 20px 16px 100px;
+`;
+
+const SectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+`;
+
+const BackBtn = styled.button`
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface);
+  border: none; border-radius: 10px;
+  padding: 8px 14px 8px 10px;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: var(--shadow-card);
+  &:hover { background: var(--accent-bg); color: var(--accent); }
+`;
+
+const NewDocBtn = styled.button`
+  margin-left: auto;
+  background: transparent;
+  border: 2px solid ${professionalData.secondaryColor};
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12px; font-weight: 700;
+  color: ${professionalData.secondaryColor};
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  transition: all 0.15s;
+  &:hover { background: ${professionalData.secondaryColor}; color: #fff; transform: translateY(-1px); }
+`;
+
+const PatientCard = styled.div`
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
+  h3 {
+    font-size: 11px; font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1.2px;
+    margin-bottom: 12px;
+  }
+`;
+
+const SaveFAB = styled.button`
+  position: fixed; bottom: 24px; right: 20px;
+  width: 58px; height: 58px;
+  background: ${professionalData.secondaryColor};
+  border: none; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 150;
+  color: #fff;
+  box-shadow: 0 4px 20px ${professionalData.secondaryColor}66;
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+  &:hover { transform: scale(1.1); box-shadow: 0 6px 28px ${professionalData.secondaryColor}88; }
+  &:active { transform: scale(0.96); }
+`;
+
+const AppFooter = styled.footer`
+  flex: 0 0 44px;
+  background: ${professionalData.primaryColor};
+  display: flex; justify-content: center; align-items: center;
+  color: rgba(255,255,255,0.5);
+  font-size: 11px; gap: 6px;
+  img { width: 70px; opacity: 0.8; }
+`;
+
+const PrintPage = styled.div`
+  width: 841px; height: 1250px;
+  position: absolute; left: -9999px; top: 0;
+`;
+
+// ─── Section title map ────────────────────────────────────────────────────────
+
+const sectionTitle: Record<string, string> = {
+  Inicio: 'ClinicManager',
+  Presupuesto: 'Presupuesto',
+  Informe: 'Informe clínico',
+  Recipes: 'Recipe médico',
+  Historial: 'Historial',
+  'Administrar tratamientos': 'Tratamientos',
+  'Administrar medicamentos': 'Medicamentos',
+  'Datos del médico': 'Datos del médico',
+};
+
+// ─── Inner App ────────────────────────────────────────────────────────────────
+
+function AppInner() {
+  const { theme, toggleTheme } = useTheme();
+  const [section, setSection] = useState('Inicio');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
+
+  const navigate = (s: string) => { setSection(s); setDrawerOpen(false); };
+
+  // ── Doctor profile ─────────────────────────────────────────────────────────
+  const loadDoctorProfile = useCallback(async () => {
+    const saved = await getDoctorProfile();
+    if (saved) setDoctorProfile(saved);
+  }, []);
+
+  // ── Treatments ─────────────────────────────────────────────────────────────
+  const [insuranceCoverageisActive] = useState(false);
+  const [myTreatments, setMyTreatments] = useState<TreatmentRecord[]>([]);
   const [currentBudget, setCurrentBudget] = useState<CurrentTreatmentListItem>({
-    nombre: '',
-    precio: '',
-    insuranceCoverage: '',
-    quantity: '',
-    observations: '',
+    nombre: '', precio: '', insuranceCoverage: '', quantity: '', observations: '',
   });
+  const [treatmentsList, setTreatmentsList] = useState<CurrentTreatmentListItem[]>([]);
 
-  // Tratamientos agregados al presupuesto actual
-  const [treatmentsList, setTreatmentsList] = useState<
-    CurrentTreatmentListItem[]
-  >([]);
-
-  // Funcion que maneja los campos del tratamiento seleccionado (Tratamiento, cantidad, observaciones)
   const handleCurrentBudget = (e: React.ChangeEvent<HTMLFormElement>) => {
     const { name, value } = e.target;
-
     name === 'treatment'
-      ? setCurrentBudget({
-          ...currentBudget,
-          nombre: myTreatments[value].nombre,
-          precio: myTreatments[value].precio,
-          insuranceCoverage: myTreatments[value].insuranceCoverage,
-        })
-      : setCurrentBudget({
-          ...currentBudget,
-          [name]: value,
-        });
+      ? setCurrentBudget({ ...currentBudget, nombre: myTreatments[value].nombre, precio: myTreatments[value].precio, insuranceCoverage: myTreatments[value].insuranceCoverage ?? '' })
+      : setCurrentBudget({ ...currentBudget, [name]: value });
   };
 
-  // Limpia los campos para iniciar un nuevo presupuesto
-  const newBudget = () => {
-    setTreatmentsList([]);
-    setPersonalData({ name: '', identification: '' });
-  };
+  const newBudget = () => { setTreatmentsList([]); setPersonalData({ name: '', identification: '' }); };
 
-  // Captura los tratamientos que estan guardados en localStorage para agregarlos al estado
-  const getTreatmentsfromLocalStorage = () => {
-    const listInLocalStorage = localStorage.getItem('myTreatmentsList');
+  const loadTreatmentsFromDB = useCallback(async () => {
+    setMyTreatments(await getAllTreatments());
+  }, []);
 
-    if (listInLocalStorage) {
-      setMyTreatments(JSON.parse(listInLocalStorage));
-    }
-  };
-
-  // Agregar un tratamiento de la lista al presupuesto actual
   const AddTreatment = (e: React.ChangeEvent<HTMLFormElement>) => {
     e.preventDefault();
-    let NewArr: CurrentTreatmentListItem[] = [...treatmentsList];
-    NewArr.unshift(currentBudget);
-    setTreatmentsList(NewArr);
-    setCurrentBudget({
-      ...currentBudget,
-      observations: '',
-    });
-    e.target.reset();
+    const arr = [...treatmentsList]; arr.unshift(currentBudget); setTreatmentsList(arr);
+    setCurrentBudget({ ...currentBudget, observations: '' }); e.target.reset();
   };
 
   const DeleteTreatment = (index: number) => {
-    let NewArr = [...treatmentsList];
-
-    NewArr.splice(index, 1);
-
-    setTreatmentsList(NewArr);
+    const arr = [...treatmentsList]; arr.splice(index, 1); setTreatmentsList(arr);
   };
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /////////////////////////// PersonalDataPacients //////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-
-  const [personalData, setPersonalData] = useState({
-    name: '',
-    identification: '',
-  });
-
-  const handlePersonalData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-
-    setPersonalData({
-      ...personalData,
-      [name]: value,
-    });
+  // ── Patient ────────────────────────────────────────────────────────────────
+  const [personalData, setPersonalData] = useState({ name: '', identification: '' });
+  const handlePersonalData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPersonalData({ ...personalData, [name]: value });
   };
 
-  ///////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////// Reports //////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
+  // ── Report ─────────────────────────────────────────────────────────────────
+  const [report, setReport] = useState('');
+  const handleReportData = (e: React.ChangeEvent<HTMLInputElement>) => setReport(e.target.value);
 
-  const [report, setReport] = useState<string>('');
+  // ── Recipe ─────────────────────────────────────────────────────────────────
+  const [medicinesList, setMedicinesList] = useState<MedicineRecord[]>([]);
+  const [currentMedicineSelected, setCurrentMedicineSelected] = useState<any>({ nombre: '', indicaciones: '' });
+  const [currentRecipe, setCurrentRecipe] = useState<MedicinesInState[]>([]);
 
-  const handleReportData = (event: React.ChangeEvent<HTMLInputElement>) =>
-    setReport(`${event.target.value}`);
+  const loadMedicinesFromDB = useCallback(async () => {
+    setMedicinesList(await getAllMedicines());
+  }, []);
 
-  ///////////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////// Recipe /////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-  // Captura los tratamientos que estan guardados en localStorage para agregarlos al estado
-  const getMedicinesfromLocalStorage = () => {
-    const listInLocalStorage = localStorage.getItem('medicinesList');
-
-    if (listInLocalStorage) {
-      setMedicinesList(JSON.parse(listInLocalStorage));
-    }
-  };
-
-  const [medicinesList, setMedicinesList] = useState<MedicinesInLocalStorage[]>(
-    []
-  );
-
-  const [currentMedicineSelected, setCurrentMedicineSelected] = useState<any>({
-    nombre: '',
-    indicaciones: '',
-  });
-
-  const [currentRecipe, setCurrentRecipe] = useState<any>([]);
-
-  // Funcion que maneja los campos del tratamiento seleccionado (Tratamiento, cantidad, observaciones)
   const handleCurrentRecipe = (e: React.ChangeEvent<HTMLFormElement>) => {
     const { name, value } = e.target;
-
-    if (name === 'nombre') {
-      setCurrentMedicineSelected({
-        ...currentMedicineSelected,
-        nombre: value,
-      });
-      return;
-    }
-
-    if (name === 'indicaciones') {
-      setCurrentMedicineSelected({
-        ...currentMedicineSelected,
-        indicaciones: value,
-      });
-      return;
-    }
-
-    setCurrentMedicineSelected({
-      nombre: medicinesList[value].nombre,
-      indicaciones: medicinesList[value].indicaciones,
-    });
+    if (name === 'nombre') { setCurrentMedicineSelected({ ...currentMedicineSelected, nombre: value }); return; }
+    if (name === 'indicaciones') { setCurrentMedicineSelected({ ...currentMedicineSelected, indicaciones: value }); return; }
+    setCurrentMedicineSelected({ nombre: medicinesList[value].nombre, indicaciones: medicinesList[value].indicaciones });
   };
 
-  // Agregar un tratamiento de la lista al presupuesto actual
   const AddMedicine = (e: React.ChangeEvent<HTMLFormElement>) => {
     e.preventDefault();
-    let NewArr = [...currentRecipe];
-    NewArr.unshift(currentMedicineSelected);
-    setCurrentRecipe(NewArr);
-    setCurrentMedicineSelected({
-      nombre: '',
-      indicaciones: '',
-    });
-    // e.target.reset();
+    const arr = [...currentRecipe]; arr.unshift(currentMedicineSelected); setCurrentRecipe(arr);
+    setCurrentMedicineSelected({ nombre: '', indicaciones: '' });
   };
 
   const DeleteMedicine = (index: number) => {
-    let NewArr = [...currentRecipe];
-
-    NewArr.splice(index, 1);
-
-    setCurrentRecipe(NewArr);
+    const arr = [...currentRecipe]; arr.splice(index, 1); setCurrentRecipe(arr);
   };
 
-  // Limpia los campos para iniciar un nuevo presupuesto
-  const newRecipe = () => {
-    setCurrentRecipe([]);
-    setPersonalData({ name: '', identification: '' });
-  };
+  const newRecipe = () => { setCurrentRecipe([]); setPersonalData({ name: '', identification: '' }); };
 
-  ///////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////// Print ///////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
+  // ── Print + history ────────────────────────────────────────────────────────
+  const componentToPrintRef = useRef<HTMLDivElement>(null);
 
-  const componentToPrintRef = useRef<null | HTMLDivElement>(null);
+  const handlePrint = useCallback(async () => {
+    if (!componentToPrintRef.current) return;
+    try {
+      if (section === 'Recipes' && currentRecipe.length > 0) {
+        await saveToHistory({ type: 'recipe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, data: { medicines: currentRecipe } });
+      } else if (section === 'Presupuesto' && treatmentsList.length > 0) {
+        await saveToHistory({ type: 'presupuesto', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, data: { treatments: treatmentsList } });
+      } else if (section === 'Informe' && report !== '') {
+        await saveToHistory({ type: 'informe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, data: { report } });
+      }
+    } catch (err) { console.error('Error guardando historial:', err); }
 
-  const getPageMargins = () => {
-    return `@page { margin: ${'20px'} ${'50px'} ${'20px'} ${'50px'} !important; }`;
-  };
+    toPng(componentToPrintRef.current, { cacheBust: true })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = `${section}_${personalData.name || 'paciente'}.png`;
+        link.href = dataUrl; link.click();
+      })
+      .catch(console.error);
+  }, [componentToPrintRef, section, currentRecipe, treatmentsList, report, personalData]);
 
-  const handlePrint = useReactToPrint({
-    content: () => componentToPrintRef.current,
-  });
-
-  ///////////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////// UseEffects /////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-
+  // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    getTreatmentsfromLocalStorage();
-    getMedicinesfromLocalStorage();
-  }, []);
+    loadDoctorProfile();
+    loadTreatmentsFromDB();
+    loadMedicinesFromDB();
+  }, [loadDoctorProfile, loadTreatmentsFromDB, loadMedicinesFromDB]);
 
+  const hasContent = report !== '' || treatmentsList.length > 0 || currentRecipe.length > 0;
+
+  // ── Nav items ──────────────────────────────────────────────────────────────
+  const navItems = [
+    { label: 'Inicio', section: 'Inicio', icon: <Home size={15} /> },
+    { label: 'Presupuesto', section: 'Presupuesto', icon: <FileText size={15} /> },
+    { label: 'Informe', section: 'Informe', icon: <ClipboardList size={15} /> },
+    { label: 'Recipe', section: 'Recipes', icon: <Pill size={15} /> },
+    { label: 'Historial', section: 'Historial', icon: <HistoryIcon size={15} /> },
+  ];
+
+  const configItems = [
+    { label: 'Datos del médico', section: 'Datos del médico', icon: <Stethoscope size={13} /> },
+    { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
+    { label: 'Medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
+  ];
+
+  const currentTitle = sectionTitle[section] ?? section;
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <Wrapper>
-      <div ref={menuToggleRef} className="button-charge-treatments  hide">
-        <ul>
-          <li
-            onClick={() => handleChangeSection('Presupuesto')}
-            className="onHover"
-          >
-            <img src={BudgetIcon} alt="" />
-            Presupuesto
-          </li>
-          <li
-            onClick={() => handleChangeSection('Informe')}
-            className="onHover"
-          >
-            <img src={ReportIcon} alt="" />
-            Informe
-          </li>
-          <li
-            onClick={() => handleChangeSection('Recipes')}
-            className="onHover"
-          >
-            <img src={PrescriptionIcon} alt="" />
-            Recipes
-          </li>
-          <li style={{ paddingBottom: '10px' }} className="noHover">
-            <img src={ConfigIcon} alt="" />
-            Configuración
-          </li>
-          <ul>
-            <li
-              className="onHover"
-              style={{ fontSize: '10px', color: '#a2a2a2', padding: '10px' }}
-              onClick={() => handleChangeSection('Administrar tratamientos')}
-            >
-              Administrar tratamientos
-            </li>
-            <li
-              className="onHover"
-              style={{ fontSize: '10px', color: '#a2a2a2', padding: '10px' }}
-              onClick={() => handleChangeSection('Administrar medicamentos')}
-            >
-              Administrar medicamentos
-            </li>
-          </ul>
-        </ul>
-        <hr />
-        <h2 style={{ marginTop: '30px' }}>Otras herramientas</h2>
+    <AppShell>
+      {drawerOpen && <Backdrop onClick={() => setDrawerOpen(false)} />}
+
+      {/* Drawer */}
+      <DrawerContainer $open={drawerOpen}>
+        <DrawerHead>
+          <div className="brand">
+            <img src={Logo} alt="Logo" />
+            <span>{doctorProfile.clinicTitle}</span>
+          </div>
+          <DrawerCloseBtn onClick={() => setDrawerOpen(false)}>
+            <X size={14} />
+          </DrawerCloseBtn>
+        </DrawerHead>
+
+        <DrawerNav>
+          {navItems.map((item) => (
+            <DrawerItem key={item.section} $active={section === item.section}
+              onClick={() => navigate(item.section)}>
+              {item.icon}{item.label}
+            </DrawerItem>
+          ))}
+
+          <DrawerDivider />
+          <DrawerSubLabel>Configuración</DrawerSubLabel>
+
+          {configItems.map((item) => (
+            <DrawerItem key={item.section} $active={section === item.section}
+              onClick={() => navigate(item.section)}>
+              {item.icon}{item.label}
+            </DrawerItem>
+          ))}
+        </DrawerNav>
+
+        <DrawerFooter>ClinicManager · leaf4web</DrawerFooter>
+      </DrawerContainer>
+
+      {/* Navbar */}
+      <Navbar>
+        <NavBtn onClick={() => setDrawerOpen(true)} aria-label="Menú">
+          <Menu size={20} />
+        </NavBtn>
+        <NavCenter>
+          <img src={Logo} alt="Logo" />
+          <span>{currentTitle}</span>
+        </NavCenter>
+        <NavBtn onClick={toggleTheme} aria-label="Tema">
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+        </NavBtn>
+      </Navbar>
+
+      {/* Content */}
+      <ContentArea>
+        {section === 'Inicio' && <HomeScreen onNavigate={navigate} doctorProfile={doctorProfile} />}
+
+        {section === 'Presupuesto' && (
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+                <NewDocBtn onClick={newBudget}>
+                  <FilePlus size={14} /> Nuevo
+                </NewDocBtn>
+              </SectionHeader>
+              <PatientCard>
+                <h3>Datos del paciente</h3>
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} />
+              </PatientCard>
+              <Budget AddTreatment={AddTreatment} handleCurrentBudget={handleCurrentBudget}
+                myTreatments={myTreatments} treatmentsList={treatmentsList}
+                DeleteTreatment={DeleteTreatment} insuranceCoverageisActive={insuranceCoverageisActive} />
+            </SectionInner>
+          </SectionView>
+        )}
+
+        {section === 'Informe' && (
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+              </SectionHeader>
+              <PatientCard>
+                <h3>Datos del paciente</h3>
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} />
+              </PatientCard>
+              <Report report={report} setReport={setReport} handleReportData={handleReportData} />
+            </SectionInner>
+          </SectionView>
+        )}
+
+        {section === 'Recipes' && (
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+                <NewDocBtn onClick={newRecipe}>
+                  <FilePlus size={14} /> Nuevo
+                </NewDocBtn>
+              </SectionHeader>
+              <PatientCard>
+                <h3>Datos del paciente</h3>
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} />
+              </PatientCard>
+              <Recipe AddMedicine={AddMedicine} handleCurrentRecipe={handleCurrentRecipe}
+                medicinesList={medicinesList} currentRecipe={currentRecipe}
+                DeleteMedicine={DeleteMedicine} currentMedicineSelected={currentMedicineSelected}
+                setCurrentMedicineSelected={setCurrentMedicineSelected} />
+            </SectionInner>
+          </SectionView>
+        )}
+
+        {section === 'Historial' && <History />}
+
+        {section === 'Datos del médico' && (
+          <DoctorSettings onProfileSaved={(profile) => setDoctorProfile(profile)} />
+        )}
+
+        {section === 'Administrar medicamentos' && (
+          <ConfigMedicines onMedicinesChange={loadMedicinesFromDB} />
+        )}
+        {section === 'Administrar tratamientos' && (
+          <ConfigComponent onTreatmentsChange={loadTreatmentsFromDB} />
+        )}
+      </ContentArea>
+
+      {/* FAB */}
+      {hasContent && (
+        <SaveFAB onClick={handlePrint} aria-label="Guardar">
+          <Save size={22} />
+        </SaveFAB>
+      )}
+
+      {/* Hidden print canvas */}
+      <PrintPage>
         <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <img
-            src={LogoJarabito}
-            alt=""
-            style={{
-              width: '30px',
-              height: '30px',
-              objectFit: 'contain',
-            }}
-          />
-          <a
-            href="https://jarabito-build.netlify.app/"
-            target="_blank"
-            style={{ color: '#fff', textDecoration: 'none' }}
-          >
-            <h3>
-              Jarabito -{' '}
-              <span style={{ color: '#989898', fontWeight: '300' }}>
-                Calculadora pediatrica
-              </span>
-            </h3>
-          </a>
-        </div>
-      </div>
-      <Menu>
-        <LogoWrapper>
-          <div>
-            <img src={Logo} />
-          </div>
-          <div>
-            <h2>{section}</h2>
-          </div>
-          <div>
-            <button
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                fontWeight: '700',
-                display: 'flex',
-                cursor: 'pointer',
-                position: 'relative',
-              }}
-              onClick={HideUnhideLoadTreatments}
-            >
-              <img
-                src={MenuBar}
-                className={`menuButton ${
-                  !opacityMenuButtonController ? 'opacity' : null
-                }`}
-                alt=""
-                style={{ height: '30px' }}
-              />
-              <img
-                src={CloseIcon}
-                className={`menuButton ${
-                  opacityMenuButtonController ? 'opacity' : null
-                }`}
-                alt=""
-                style={{ height: '30px', position: 'absolute', left: '-2px' }}
-              />
-            </button>
-          </div>
-        </LogoWrapper>
-      </Menu>
-      {section === 'Presupuesto' && (
-        <Presupuesto>
-          <InputBox>
-            <input
-              type="submit"
-              value="Nuevo presupuesto"
-              style={{
-                backgroundColor: 'transparent',
-                border: `solid 2px ${professionalData.primaryColor}`,
-                margin: '0 0 40px 0',
-                color: professionalData.primaryColor,
-              }}
-              onClick={() => newBudget()}
-            />
-          </InputBox>
-          <h3>Datos del paciente</h3>
-          <div>
-            <PacientData
-              personalData={personalData}
-              handlePersonalData={handlePersonalData}
-            />
-            {/* <InputBox>
-              <label htmlFor="insuranceCoverageisActive">
-                Paciente de seguro{' '}
-                <input
-                  style={{
-                    position: 'relative',
-                    top: '2px',
-                  }}
-                  type="checkbox"
-                  name="insuranceCoverageisActive"
-                  onClick={handleCheck}
-                />
-              </label>
-            </InputBox> */}
-            <InputBox></InputBox>
-          </div>
-          <Budget
-            AddTreatment={AddTreatment}
-            handleCurrentBudget={handleCurrentBudget}
-            myTreatments={myTreatments}
-            treatmentsList={treatmentsList}
-            DeleteTreatment={DeleteTreatment}
-            insuranceCoverageisActive={insuranceCoverageisActive}
-          />
-        </Presupuesto>
-      )}
-      {section === 'Informe' && (
-        <Presupuesto>
-          <h3>Datos del paciente</h3>
-          <div>
-            <PacientData
-              personalData={personalData}
-              handlePersonalData={handlePersonalData}
-            />
-            <InputBox></InputBox>
-          </div>
-          <Report
-            report={report}
-            setReport={setReport}
-            handleReportData={handleReportData}
-          />
-        </Presupuesto>
-      )}
-      {section === 'Recipes' && (
-        <Presupuesto>
-          <InputBox>
-            <input
-              type="submit"
-              value="Nuevo recipe"
-              style={{
-                backgroundColor: 'transparent',
-                border: `solid 2px ${professionalData.primaryColor}`,
-                margin: '0 0 40px 0',
-                color: professionalData.primaryColor,
-              }}
-              onClick={() => newRecipe()}
-            />
-          </InputBox>
-          <h3>Datos del paciente</h3>
-          <div>
-            <PacientData
-              personalData={personalData}
-              handlePersonalData={handlePersonalData}
-            />
-            <InputBox></InputBox>
-          </div>
-          <Recipe
-            AddMedicine={AddMedicine}
-            handleCurrentRecipe={handleCurrentRecipe}
-            medicinesList={medicinesList}
-            currentRecipe={currentRecipe}
-            DeleteMedicine={DeleteMedicine}
-            currentMedicineSelected={currentMedicineSelected}
-            setCurrentMedicineSelected={setCurrentMedicineSelected}
-          />
-        </Presupuesto>
-      )}
-      {section === 'Administrar medicamentos' && (
-        <ConfigMedicines
-          setMyTreatments={getMedicinesfromLocalStorage}
-          myTreatments={medicinesList}
-        />
-      )}
-      {section === 'Administrar tratamientos' && (
-        <ConfigComponent
-          setMyTreatments={getTreatmentsfromLocalStorage}
-          myTreatments={myTreatments}
-        />
-      )}
-      {report !== '' ||
-      treatmentsList.length !== 0 ||
-      currentRecipe.length !== 0 ? (
-        <SaveWrapper
-          style={{
-            backgroundColor: professionalData.primaryColor,
-          }}
-        >
-          <img src={SaveIcon} onClick={handlePrint} />
-        </SaveWrapper>
-      ) : null}
-      <Page
-        style={{
-          display: 'none',
-        }}
-      >
-        <div
-          style={{
-            width: '841px',
-            height: '1189px',
-            display: 'grid',
-            gridTemplateRows: 'auto 1fr auto',
-            position: 'relative',
-            color: '#4c4c4c',
-          }}
+          style={{ position: 'relative', backgroundColor: '#ffffff', padding: '40px 60px', width: '877px', height: '1240px', display: 'grid', gridTemplateRows: 'auto 1fr auto', color: '#4c4c4c' }}
           ref={componentToPrintRef}
         >
-          <style>{getPageMargins()}</style>
           {section === 'Recipes' && (
-            <RecipePrint
-              personalData={personalData}
-              currentRecipe={currentRecipe}
-            />
+            <RecipePrint personalData={personalData} currentRecipe={currentRecipe} doctorProfile={doctorProfile} />
           )}
-          {section === 'Presupuesto' || section === 'Informe' ? (
-            <BudgetReportPrint
-              personalData={personalData}
-              section={section}
-              report={report}
-              treatmentsList={treatmentsList}
-              insuranceCoverageisActive={insuranceCoverageisActive}
-            />
-          ) : null}
+          {(section === 'Presupuesto' || section === 'Informe') && (
+            <BudgetReportPrint personalData={personalData} section={section} report={report}
+              treatmentsList={treatmentsList} insuranceCoverageisActive={insuranceCoverageisActive}
+              doctorProfile={doctorProfile} />
+          )}
         </div>
-      </Page>
-      <Footer>
-        Diseñado y desarrollado por{' '}
-        <a href="https://www.instagram.com/leaf4web/" target="_blank">
-          <img src={LogoLeafWeb} alt="" />
+      </PrintPage>
+
+      <AppFooter>
+        Diseñado por
+        <a href="https://www.instagram.com/leaf4web/" target="_blank" rel="noreferrer">
+          <img src={LogoLeafWeb} alt="leaf4web" />
         </a>
-      </Footer>
-    </Wrapper>
+      </AppFooter>
+    </AppShell>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppInner />
+    </ThemeProvider>
   );
 }
 

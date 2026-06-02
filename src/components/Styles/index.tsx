@@ -1,65 +1,14 @@
 import styled from 'styled-components';
 import professionalData from '../../commons/professionalData';
 
+// ─── Legacy exports (used by sub-components) ──────────────────────────────────
+// These are kept for Budget, Recipe, Report and similar components.
+// New layout components are defined in App.tsx directly.
+
 export const Wrapper = styled.div`
   height: 100vh;
-  display: grid;
-  grid-template-rows: 80px 1fr 50px;
-
-  h3 {
-    text-align: center;
-  }
-
-  .menuButton {
-    filter: opacity(1);
-  }
-
-  .opacity {
-    filter: opacity(0);
-  }
-
-  .button-charge-treatments {
-    position: absolute;
-    width: 100%;
-    top: 80px;
-    background-color: ${professionalData.primaryColor};
-    padding: 0 20px 20px 20px;
-    text-align: center;
-    transition: 0.4s;
-    color: #fff;
-    z-index: 1;
-
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      .onHover {
-        &:hover {
-          background-color: #555;
-          border-radius: 5px;
-          cursor: pointer;
-        }
-      }
-      li {
-        padding: 20px;
-        font-size: 12px;
-        font-family: lato;
-        letter-spacing: 2px;
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        justify-content: center;
-
-        img {
-          width: 15px;
-        }
-      }
-    }
-  }
-
-  .hide {
-    top: -400px;
-  }
+  background: var(--bg);
+  color: var(--text);
 `;
 
 export const Footer = styled.div`
@@ -119,7 +68,7 @@ export const SaveWrapper = styled.button`
   right: 20px;
   width: 60px;
   height: 60px;
-  background-color: #7e9c7f;
+  background-color: ${professionalData.secondaryColor};
   border-radius: 50%;
   display: flex;
   justify-content: center;
@@ -138,12 +87,13 @@ export const SaveWrapper = styled.button`
     width: 60%;
     position: relative;
     left: 2px;
+    filter: brightness(0) invert(1);
   }
 `;
 
 export const Menu = styled.div`
   position: relative;
-  height: 80px;
+  height: 60px;
   background-color: ${professionalData.primaryColor};
   color: #d4d4d4;
   display: flex;
@@ -166,9 +116,12 @@ export const Presupuesto = styled.div`
   padding-bottom: 50px;
   height: calc(100vh - 130px);
   overflow: auto;
+  background: var(--bg);
+  color: var(--text);
 
   h3 {
     margin-top: 0;
+    color: var(--text);
   }
 `;
 
@@ -178,8 +131,10 @@ export const InputBox = styled.div`
   flex-direction: column;
 
   label {
-    color: #000;
-    font-weight: 700;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 4px;
   }
 
   input,
@@ -188,13 +143,16 @@ export const InputBox = styled.div`
     margin-top: 5px;
     border: none;
     padding: 10px;
-    border-radius: 5px;
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text);
   }
 
   input[type='submit'] {
-    background-color: #7e9c7f;
+    background-color: ${professionalData.secondaryColor};
     color: #fff;
     cursor: pointer;
+    font-weight: 600;
   }
 
   input[type='checkbox'] {
@@ -204,5 +162,7 @@ export const InputBox = styled.div`
 
 export const Page = styled.div`
   width: 841px;
-  height: 1189px;
+  height: 1250px;
+  position: absolute;
+  left: -9999px;
 `;

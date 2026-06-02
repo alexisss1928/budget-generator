@@ -1,49 +1,135 @@
 import styled from 'styled-components';
+import { PlusCircle, ClipboardList, Plus } from 'lucide-react';
 import ItemPresupuesto from '../ItemPresupuesto';
-import professionalData from '../../commons/professionalData';
 
-const InputBox = styled.div`
-  margin-top: 10px;
+// ─── Styled Components (Matching DoctorSettings) ─────────────────────────────
+
+const FormCard = styled.div`
+  background: var(--surface);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+`;
+
+const CardTitle = styled.div`
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border);
+
+  svg {
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  span {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+`;
+
+const FieldRow = styled.div`
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+
+  &:last-child {
+    border-bottom: none;
+  }
 
   label {
-    color: #000;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    width: 100px;
+    flex-shrink: 0;
   }
 
-  input,
-  select,
-  textarea {
-    margin-top: 5px;
+  input, select {
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    background: var(--input-bg) !important;
+    color: var(--text) !important;
     border: none;
-    padding: 10px;
-    border-radius: 5px;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    outline: none;
+    transition: box-shadow 0.15s;
+
+    &:focus {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
   }
 
-  input[type='submit'] {
-    background-color: #7e9c7f;
-    color: #fff;
-    cursor: pointer;
-  }
-
-  input[type='checkbox'] {
-    cursor: pointer;
+  input[type="number"] {
+    width: 80px;
+    flex: none;
   }
 `;
 
-const AddBox = styled.div`
-  background-color: #dbdbdb;
-  border-radius: 5px;
-  padding: 20px;
-  margin-top: 10px;
-  margin-bottom: 10px;
+const AddBtn = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 36px);
+  margin: 14px 18px 18px;
+  padding: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.12s;
+
+  &:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
 `;
+
+const ListContainer = styled.div`
+  max-height: 400px;
+  overflow-y: auto;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 3px;
+  }
+`;
+
+const EmptyState = styled.div`
+  padding: 30px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+`;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type TreatmentInLocalStorage = {
+  id?: number;
   nombre: string;
   precio: string;
-  insuranceCoverage: string;
+  insuranceCoverage?: string;
 };
 
 type CurrentTreatmentListItem = {
@@ -63,6 +149,8 @@ type BudgetType = {
   insuranceCoverageisActive: boolean;
 };
 
+// ─── Component ───────────────────────────────────────────────────────────────
+
 const Budget = ({
   AddTreatment,
   handleCurrentBudget,
@@ -73,11 +161,15 @@ const Budget = ({
 }: BudgetType) => {
   return (
     <>
-      <AddBox>
-        <h3>Agregar un procedimiento</h3>
-        <form action="" onSubmit={AddTreatment}>
-          <InputBox>
-            <label htmlFor="treatment">Seleccione el procedimiento:</label>
+      {/* ── Agregar un procedimiento ── */}
+      <FormCard>
+        <CardTitle>
+          <PlusCircle size={15} />
+          <span>Agregar procedimiento</span>
+        </CardTitle>
+        <form onSubmit={AddTreatment}>
+          <FieldRow>
+            <label>Tratamiento</label>
             <select
               name="treatment"
               onChange={handleCurrentBudget}
@@ -87,87 +179,69 @@ const Budget = ({
               <option value="" disabled>
                 {myTreatments.length !== 0
                   ? 'Selecciona un procedimiento'
-                  : 'Ve a Configuración para agregar tus procedimientos'}
+                  : 'Sin procedimientos guardados'}
               </option>
               {myTreatments
-                ?.sort(
-                  (a: TreatmentInLocalStorage, b: TreatmentInLocalStorage) => {
-                    const nameA = a.nombre.toUpperCase();
-                    const nameB = b.nombre.toUpperCase();
-                    if (nameA < nameB) {
-                      return -1;
-                    }
-                    if (nameA > nameB) {
-                      return 1;
-                    }
-                    return 0;
-                  }
-                )
-                .map(
-                  (procedimiento: TreatmentInLocalStorage, index: number) => {
-                    return (
-                      <option value={index} key={index}>
-                        {procedimiento.nombre}
-                        {' > '}
-                        {procedimiento.precio}$
-                      </option>
-                    );
-                  }
-                )}
+                ?.sort((a, b) => a.nombre.localeCompare(b.nombre))
+                .map((procedimiento, index) => (
+                  <option value={index} key={index}>
+                    {procedimiento.nombre} • ${procedimiento.precio}
+                  </option>
+                ))}
             </select>
-          </InputBox>
-          <InputBox>
-            <label htmlFor="quantity">Cantidad</label>
+          </FieldRow>
+          
+          <FieldRow>
+            <label>Cantidad</label>
             <input
               type="number"
               name="quantity"
+              min="1"
               onChange={handleCurrentBudget}
               required
               autoComplete="off"
             />
-          </InputBox>
-          <InputBox>
-            <label htmlFor="observations">Observaciones</label>
+          </FieldRow>
+          
+          <FieldRow>
+            <label>Observaciones</label>
             <input
               type="text"
               name="observations"
+              placeholder="Opcional"
               onChange={handleCurrentBudget}
               autoComplete="off"
             />
-          </InputBox>
-          <InputBox>
-            <input
-              type="submit"
-              value="Agregar"
-              style={{
-                backgroundColor: professionalData.primaryColor,
-              }}
-            />
-          </InputBox>
+          </FieldRow>
+          
+          <AddBtn type="submit">
+            <Plus size={16} /> Agregar al plan
+          </AddBtn>
         </form>
-      </AddBox>
-      <h3>Plan de tratamiento</h3>
-      {treatmentsList.length > 0 ? null : (
-        <p
-          style={{
-            textAlign: 'center',
-            color: 'grey',
-          }}
-        >
-          Agrega un tratamiento
-        </p>
-      )}
-      {treatmentsList.map((item: CurrentTreatmentListItem, index: number) => {
-        return (
-          <ItemPresupuesto
-            item={item}
-            key={index}
-            index={3}
-            Delete={() => DeleteTreatment(index)}
-            insuranceCoverageisActive={insuranceCoverageisActive}
-          />
-        );
-      })}
+      </FormCard>
+
+      {/* ── Plan de tratamiento ── */}
+      <FormCard>
+        <CardTitle>
+          <ClipboardList size={15} />
+          <span>Plan de tratamiento</span>
+        </CardTitle>
+        <ListContainer>
+          {treatmentsList.length === 0 ? (
+            <EmptyState>Agrega un tratamiento para comenzar</EmptyState>
+          ) : (
+            treatmentsList.map((item, index) => (
+              <ItemPresupuesto
+                item={item}
+                key={index}
+                index={index}
+                Delete={() => DeleteTreatment(index)}
+                insuranceCoverageisActive={insuranceCoverageisActive}
+              />
+            ))
+          )}
+        </ListContainer>
+      </FormCard>
     </>
   );
 };

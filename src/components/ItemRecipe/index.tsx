@@ -1,49 +1,61 @@
-import DeleteIcon from '../../assets/icons/trash-solid.svg';
 import styled from 'styled-components';
+import { Trash2 } from 'lucide-react';
 
-const ItemPresupuesto = styled.div`
+const ListItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 10px;
-  position: relative;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
 
-  .description,
-  .unitPrice {
-    color: #8b8b8b;
+  &:last-child {
+    border-bottom: none;
   }
 
-  .data p {
-    margin: 5px;
+  &:hover {
+    background: var(--surface-alt);
   }
 
-  .prices {
-    display: flex;
-
-    p {
-      margin-left: 20px;
-      text-align: center;
+  .data {
+    flex: 1;
+    
+    .title {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 600;
+      margin: 0 0 4px 0;
     }
+    
+    .description {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.3;
+      margin: 0;
+    }
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: 12px;
 
     button {
-      background-color: transparent;
-      cursor: pointer;
+      background: transparent;
       border: none;
-      margin-left: 20px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.15s;
 
-      img {
-        width: 12px;
-        filter: opacity(0.5);
+      &:hover {
+        background: #ffebee;
+        color: #e53935;
       }
     }
-  }
-
-  p {
-    font-weight: 300;
-  }
-
-  .insuranceCoverage {
-    color: #58c36b;
   }
 `;
 
@@ -64,20 +76,17 @@ export default function ItemRecipeComponent({
   Delete,
 }: ItemPresupuestoType) {
   return (
-    <ItemPresupuesto>
+    <ListItem>
       <div className="data">
-        <p>{item.nombre}</p>
-        <p className="description">{item.indicaciones}</p>
+        <p className="title">{item.nombre}</p>
+        {item.indicaciones && <p className="description">{item.indicaciones}</p>}
       </div>
-      <div className="prices">
-        <button
-          onClick={() => {
-            Delete(index);
-          }}
-        >
-          <img src={DeleteIcon} alt="" />
+      
+      <div className="actions">
+        <button onClick={() => Delete(index)} title="Eliminar">
+          <Trash2 size={16} />
         </button>
       </div>
-    </ItemPresupuesto>
+    </ListItem>
   );
 }

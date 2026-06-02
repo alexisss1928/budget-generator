@@ -1,8 +1,4 @@
-import professionalData from '../../commons/professionalData';
-import LogoB from '../../assets/personalAssets/logo2.png';
-import IsoLogo from '../../assets/personalAssets/IsoLogo.png';
-import Sello from '../../assets/personalAssets/Sello.png';
-import Firma from '../../assets/personalAssets/Firma.png';
+import { DoctorProfile, DEFAULT_DOCTOR_PROFILE } from '../../db/clinicDB';
 
 type PersonalDataType = {
   name: string;
@@ -23,6 +19,7 @@ type BudgetReportPrintType = {
   report: string;
   treatmentsList: CurrentTreatmentListItem[];
   insuranceCoverageisActive: boolean;
+  doctorProfile?: DoctorProfile;
 };
 
 const BudgetReportPrint = ({
@@ -31,6 +28,7 @@ const BudgetReportPrint = ({
   report,
   treatmentsList,
   insuranceCoverageisActive,
+  doctorProfile = DEFAULT_DOCTOR_PROFILE,
 }: BudgetReportPrintType) => {
   const date = new Date();
 
@@ -43,52 +41,66 @@ const BudgetReportPrint = ({
     color: '#58c36b',
   };
 
+  const logoSrc = doctorProfile.logoDataUrl;
+  const selloSrc = doctorProfile.selloDataUrl;
+  const firmaSrc = doctorProfile.firmaDataUrl;
+  const doctorName = `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`;
+
   return (
     <>
-      <img
-        src={LogoB}
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate( -50%, -50%) scale(1.5)',
-          filter: 'opacity(.2)',
-          zIndex: '-1',
-          width: '600px',
-        }}
-      />
+      {/* Watermark logo */}
+      {logoSrc && (
+        <img
+          src={logoSrc}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%) scale(1.5)',
+            zIndex: '-1',
+            width: '400px',
+            opacity: 0.06,
+          }}
+          alt=""
+        />
+      )}
 
+      {/* Header */}
       <div
         className="header"
         style={{
           display: 'flex',
           width: '100%',
           justifyContent: 'space-between',
-          marginTop: '30px',
+          marginTop: '20px',
           alignItems: 'center',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div>
-            <img
-              src={IsoLogo}
-              style={{
-                width: '120px',
-              }}
-              alt=""
-            />
-          </div>
-          <div>
+          {logoSrc && (
+            <div>
+              <img
+                src={logoSrc}
+                style={{ width: '120px', height: '120px', objectFit: 'contain' }}
+                alt="Logo"
+              />
+            </div>
+          )}
+          <div style={{ marginLeft: logoSrc ? '12px' : 0 }}>
             <h1
               style={{
                 margin: '0',
-                color: professionalData.primaryColor,
+                color: doctorProfile.primaryColor,
                 fontSize: '24px',
               }}
             >
-              {professionalData.title}
+              {doctorProfile.clinicTitle}
             </h1>
-
+            {doctorProfile.lema && (
+              <p style={{ margin: '2px 0', fontSize: '11px', color: '#868686', fontStyle: 'italic' }}>
+                {doctorProfile.lema}
+              </p>
+            )}
             <h2
               style={{
                 textAlign: 'left',
@@ -99,215 +111,96 @@ const BudgetReportPrint = ({
                 fontWeight: '400',
               }}
             >
-              {professionalData.name !== '' && (
+              {doctorName && (
                 <>
-                  {professionalData.name}
+                  {doctorName}
                   <br />
                 </>
               )}
               <span style={{ color: '#868686' }}>
-                {professionalData.especiality}
+                {doctorProfile.especialidad}
                 <br />
-                <span>COV:</span> {professionalData.COV} <span>MPPS:</span>{' '}
-                {professionalData.MPPS}
+                <span>COV:</span> {doctorProfile.cov}{' '}
+                <span>MPPS:</span> {doctorProfile.mpps}
               </span>
             </h2>
           </div>
         </div>
-        <div
-          style={{
-            alignSelf: 'baseline',
-          }}
-        >
+
+        <div style={{ alignSelf: 'baseline' }}>
           <p style={{ marginTop: '0' }}>
             <span style={Bold}>Fecha:</span> {date.toLocaleDateString()}
           </p>
         </div>
       </div>
+
+      {/* Body */}
       <div className="body" style={{ marginTop: '20px' }}>
         <div
           style={{
             display: 'flex',
             width: '100%',
             justifyContent: 'space-between',
-            backgroundColor: professionalData.primaryColor,
-            color: professionalData.accentColor,
+            backgroundColor: doctorProfile.primaryColor,
+            color: doctorProfile.accentColor,
             padding: '0 20px',
             borderRadius: '5px',
           }}
         >
-          <p
-            style={{
-              ...Bold,
-              color: professionalData.accentColor,
-              fontSize: '14px',
-            }}
-          >
+          <p style={{ ...Bold, color: doctorProfile.accentColor, fontSize: '14px' }}>
             Paciente:
-            <span
-              style={{
-                color: '#fff',
-              }}
-            >
-              {' '}
-              {personalData.name}
-            </span>
+            <span style={{ color: '#fff' }}> {personalData.name}</span>
           </p>
-          <p
-            style={{
-              ...Bold,
-              color: professionalData.accentColor,
-              fontSize: '14px',
-            }}
-          >
+          <p style={{ ...Bold, color: doctorProfile.accentColor, fontSize: '14px' }}>
             R.I.F./C.I.:{' '}
-            <span
-              style={{
-                color: '#fff',
-              }}
-            >
-              {personalData.identification}
-            </span>{' '}
+            <span style={{ color: '#fff' }}>{personalData.identification}</span>{' '}
           </p>
         </div>
+
+        {/* Presupuesto table */}
         {section === 'Presupuesto' ? (
           <>
-            <div
-              style={{
-                display: 'flex',
-                textAlign: 'center',
-                marginTop: '20px',
-              }}
-            >
-              <h3
-                style={{
-                  flex: '2',
-                  textAlign: 'left',
-                  textDecoration: 'underline',
-                }}
-              >
-                Procedimiento
-              </h3>
-              <h3
-                style={{
-                  flex: '1',
-                  textDecoration: 'underline',
-                }}
-              >
-                Cantidad
-              </h3>
-              <h3
-                style={{
-                  flex: '1',
-                  textDecoration: 'underline',
-                }}
-              >
-                Precio Unidad
-              </h3>
-              <h3
-                style={{
-                  flex: '1',
-                  textDecoration: 'underline',
-                }}
-              >
-                Sub-total
-              </h3>
-              <h3
-                style={{
-                  flex: '2',
-                  textDecoration: 'underline',
-                  textAlign: 'right',
-                }}
-              >
-                Detalle
-              </h3>
+            <div style={{ display: 'flex', textAlign: 'center', marginTop: '20px' }}>
+              <h3 style={{ flex: '2', textAlign: 'left', textDecoration: 'underline' }}>Procedimiento</h3>
+              <h3 style={{ flex: '1', textDecoration: 'underline' }}>Cantidad</h3>
+              <h3 style={{ flex: '1', textDecoration: 'underline' }}>Precio Unidad</h3>
+              <h3 style={{ flex: '1', textDecoration: 'underline' }}>Sub-total</h3>
+              <h3 style={{ flex: '2', textDecoration: 'underline', textAlign: 'right' }}>Detalle</h3>
             </div>
-            {treatmentsList.map(
-              (treatment: CurrentTreatmentListItem, i: number) => {
-                return (
-                  <div
-                    style={{
-                      display: 'flex',
-                      width: '100%',
-                      textAlign: 'center',
-                    }}
-                    key={i}
-                  >
-                    <p
-                      style={{
-                        flex: '2',
-                        textAlign: 'left',
-                      }}
-                    >
-                      {treatment.nombre}
-                    </p>
-                    <p
-                      style={{
-                        flex: '1',
-                      }}
-                    >
-                      {treatment.quantity}
-                    </p>
-                    <p
-                      style={{
-                        flex: '1',
-                      }}
-                    >
-                      {treatment.precio}${' '}
-                      {insuranceCoverageisActive ? (
-                        <span style={InsuranceCoverage}>
-                          ({treatment.insuranceCoverage}$)
-                        </span>
-                      ) : null}
-                    </p>
-                    <p
-                      style={{
-                        flex: '1',
-                      }}
-                    >
-                      {+treatment.quantity * +treatment.precio}${' '}
-                      {insuranceCoverageisActive ? (
-                        <span style={InsuranceCoverage}>
-                          ({+treatment.quantity * +treatment.insuranceCoverage}
-                          $)
-                        </span>
-                      ) : null}
-                    </p>
-                    <p
-                      style={{
-                        flex: '2',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {treatment.observations}
-                    </p>
-                  </div>
-                );
-              }
-            )}
-            <div
-              style={{
-                display: 'flex',
-                width: '100%',
-                textAlign: 'center',
-              }}
-            >
-              <p
-                style={{
-                  flex: '2',
-                  textAlign: 'left',
-                }}
-              ></p>
-              <p
-                style={{
-                  flex: '1',
-                }}
-              ></p>
+            {treatmentsList.map((treatment, i) => (
+              <div
+                key={i}
+                style={{ display: 'flex', width: '100%', textAlign: 'center' }}
+              >
+                <p style={{ flex: '2', textAlign: 'left' }}>{treatment.nombre}</p>
+                <p style={{ flex: '1' }}>{treatment.quantity}</p>
+                <p style={{ flex: '1' }}>
+                  {treatment.precio}${' '}
+                  {insuranceCoverageisActive && (
+                    <span style={InsuranceCoverage}>({treatment.insuranceCoverage}$)</span>
+                  )}
+                </p>
+                <p style={{ flex: '1' }}>
+                  {+treatment.quantity * +treatment.precio}${' '}
+                  {insuranceCoverageisActive && (
+                    <span style={InsuranceCoverage}>
+                      ({+treatment.quantity * +treatment.insuranceCoverage}$)
+                    </span>
+                  )}
+                </p>
+                <p style={{ flex: '2', textAlign: 'right' }}>{treatment.observations}</p>
+              </div>
+            ))}
+
+            {/* Total row */}
+            <div style={{ display: 'flex', width: '100%', textAlign: 'center' }}>
+              <p style={{ flex: '2', textAlign: 'left' }}></p>
+              <p style={{ flex: '1' }}></p>
               <p
                 style={{
                   ...Bold,
                   flex: '1',
-                  backgroundColor: professionalData.primaryColor,
+                  backgroundColor: doctorProfile.primaryColor,
                   color: '#fff',
                   padding: '10px',
                   borderRadius: '5px 0 0 5px',
@@ -318,99 +211,87 @@ const BudgetReportPrint = ({
               <p
                 style={{
                   flex: '1',
-                  backgroundColor: professionalData.secondaryColor,
+                  backgroundColor: doctorProfile.secondaryColor,
                   color: '#fff',
                   padding: '10px',
                   borderRadius: '0 5px 5px 0',
                 }}
               >
-                {treatmentsList.reduce(function (
-                  valAnt: number,
-                  valAct: CurrentTreatmentListItem
-                ) {
-                  return valAnt + +valAct.precio * +valAct.quantity;
-                },
-                0)}
+                {treatmentsList.reduce(
+                  (acc, t) => acc + +t.precio * +t.quantity,
+                  0
+                )}
                 ${' '}
-                {insuranceCoverageisActive ? (
+                {insuranceCoverageisActive && (
                   <span style={InsuranceCoverage}>
-                    {' '}
                     (
-                    {treatmentsList.reduce(function (
-                      valAnt: number,
-                      valAct: CurrentTreatmentListItem
-                    ) {
-                      return (
-                        valAnt + +valAct.insuranceCoverage * +valAct.quantity
-                      );
-                    },
-                    0)}
+                    {treatmentsList.reduce(
+                      (acc, t) => acc + +t.insuranceCoverage * +t.quantity,
+                      0
+                    )}
                     $)
                   </span>
-                ) : null}
+                )}
               </p>
-              <p
-                style={{
-                  flex: '2',
-                  textAlign: 'right',
-                }}
-              ></p>
+              <p style={{ flex: '2', textAlign: 'right' }}></p>
             </div>
           </>
         ) : null}
+
+        {/* Informe text */}
         {section === 'Informe'
-          ? report.split('\n').map((parrafo: string, index: number) => {
-              return (
-                <p
-                  style={{
-                    marginTop: '30px',
-                    marginBottom: '0',
-                    fontSize: '16px',
-                    textIndent: '30px',
-                  }}
-                  key={index}
-                >
-                  {parrafo}
-                </p>
-              );
-            })
+          ? report.split('\n').map((parrafo, i) => (
+              <p
+                key={i}
+                style={{
+                  marginTop: '30px',
+                  marginBottom: '0',
+                  fontSize: '16px',
+                  textIndent: '30px',
+                }}
+              >
+                {parrafo}
+              </p>
+            ))
           : null}
       </div>
+
+      {/* Footer */}
       <div>
         <div
           style={{
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
+            gap: '20px',
           }}
         >
-          <div style={{ textAlign: 'center' }}>
-            <img src={Firma} style={{ width: '150px' }} />
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <img src={Sello} style={{ width: '150px' }} />
-          </div>
+          {firmaSrc && (
+            <div style={{ textAlign: 'center' }}>
+              <img src={firmaSrc} style={{ width: '150px' }} alt="Firma" />
+            </div>
+          )}
+          {selloSrc && (
+            <div style={{ textAlign: 'center' }}>
+              <img src={selloSrc} style={{ width: '150px' }} alt="Sello" />
+            </div>
+          )}
         </div>
         <p style={{ textAlign: 'center' }}>
-          Este presupuesto tiene una validez de 30 dias desde la fecha en que
-          fue emitido.
+          Este presupuesto tiene una validez de 30 días desde la fecha en que fue emitido.
         </p>
         <div
           className="footer"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            width: '100%',
-          }}
+          style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}
         >
           <p style={{ textAlign: 'center', width: '100%' }}>
-            <span style={Bold}>Dirección:</span> {professionalData.direccion}.
+            <span style={Bold}>Dirección:</span> {doctorProfile.direccion}.
             <br />
-            <span style={Bold}>Teléfono:</span> {professionalData.tlfno}
+            <span style={Bold}>Teléfono:</span> {doctorProfile.telefono}
             {', '}
-            <span style={Bold}>e-mail:</span> {professionalData.mail}
+            <span style={Bold}>e-mail:</span> {doctorProfile.email}
             {', '}
-            <span style={Bold}>Instagram:</span> {professionalData.ig}.
+            <span style={Bold}>Instagram:</span> {doctorProfile.instagram}.
           </p>
         </div>
       </div>

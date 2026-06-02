@@ -10,7 +10,7 @@ const manifestForPlugin = {
   workbox: {
     globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
   },
-  includeAssets: ['**/*'],
+  includeAssets: ['**/*.{js,css,html,ico,png,svg}'],
   manifest: {
     name: 'Doctor Companion',
     short_name: 'DC',
