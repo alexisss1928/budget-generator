@@ -116,7 +116,7 @@ const PWABanners = ({ isInstallable, isInstalled, triggerInstall, hasUpdate, app
         </BannerIcon>
         <BannerText $variant="update">
           <strong>Actualización disponible</strong>
-          <span>Hay una nueva versión de ClinicManager lista.</span>
+          <span>Hay una nueva versión de Doctor Companion lista.</span>
         </BannerText>
         <BannerBtn $variant="update" onClick={handleUpdate} disabled={updating}>
           {updating ? 'Actualizando...' : 'Actualizar'}
@@ -133,7 +133,7 @@ const PWABanners = ({ isInstallable, isInstalled, triggerInstall, hasUpdate, app
           <Download size={18} />
         </BannerIcon>
         <BannerText $variant="install">
-          <strong>Instalar ClinicManager</strong>
+          <strong>Instalar Doctor Companion</strong>
           <span>Accede desde tu pantalla de inicio sin internet.</span>
         </BannerText>
         <BannerBtn $variant="install" onClick={triggerInstall}>

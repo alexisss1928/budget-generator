@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 
 const manifestForPlugin: Partial<VitePWAOptions> = {
   registerType: 'prompt',
-  injectRegister: 'auto',
+  injectRegister: false,
   devOptions: {
     enabled: true,
   },
