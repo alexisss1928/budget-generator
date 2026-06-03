@@ -9,9 +9,10 @@ const manifestForPlugin: Partial<VitePWAOptions> = {
   },
   workbox: {
     globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-    // Ensure SW is updated as soon as possible once installed
+    // skipWaiting: false → new SW waits in 'waiting' state until user confirms
+    // clientsClaim must NOT be true, or the new SW takes over immediately
     skipWaiting: false,
-    clientsClaim: true,
+    clientsClaim: false,
   },
   includeAssets: ['**/*'],
   manifest: {

@@ -27,6 +27,12 @@ export function usePWA(): PWAState {
   } = useRegisterSW({
     onRegistered(r) {
       console.log('SW Registered:', r);
+      // Poll for updates every 60 seconds so the banner appears for long sessions
+      if (r) {
+        setInterval(() => {
+          r.update();
+        }, 60 * 1000);
+      }
     },
     onRegisterError(error) {
       console.error('SW registration error', error);
