@@ -283,7 +283,7 @@ const DoctorSettings = ({ onProfileSaved }: DoctorSettingsProps) => {
       <InfoBanner>
         <Info size={16} />
         <p>
-          <strong>Datos del médico:</strong> esta información aparecerá automáticamente
+          <strong>Datos del doctor:</strong> esta información aparecerá automáticamente
           en todos tus <strong>recipes</strong>, <strong>presupuestos</strong> e{' '}
           <strong>informes</strong> generados.
         </p>
@@ -346,6 +346,16 @@ const DoctorSettings = ({ onProfileSaved }: DoctorSettingsProps) => {
             value={profile.especialidad}
             onChange={(e) => set('especialidad', e.target.value)}
             placeholder="Ej: Odontólogo General"
+          />
+        </FieldRow>
+
+        <FieldRow>
+          <label>Color</label>
+          <input
+            type="color"
+            value={profile.color || '#719e81'}
+            onChange={(e) => set('color', e.target.value)}
+            style={{ padding: '0', height: '36px', cursor: 'pointer' }}
           />
         </FieldRow>
       </FormCard>

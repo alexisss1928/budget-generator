@@ -70,6 +70,7 @@ export type DoctorProfile = {
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
+  color?: string;
   // Images — stored as base64 data URLs
   logoDataUrl?: string;
   selloDataUrl?: string;
@@ -98,6 +99,7 @@ export const DEFAULT_DOCTOR_PROFILE: DoctorProfile = {
   primaryColor: '#464646',
   secondaryColor: '#719e81',
   accentColor: '#b48f1d',
+  color: '#719e81',
 };
 
 // ─── DB Initialization ────────────────────────────────────────────────────────

@@ -330,7 +330,7 @@ const sectionTitle: Record<string, string> = {
   Historial: 'Historial',
   'Administrar tratamientos': 'Tratamientos',
   'Administrar medicamentos': 'Medicamentos',
-  'Datos del médico': 'Datos del médico',
+  'Datos del doctor': 'Datos del doctor',
   Respaldo: 'Respaldo y Restauración',
 };
 
@@ -614,7 +614,7 @@ function InnerApp() {
   ];
 
   const configItems = [
-    { label: 'Datos del médico', section: 'Datos del médico', icon: <Stethoscope size={13} /> },
+    { label: 'Datos del doctor', section: 'Datos del doctor', icon: <Stethoscope size={13} /> },
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
     { label: 'Medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
     { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
@@ -776,7 +776,7 @@ function InnerApp() {
           </SectionView>
         )}
 
-        {section === 'Datos del médico' && (
+        {section === 'Datos del doctor' && (
           <SectionView>
             <SectionInner>
               <SectionHeader>

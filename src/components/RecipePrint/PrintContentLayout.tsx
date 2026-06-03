@@ -121,7 +121,7 @@ const PrintContentLayout = ({
             justifyContent: 'space-between',
             backgroundColor: professionalData.primaryColor,
             color: professionalData.accentColor,
-            padding: '0 20px',
+            padding: '10px 20px',
             borderRadius: '5px',
           }}
         >

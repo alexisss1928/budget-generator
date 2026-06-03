@@ -24,12 +24,12 @@ const Wrapper = styled.div`
   animation: ${slideUp} 0.3s ease;
 `;
 
-const WelcomeCard = styled.div`
-  background: linear-gradient(
+const WelcomeCard = styled.div<{ $customColor?: string }>`
+  background: ${(p) => p.$customColor ? p.$customColor : `linear-gradient(
     135deg,
     ${professionalData.primaryColor} 0%,
     ${professionalData.secondaryColor} 100%
-  );
+  )`};
   border-radius: 20px;
   padding: 28px 24px 24px;
   margin-bottom: 28px;
@@ -357,7 +357,7 @@ const HomeScreen = ({ onNavigate, doctorProfile }: HomeScreenProps) => {
   return (
     <Wrapper>
       {/* Welcome Banner */}
-      <WelcomeCard>
+      <WelcomeCard $customColor={doctorProfile.color}>
         <BgLogo src={doctorProfile.logoDataUrl || Logo} alt="" />
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative', zIndex: 1 }}>
@@ -399,14 +399,14 @@ const HomeScreen = ({ onNavigate, doctorProfile }: HomeScreenProps) => {
       <SectionLabel>Configuración</SectionLabel>
       <ConfigList>
         <ConfigItem
-          onClick={() => onNavigate('Datos del médico')}
+          onClick={() => onNavigate('Datos del doctor')}
           id="home-btn-perfil"
         >
           <span className="cfg-icon">
             <Stethoscope size={16} color="var(--text-secondary)" strokeWidth={1.5} />
           </span>
           <span className="cfg-text">
-            <strong>Datos del médico</strong>
+            <strong>Datos del doctor</strong>
             <span>Nombre, especialidad, MPPS, COV...</span>
           </span>
           <span className="cfg-arrow">›</span>

@@ -155,7 +155,7 @@ const BudgetReportPrint = ({
             justifyContent: 'space-between',
             backgroundColor: doctorProfile.primaryColor,
             color: doctorProfile.accentColor,
-            padding: '0 20px',
+            padding: '10px 20px',
             borderRadius: '5px',
           }}
         >
@@ -212,7 +212,7 @@ const BudgetReportPrint = ({
                 style={{
                   ...Bold,
                   flex: '1',
-                  backgroundColor: doctorProfile.primaryColor,
+                  backgroundColor: doctorProfile.color || doctorProfile.primaryColor,
                   color: '#fff',
                   padding: '10px',
                   borderRadius: '5px 0 0 5px',
@@ -223,7 +223,7 @@ const BudgetReportPrint = ({
               <p
                 style={{
                   flex: '1',
-                  backgroundColor: doctorProfile.secondaryColor,
+                  backgroundColor: doctorProfile.color || doctorProfile.secondaryColor,
                   color: '#fff',
                   padding: '10px',
                   borderRadius: '0 5px 5px 0',
