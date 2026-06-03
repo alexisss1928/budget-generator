@@ -4,8 +4,7 @@ import {
   User, Stethoscope, Building2, MapPin, Phone, Mail, AtSign,
   IdCard, Save, ImagePlus, Info,
 } from 'lucide-react';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+
 import { getDoctorProfile, saveDoctorProfile, DoctorProfile, DEFAULT_DOCTOR_PROFILE } from '../../db/clinicDB';
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -565,13 +564,6 @@ const DoctorSettings = ({ onProfileSaved }: DoctorSettingsProps) => {
         <Save size={18} />
         Guardar perfil
       </SaveBtn>
-
-      <ToastContainer
-        position="bottom-center"
-        autoClose={3000}
-        hideProgressBar
-        theme="colored"
-      />
     </Wrapper>
   );
 };
