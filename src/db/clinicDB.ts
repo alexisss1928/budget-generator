@@ -283,9 +283,11 @@ export async function getUniquePatients(): Promise<PatientData[]> {
   const history = await getAllHistory();
   const map = new Map<string, PatientData>();
   for (const record of history) {
-    if (record.patientId && !map.has(record.patientId)) {
-      map.set(record.patientId, {
-        identification: record.patientId,
+    if (!record.patientId) continue;
+    const normalizedId = record.patientId.trim().toLowerCase();
+    if (!map.has(normalizedId)) {
+      map.set(normalizedId, {
+        identification: record.patientId.trim(),
         name: record.patientName,
         phone: record.patientPhone,
         email: record.patientEmail,

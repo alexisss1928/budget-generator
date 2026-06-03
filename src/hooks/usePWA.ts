@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Workbox } from 'workbox-window';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -20,8 +20,18 @@ export function usePWA(): PWAState {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [wb, setWb] = useState<Workbox | null>(null);
-  const [hasUpdate, setHasUpdate] = useState(false);
+
+  const {
+    needRefresh: [hasUpdate],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r) {
+      console.log('SW Registered:', r);
+    },
+    onRegisterError(error) {
+      console.error('SW registration error', error);
+    },
+  });
 
   useEffect(() => {
     // Detect if already installed (standalone mode)
@@ -37,25 +47,6 @@ export function usePWA(): PWAState {
       setIsInstallable(true);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-
-    // Service Worker update detection via workbox-window
-    if ('serviceWorker' in navigator) {
-      const workbox = new Workbox('/sw.js');
-
-      workbox.addEventListener('waiting', () => {
-        setHasUpdate(true);
-        setWb(workbox);
-      });
-
-      workbox.addEventListener('controlling', () => {
-        // After the new SW takes control, reload
-        window.location.reload();
-      });
-
-      workbox.register().catch((err) => {
-        console.warn('SW registration failed:', err);
-      });
-    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -74,9 +65,7 @@ export function usePWA(): PWAState {
   };
 
   const applyUpdate = () => {
-    if (!wb) return;
-    // Tell waiting SW to skip waiting and activate
-    wb.messageSkipWaiting();
+    updateServiceWorker(true);
   };
 
   return { isInstallable, isInstalled, triggerInstall, hasUpdate, applyUpdate };
