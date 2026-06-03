@@ -24,6 +24,8 @@ import HomeScreen from './components/HomeScreen';
 import PacientData from './components/PacientData';
 import DoctorSettings from './components/DoctorSettings';
 import BackupScreen from './components/BackupScreen';
+import PWABanners from './components/PWABanners';
+import { usePWA } from './hooks/usePWA';
 
 // Branding
 import Logo from '../src/assets/leafAssets/logo.png';
@@ -332,7 +334,8 @@ const sectionTitle: Record<string, string> = {
 
 // ─── Inner App ────────────────────────────────────────────────────────────────
 
-function AppInner() {
+function InnerApp() {
+  const pwa = usePWA();
   const { theme, toggleTheme } = useTheme();
   const [section, setSection] = useState('Inicio');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -514,6 +517,7 @@ function AppInner() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <AppShell>
+      <PWABanners {...pwa} />
       {drawerOpen && <Backdrop onClick={() => setDrawerOpen(false)} />}
 
       {/* Drawer */}
@@ -740,7 +744,7 @@ function AppInner() {
 function App() {
   return (
     <ThemeProvider>
-      <AppInner />
+      <InnerApp />
     </ThemeProvider>
   );
 }

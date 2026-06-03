@@ -2,13 +2,16 @@ import { VitePWA, VitePWAOptions } from 'vite-plugin-pwa';
 import { defineConfig } from 'vite';
 
 const manifestForPlugin: Partial<VitePWAOptions> = {
-  registerType: 'autoUpdate',
+  registerType: 'prompt',
   injectRegister: 'auto',
   devOptions: {
     enabled: true,
   },
   workbox: {
     globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+    // Ensure SW is updated as soon as possible once installed
+    skipWaiting: false,
+    clientsClaim: true,
   },
   includeAssets: ['**/*'],
   manifest: {
