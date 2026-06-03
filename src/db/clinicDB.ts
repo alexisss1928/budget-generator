@@ -201,7 +201,7 @@ export async function saveTreatment(treatment: TreatmentRecord): Promise<number>
 
 export async function deleteTreatment(id: number): Promise<void> {
   const db = await initDB();
-  return promisifyRequest(getStore(db, 'treatments', 'readwrite').delete(id));
+  await promisifyRequest(getStore(db, 'treatments', 'readwrite').delete(id));
 }
 
 export async function saveAllTreatments(treatments: TreatmentRecord[]): Promise<void> {
@@ -227,7 +227,7 @@ export async function saveMedicine(medicine: MedicineRecord): Promise<number> {
 
 export async function deleteMedicine(id: number): Promise<void> {
   const db = await initDB();
-  return promisifyRequest(getStore(db, 'medicines', 'readwrite').delete(id));
+  await promisifyRequest(getStore(db, 'medicines', 'readwrite').delete(id));
 }
 
 export async function saveAllMedicines(medicines: MedicineRecord[]): Promise<void> {
@@ -267,7 +267,7 @@ export async function searchHistory(query: string): Promise<HistoryRecord[]> {
 
 export async function deleteHistoryRecord(id: number): Promise<void> {
   const db = await initDB();
-  return promisifyRequest(getStore(db, 'history', 'readwrite').delete(id));
+  await promisifyRequest(getStore(db, 'history', 'readwrite').delete(id));
 }
 
 // ─── Doctor Profile ───────────────────────────────────────────────────────────
@@ -285,7 +285,7 @@ export async function getDoctorProfile(): Promise<DoctorProfile | null> {
 export async function saveDoctorProfile(profile: DoctorProfile): Promise<void> {
   const db = await initDB();
   const store = db.transaction('doctorProfile', 'readwrite').objectStore('doctorProfile');
-  return promisifyRequest(store.put(profile, PROFILE_KEY));
+  await promisifyRequest(store.put(profile, PROFILE_KEY));
 }
 
 // ─── Report Templates ─────────────────────────────────────────────────────────
@@ -304,5 +304,54 @@ export async function saveReportTemplate(template: ReportTemplate): Promise<numb
 
 export async function deleteReportTemplate(id: number): Promise<void> {
   const db = await initDB();
-  return promisifyRequest(getStore(db, 'reportTemplates', 'readwrite').delete(id));
+  await promisifyRequest(getStore(db, 'reportTemplates', 'readwrite').delete(id));
+}
+
+// ─── Export / Import ──────────────────────────────────────────────────────────
+
+export async function exportDB(): Promise<string> {
+  const db = await initDB();
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates'];
+  const exportData: Record<string, any> = {};
+
+  for (const storeName of stores) {
+    if (db.objectStoreNames.contains(storeName)) {
+      exportData[storeName] = await getAllFromStore(db, storeName);
+    }
+  }
+
+  // Handle doctorProfile specially
+  if (db.objectStoreNames.contains('doctorProfile')) {
+    exportData['doctorProfile'] = await getDoctorProfile();
+  }
+
+  return JSON.stringify(exportData);
+}
+
+export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 'replace'): Promise<void> {
+  const db = await initDB();
+  const data = JSON.parse(jsonData);
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates'];
+
+  for (const storeName of stores) {
+    if (data[storeName] && db.objectStoreNames.contains(storeName)) {
+      const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+      
+      if (mode === 'replace') {
+        await promisifyRequest(store.clear());
+      }
+      
+      for (const item of data[storeName]) {
+        if (mode === 'merge') {
+          // Remove id so autoIncrement generates a new one, avoiding conflicts
+          delete item.id;
+        }
+        await promisifyRequest(store.put(item)); 
+      }
+    }
+  }
+
+  if (data['doctorProfile']) {
+    await saveDoctorProfile(data['doctorProfile']);
+  }
 }

@@ -4,7 +4,7 @@ import { toPng } from 'html-to-image';
 import styled, { keyframes } from 'styled-components';
 import {
   Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Save,
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Save, MessageCircle, Database,
 } from 'lucide-react';
 
 // Context
@@ -23,6 +23,7 @@ import History from './components/History';
 import HomeScreen from './components/HomeScreen';
 import PacientData from './components/PacientData';
 import DoctorSettings from './components/DoctorSettings';
+import BackupScreen from './components/BackupScreen';
 
 // Branding
 import Logo from '../src/assets/leafAssets/logo.png';
@@ -38,6 +39,7 @@ import {
   MedicineRecord,
   DoctorProfile,
   DEFAULT_DOCTOR_PROFILE,
+  HistoryRecord,
 } from './db/clinicDB';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -210,7 +212,7 @@ const SectionView = styled.div`
 
 const SectionInner = styled.div`
   margin: 0 auto;
-  width: 100vw;
+  width: 100%;
   max-width: 600px;
   padding: 20px 16px 100px;
 `;
@@ -264,16 +266,39 @@ const PatientCard = styled.div`
 `;
 
 const SaveFAB = styled.button`
-  position: fixed; bottom: 24px; right: 20px;
   width: 58px; height: 58px;
   background: ${professionalData.secondaryColor};
   border: none; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; z-index: 150;
+  cursor: pointer;
   color: #fff;
   box-shadow: 0 4px 20px ${professionalData.secondaryColor}66;
   transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
   &:hover { transform: scale(1.1); box-shadow: 0 6px 28px ${professionalData.secondaryColor}88; }
+  &:active { transform: scale(0.96); }
+`;
+
+const FABGroup = styled.div`
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  z-index: 150;
+`;
+
+const WhatsAppFAB = styled.button`
+  width: 52px; height: 52px;
+  background: #25D366;
+  border: none; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  box-shadow: 0 4px 20px #25D36666;
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+  &:hover { transform: scale(1.1); box-shadow: 0 6px 28px #25D36688; }
   &:active { transform: scale(0.96); }
 `;
 
@@ -302,6 +327,7 @@ const sectionTitle: Record<string, string> = {
   'Administrar tratamientos': 'Tratamientos',
   'Administrar medicamentos': 'Medicamentos',
   'Datos del médico': 'Datos del médico',
+  Respaldo: 'Respaldo y Restauración',
 };
 
 // ─── Inner App ────────────────────────────────────────────────────────────────
@@ -353,14 +379,33 @@ function AppInner() {
 
   // ── Patient ────────────────────────────────────────────────────────────────
   const [personalData, setPersonalData] = useState({ name: '', identification: '' });
+
   const handlePersonalData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPersonalData({ ...personalData, [name]: value });
   };
 
+  const handleLoadRecord = useCallback((record: HistoryRecord) => {
+    setPersonalData({ 
+      name: record.patientName, 
+      identification: record.patientId, 
+    });
+    
+    if (record.type === 'recipe') {
+      setCurrentRecipe(record.data.medicines || []);
+      setSection('Recipes');
+    } else if (record.type === 'presupuesto') {
+      setTreatmentsList(record.data.treatments || []);
+      setSection('Presupuesto');
+    } else if (record.type === 'informe') {
+      setReport(record.data.report || '');
+      setSection('Informe');
+    }
+  }, []);
+
   // ── Report ─────────────────────────────────────────────────────────────────
   const [report, setReport] = useState('');
-  const handleReportData = (e: React.ChangeEvent<HTMLInputElement>) => setReport(e.target.value);
+  const handleReportData = (e: React.ChangeEvent<HTMLTextAreaElement>) => setReport(e.target.value);
 
   // ── Recipe ─────────────────────────────────────────────────────────────────
   const [medicinesList, setMedicinesList] = useState<MedicineRecord[]>([]);
@@ -414,6 +459,31 @@ function AppInner() {
       .catch(console.error);
   }, [componentToPrintRef, section, currentRecipe, treatmentsList, report, personalData]);
 
+  const handleWhatsApp = useCallback(() => {
+    if (treatmentsList.length === 0) return;
+    const fecha = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
+    const doctor = `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim();
+    const patient = personalData.name ? `Paciente: ${personalData.name}` : '';
+    const items = treatmentsList
+      .map((t) => `- ${t.nombre}${t.quantity && t.quantity !== '1' ? ` x${t.quantity}` : ''}${t.precio ? ` - $${t.precio}` : ''}${t.observations ? `\n  ${t.observations}` : ''}`)
+      .join('\n');
+    const total = treatmentsList.reduce((acc, t) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1), 0);
+    const msg = [
+      `*Plan de Tratamiento*`,
+      `Fecha: ${fecha}`,
+      patient,
+      ``,
+      items,
+      ``,
+      `*Total: $${total.toFixed(2)}*`,
+      ``,
+      `_${doctor}_`,
+      doctorProfile.especialidad ? `_${doctorProfile.especialidad}_` : '',
+      doctorProfile.telefono ? `Tel: ${doctorProfile.telefono}` : '',
+    ].filter(Boolean).join('\n');
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  }, [treatmentsList, personalData, doctorProfile]);
+
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
     loadDoctorProfile();
@@ -436,6 +506,7 @@ function AppInner() {
     { label: 'Datos del médico', section: 'Datos del médico', icon: <Stethoscope size={13} /> },
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
     { label: 'Medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
+    { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
   ];
 
   const currentTitle = sectionTitle[section] ?? section;
@@ -559,25 +630,84 @@ function AppInner() {
           </SectionView>
         )}
 
-        {section === 'Historial' && <History />}
+        {section === 'Historial' && (
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+              </SectionHeader>
+              <History doctorProfile={doctorProfile} onLoadRecord={handleLoadRecord} />
+            </SectionInner>
+          </SectionView>
+        )}
 
         {section === 'Datos del médico' && (
-          <DoctorSettings onProfileSaved={(profile) => setDoctorProfile(profile)} />
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+              </SectionHeader>
+              <DoctorSettings onProfileSaved={(profile) => setDoctorProfile(profile)} />
+            </SectionInner>
+          </SectionView>
         )}
 
         {section === 'Administrar medicamentos' && (
-          <ConfigMedicines onMedicinesChange={loadMedicinesFromDB} />
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+              </SectionHeader>
+              <ConfigMedicines onMedicinesChange={loadMedicinesFromDB} />
+            </SectionInner>
+          </SectionView>
         )}
+
         {section === 'Administrar tratamientos' && (
-          <ConfigComponent onTreatmentsChange={loadTreatmentsFromDB} />
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+              </SectionHeader>
+              <ConfigComponent onTreatmentsChange={loadTreatmentsFromDB} />
+            </SectionInner>
+          </SectionView>
+        )}
+
+        {section === 'Respaldo' && (
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+              </SectionHeader>
+              <BackupScreen />
+            </SectionInner>
+          </SectionView>
         )}
       </ContentArea>
 
-      {/* FAB */}
+      {/* FABs */}
       {hasContent && (
-        <SaveFAB onClick={handlePrint} aria-label="Guardar">
-          <Save size={22} />
-        </SaveFAB>
+        <FABGroup>
+          {section === 'Presupuesto' && treatmentsList.length > 0 && (
+            <WhatsAppFAB onClick={handleWhatsApp} aria-label="Compartir por WhatsApp" title="Compartir por WhatsApp">
+              <MessageCircle size={22} />
+            </WhatsAppFAB>
+          )}
+          <SaveFAB onClick={handlePrint} aria-label="Guardar">
+            <Save size={22} />
+          </SaveFAB>
+        </FABGroup>
       )}
 
       {/* Hidden print canvas */}

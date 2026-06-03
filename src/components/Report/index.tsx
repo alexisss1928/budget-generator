@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ClipboardList, Save, FileText, Trash2, Eraser } from 'lucide-react';
+import { ClipboardList, FileText, Trash2, Eraser } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   getAllReportTemplates,

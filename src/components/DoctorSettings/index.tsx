@@ -48,7 +48,7 @@ const InfoBanner = styled.div`
 const FormCard = styled.div`
   background: var(--surface);
   border-radius: 16px;
-  margin: 16px 16px 0;
+  margin: 16px 0 0;
   overflow: hidden;
   box-shadow: var(--shadow-card);
 `;

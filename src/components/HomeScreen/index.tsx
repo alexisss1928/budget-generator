@@ -84,17 +84,7 @@ const WelcomeLogo = styled.img`
   z-index: 1;
 `;
 
-const WelcomeClinic = styled.span`
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.65);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-  position: relative;
-  z-index: 1;
-`;
+
 
 const WelcomeName = styled.h2`
   font-size: 22px;

@@ -1,27 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import professionalData from '../../commons/professionalData';
+import { MessageCircle, Printer, Trash2 } from 'lucide-react';
 import {
   getAllHistory,
   searchHistory,
   deleteHistoryRecord,
   HistoryRecord,
   HistoryType,
+  DoctorProfile,
 } from '../../db/clinicDB';
-import DeleteIcon from '../../assets/icons/trash-solid.svg';
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 
 const Wrapper = styled.div`
-  padding: 20px 16px;
   height: 100%;
-  overflow: auto;
-  margin-left: auto;
-  margin-right: auto;
-  width: 100vw;
-  max-width: 650px;
-  background: var(--bg);
-  padding-bottom: 80px;
 `;
 
 const Title = styled.h3`
@@ -136,40 +129,23 @@ const TypeBadge = styled.span<{ $type: HistoryType }>`
     p.$type === 'recipe'
       ? '#e8f5e9'
       : p.$type === 'presupuesto'
-      ? '#e3f2fd'
-      : '#fff3e0'};
+        ? '#e3f2fd'
+        : '#fff3e0'};
   color: ${(p) =>
     p.$type === 'recipe'
       ? '#388e3c'
       : p.$type === 'presupuesto'
-      ? '#1565c0'
-      : '#e65100'};
-`;
-
-const DeleteBtn = styled.button`
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  opacity: 0.4;
-  transition: opacity 0.2s;
-
-  &:hover {
-    opacity: 1;
-  }
-
-  img {
-    width: 14px;
-    display: block;
-  }
+        ? '#1565c0'
+        : '#e65100'};
 `;
 
 const Chevron = styled.span<{ $open: boolean }>`
-  font-size: 12px;
+  font-size: 16px;
   color: #aaa;
   transform: ${(p) => (p.$open ? 'rotate(180deg)' : 'rotate(0)')};
   transition: transform 0.2s;
   display: inline-block;
+  margin-left: 4px;
 `;
 
 const CardBody = styled.div<{ $open: boolean }>`
@@ -226,6 +202,36 @@ const EmptyState = styled.div`
   }
 `;
 
+const CardActions = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+`;
+
+const ActionBtn = styled.button<{ $danger?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  background: var(--surface-alt);
+  color: ${(p) => p.$danger ? '#e53935' : 'var(--text)'};
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: ${(p) => p.$danger ? '#ffebee' : 'var(--border)'};
+    border-color: ${(p) => p.$danger ? '#ef9a9a' : 'var(--border)'};
+  }
+`;
+
 // ─── Type helpers ─────────────────────────────────────────────────────────────
 
 const typeLabel: Record<HistoryType, string> = {
@@ -254,7 +260,12 @@ function formatDate(iso: string) {
 
 // ─── History Component ────────────────────────────────────────────────────────
 
-const History = () => {
+type HistoryProps = {
+  doctorProfile: DoctorProfile;
+  onLoadRecord: (record: HistoryRecord) => void;
+};
+
+const History = ({ doctorProfile, onLoadRecord }: HistoryProps) => {
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<HistoryType | 'todos'>('todos');
@@ -280,6 +291,29 @@ const History = () => {
   const visible = records.filter(
     (r) => filter === 'todos' || r.type === filter
   );
+
+  const handleShare = (record: HistoryRecord) => {
+    const fecha = new Date(record.date).toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
+    const patient = record.patientName ? `Paciente: ${record.patientName}` : '';
+    let msg = '';
+
+    if (record.type === 'presupuesto' && record.data.treatments) {
+      const items = record.data.treatments.map((t) => `- ${t.nombre}${t.quantity && t.quantity !== '1' ? ` x${t.quantity}` : ''}${t.precio ? ` - $${t.precio}` : ''}${t.observations ? `\n  ${t.observations}` : ''}`).join('\n');
+      const total = record.data.treatments.reduce((acc, t) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1), 0);
+      msg = `*Plan de Tratamiento*\nFecha: ${fecha}\n${patient}\n\n${items}\n\n*Total: $${total.toFixed(2)}*`;
+    } else if (record.type === 'recipe' && record.data.medicines) {
+      const items = record.data.medicines.map((m) => `- ${m.nombre}\n  ${m.indicaciones}`).join('\n');
+      msg = `*Recipe Médico*\nFecha: ${fecha}\n${patient}\n\n${items}`;
+    } else if (record.type === 'informe' && record.data.report) {
+      msg = `*Informe Clínico*\nFecha: ${fecha}\n${patient}\n\n${record.data.report}`;
+    }
+
+    msg += `\n\n_${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}_`;
+    if (doctorProfile.especialidad) msg += `\n_${doctorProfile.especialidad}_`;
+    if (doctorProfile.telefono) msg += `\nTel: ${doctorProfile.telefono}`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  };
 
   return (
     <Wrapper>
@@ -334,9 +368,6 @@ const History = () => {
                 <TypeBadge $type={record.type}>
                   {typeLabel[record.type]}
                 </TypeBadge>
-                <DeleteBtn onClick={(e) => handleDelete(e, record.id!)}>
-                  <img src={DeleteIcon} alt="Eliminar" />
-                </DeleteBtn>
                 <Chevron $open={openId === record.id}>▾</Chevron>
               </BadgeRow>
             </CardHeader>
@@ -378,6 +409,18 @@ const History = () => {
                   <ReportText>{record.data.report}</ReportText>
                 </>
               )}
+
+              <CardActions>
+                <ActionBtn onClick={(e) => { e.stopPropagation(); handleShare(record); }}>
+                  <MessageCircle size={14} /> Whatsapp
+                </ActionBtn>
+                <ActionBtn onClick={(e) => { e.stopPropagation(); onLoadRecord(record); }}>
+                  <Printer size={14} /> Imprimir
+                </ActionBtn>
+                <ActionBtn $danger onClick={(e) => handleDelete(e, record.id!)}>
+                  <Trash2 size={14} /> Eliminar
+                </ActionBtn>
+              </CardActions>
             </CardBody>
           </RecordCard>
         ))

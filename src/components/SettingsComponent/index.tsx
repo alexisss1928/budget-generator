@@ -54,7 +54,7 @@ const InfoBanner = styled.div`
 const FormCard = styled.div`
   background: var(--surface);
   border-radius: 16px;
-  margin: 16px 16px 0;
+  margin: 16px 0 0;
   overflow: hidden;
   box-shadow: var(--shadow-card);
 `;
@@ -154,60 +154,7 @@ const ListItem = styled.div`
   }
 `;
 
-const FieldRow = styled.div`
-  display: flex;
-  gap: 12px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  align-items: center;
 
-  &:last-child {
-    border-bottom: none;
-  }
-
-  input {
-    flex: 1;
-    background: var(--input-bg) !important;
-    color: var(--text) !important;
-    border: none;
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-size: 13px;
-    outline: none;
-    transition: box-shadow 0.15s;
-
-    &:focus {
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-  }
-
-  input[type="number"] {
-    width: 80px;
-    flex: none;
-  }
-`;
-
-const AddBtn = styled.button`
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    opacity: 0.9;
-    transform: scale(1.05);
-  }
-  &:active {
-    transform: scale(0.95);
-  }
-`;
 
 const ActionRow = styled.div`
   padding: 16px 18px;
@@ -286,6 +233,69 @@ const PrimaryBtn = styled(SecondaryBtn)<{ $disabled?: boolean }>`
   }
 `;
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+`;
+
+const ModalContent = styled.div`
+  background: var(--surface);
+  padding: 24px;
+  border-radius: 18px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 0 0 18px 0;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    input {
+      background: var(--input-bg) !important;
+      color: var(--text) !important;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      outline: none;
+      box-sizing: border-box;
+      width: 100%;
+      transition: box-shadow 0.15s;
+      &:focus { box-shadow: 0 0 0 2px var(--accent); }
+    }
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+  }
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type ConfigType = {
@@ -295,6 +305,7 @@ type ConfigType = {
 const ConfigComponent = ({ onTreatmentsChange }: ConfigType) => {
   const [myTreatments, setMyTreatments] = useState<TreatmentRecord[]>([]);
   const [newTreatment, setNewTreatment] = useState({ nombre: '', precio: '' });
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadTreatments = async () => {
     const data = await getAllTreatments();
@@ -368,9 +379,15 @@ Resina Clase V,30`;
     if (!newTreatment.nombre.trim()) return;
     await saveTreatment(newTreatment);
     setNewTreatment({ nombre: '', precio: '' });
+    setIsModalOpen(false);
     await loadTreatments();
     onTreatmentsChange();
     toast.success('Tratamiento agregado');
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setNewTreatment({ nombre: '', precio: '' });
   };
 
   const DeleteTreatmentById = async (id: number) => {
@@ -389,40 +406,14 @@ Resina Clase V,30`;
         </p>
       </InfoBanner>
 
-      {/* ── Agregar Nuevo ── */}
-      <FormCard>
-        <CardTitle>
-          <PlusCircle size={15} />
-          <span>Nuevo Tratamiento</span>
-        </CardTitle>
-        <FieldRow>
-          <input
-            type="text"
-            name="nombre"
-            value={newTreatment.nombre}
-            onChange={handleNewTreatment}
-            autoComplete="off"
-            placeholder="Nombre del tratamiento"
-          />
-          <input
-            type="number"
-            name="precio"
-            value={newTreatment.precio}
-            onChange={handleNewTreatment}
-            autoComplete="off"
-            placeholder="Precio $"
-          />
-          <AddBtn onClick={AddTreatment} title="Agregar">
-            <PlusCircle size={18} />
-          </AddBtn>
-        </FieldRow>
-      </FormCard>
-
       {/* ── Lista Actual ── */}
       <FormCard>
         <CardTitle>
           <Settings size={15} />
           <span>Mis Tratamientos</span>
+          <PrimaryBtn onClick={() => setIsModalOpen(true)} style={{ marginLeft: 'auto', padding: '9px 12px', fontSize: '12px', borderRadius: '8px' }}>
+            <PlusCircle size={14} /> Agregar
+          </PrimaryBtn>
         </CardTitle>
         <ListContainer>
           {myTreatments.length === 0 ? (
@@ -479,6 +470,42 @@ Resina Clase V,30`;
         hideProgressBar
         theme="colored"
       />
+
+      {/* Modal Agregar Tratamiento */}
+      {isModalOpen && (
+        <ModalOverlay onClick={closeModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <h3>Nuevo Tratamiento</h3>
+            <div className="field">
+              <label>Nombre del tratamiento</label>
+              <input
+                type="text"
+                name="nombre"
+                value={newTreatment.nombre}
+                onChange={handleNewTreatment}
+                placeholder="Ej: Consulta inicial"
+                autoFocus
+                autoComplete="off"
+              />
+            </div>
+            <div className="field">
+              <label>Precio ($)</label>
+              <input
+                type="number"
+                name="precio"
+                value={newTreatment.precio}
+                onChange={handleNewTreatment}
+                placeholder="0.00"
+                autoComplete="off"
+              />
+            </div>
+            <div className="buttons">
+              <SecondaryBtn onClick={closeModal}>Cancelar</SecondaryBtn>
+              <PrimaryBtn onClick={AddTreatment}>Guardar</PrimaryBtn>
+            </div>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </Wrapper>
   );
 };

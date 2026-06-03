@@ -54,7 +54,7 @@ const InfoBanner = styled.div`
 const FormCard = styled.div`
   background: var(--surface);
   border-radius: 16px;
-  margin: 16px 16px 0;
+  margin: 16px 0 0;
   overflow: hidden;
   box-shadow: var(--shadow-card);
 `;
@@ -152,63 +152,7 @@ const ListItem = styled.div`
   }
 `;
 
-const FieldRow = styled.div`
-  display: flex;
-  gap: 12px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  align-items: flex-start;
 
-  &:last-child {
-    border-bottom: none;
-  }
-
-  .inputs {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  input {
-    flex: 1;
-    background: var(--input-bg) !important;
-    color: var(--text) !important;
-    border: none;
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-size: 13px;
-    outline: none;
-    transition: box-shadow 0.15s;
-
-    &:focus {
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-  }
-`;
-
-const AddBtn = styled.button`
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
-  align-self: center;
-
-  &:hover {
-    opacity: 0.9;
-    transform: scale(1.05);
-  }
-  &:active {
-    transform: scale(0.95);
-  }
-`;
 
 const ActionRow = styled.div`
   padding: 16px 18px;
@@ -287,6 +231,69 @@ const PrimaryBtn = styled(SecondaryBtn)<{ $disabled?: boolean }>`
   }
 `;
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+`;
+
+const ModalContent = styled.div`
+  background: var(--surface);
+  padding: 24px;
+  border-radius: 18px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 0 0 18px 0;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    input {
+      background: var(--input-bg) !important;
+      color: var(--text) !important;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      outline: none;
+      box-sizing: border-box;
+      width: 100%;
+      transition: box-shadow 0.15s;
+      &:focus { box-shadow: 0 0 0 2px var(--accent); }
+    }
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+  }
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type ConfigType = {
@@ -296,6 +303,7 @@ type ConfigType = {
 const ConfigMedicines = ({ onMedicinesChange }: ConfigType) => {
   const [myMedicines, setMyMedicines] = useState<MedicineRecord[]>([]);
   const [newMedicine, setNewMedicine] = useState({ nombre: '', indicaciones: '' });
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadMedicines = async () => {
     const data = await getAllMedicines();
@@ -371,9 +379,15 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
     if (!newMedicine.nombre.trim()) return;
     await saveMedicine(newMedicine);
     setNewMedicine({ nombre: '', indicaciones: '' });
+    setIsModalOpen(false);
     await loadMedicines();
     onMedicinesChange();
     toast.success('Medicamento agregado');
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setNewMedicine({ nombre: '', indicaciones: '' });
   };
 
   const DeleteMedicineById = async (id: number) => {
@@ -392,42 +406,14 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
         </p>
       </InfoBanner>
 
-      {/* ── Agregar Nuevo ── */}
-      <FormCard>
-        <CardTitle>
-          <PlusCircle size={15} />
-          <span>Nuevo Medicamento</span>
-        </CardTitle>
-        <FieldRow>
-          <div className="inputs">
-            <input
-              type="text"
-              name="nombre"
-              value={newMedicine.nombre}
-              onChange={handleNewMedicine}
-              autoComplete="off"
-              placeholder="Nombre del medicamento (ej: Ibuprofeno 400mg)"
-            />
-            <input
-              type="text"
-              name="indicaciones"
-              value={newMedicine.indicaciones}
-              onChange={handleNewMedicine}
-              autoComplete="off"
-              placeholder="Indicaciones (ej: 1 tableta cada 8 horas)"
-            />
-          </div>
-          <AddBtn onClick={AddMedicine} title="Agregar">
-            <PlusCircle size={18} />
-          </AddBtn>
-        </FieldRow>
-      </FormCard>
-
       {/* ── Lista Actual ── */}
       <FormCard>
         <CardTitle>
           <Pill size={15} />
           <span>Mis Medicamentos</span>
+          <PrimaryBtn onClick={() => setIsModalOpen(true)} style={{ marginLeft: 'auto', padding: '9px 12px', fontSize: '12px', borderRadius: '8px' }}>
+            <PlusCircle size={14} /> Agregar
+          </PrimaryBtn>
         </CardTitle>
         <ListContainer>
           {myMedicines.length === 0 ? (
@@ -486,6 +472,42 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
         hideProgressBar
         theme="colored"
       />
+
+      {/* Modal Agregar Medicamento */}
+      {isModalOpen && (
+        <ModalOverlay onClick={closeModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <h3>Nuevo Medicamento</h3>
+            <div className="field">
+              <label>Nombre del medicamento</label>
+              <input
+                type="text"
+                name="nombre"
+                value={newMedicine.nombre}
+                onChange={handleNewMedicine}
+                placeholder="Ej: Ibuprofeno 400mg"
+                autoFocus
+                autoComplete="off"
+              />
+            </div>
+            <div className="field">
+              <label>Indicaciones</label>
+              <input
+                type="text"
+                name="indicaciones"
+                value={newMedicine.indicaciones}
+                onChange={handleNewMedicine}
+                placeholder="Ej: 1 tableta cada 8 horas"
+                autoComplete="off"
+              />
+            </div>
+            <div className="buttons">
+              <SecondaryBtn onClick={closeModal}>Cancelar</SecondaryBtn>
+              <PrimaryBtn onClick={AddMedicine}>Guardar</PrimaryBtn>
+            </div>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </Wrapper>
   );
 };
