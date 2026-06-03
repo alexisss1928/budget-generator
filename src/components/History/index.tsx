@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import professionalData from '../../commons/professionalData';
-import { MessageCircle, Printer, Trash2 } from 'lucide-react';
+import { Share2, Download, Trash2, AlertTriangle, Edit2 } from 'lucide-react';
 import {
   getAllHistory,
   searchHistory,
@@ -10,6 +10,7 @@ import {
   HistoryType,
   DoctorProfile,
 } from '../../db/clinicDB';
+import WhatsAppModal from '../WhatsAppModal';
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 
@@ -232,6 +233,108 @@ const ActionBtn = styled.button<{ $danger?: boolean }>`
   }
 `;
 
+// ─── Confirm delete modal styles ──────────────────────────────────────────────
+
+const fadeIn = keyframes`from { opacity: 0 } to { opacity: 1 }`;
+const popIn = keyframes`
+  from { opacity: 0; transform: scale(0.94) translateY(8px) }
+  to   { opacity: 1; transform: scale(1)    translateY(0) }
+`;
+
+const ConfirmOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+  animation: ${fadeIn} 0.18s ease;
+  padding: 20px;
+  box-sizing: border-box;
+`;
+
+const ConfirmBox = styled.div`
+  background: var(--surface);
+  border-radius: 18px;
+  width: 90%;
+  max-width: 380px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  animation: ${popIn} 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
+`;
+
+const ConfirmIconWrap = styled.div`
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #ffebee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e53935;
+  margin: 0 auto 14px;
+`;
+
+const ConfirmTitle = styled.h3`
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+`;
+
+const ConfirmDesc = styled.p`
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.5;
+
+  strong {
+    color: var(--text);
+  }
+`;
+
+const ConfirmBtns = styled.div`
+  display: flex;
+  gap: 10px;
+`;
+
+const ConfirmCancelBtn = styled.button`
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+
+  &:hover { background: var(--surface-alt); }
+`;
+
+const ConfirmDeleteBtn = styled.button`
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: #e53935;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.12s;
+  font-family: inherit;
+
+  &:hover { opacity: 0.9; transform: translateY(-1px); }
+  &:active { transform: scale(0.97); }
+`;
+
 // ─── Type helpers ─────────────────────────────────────────────────────────────
 
 const typeLabel: Record<HistoryType, string> = {
@@ -263,13 +366,18 @@ function formatDate(iso: string) {
 type HistoryProps = {
   doctorProfile: DoctorProfile;
   onLoadRecord: (record: HistoryRecord) => void;
+  onDownloadRecord: (record: HistoryRecord) => void;
+  onShareHistoryRecordPdf?: (record: HistoryRecord) => Promise<void>;
 };
 
-const History = ({ doctorProfile, onLoadRecord }: HistoryProps) => {
+const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistoryRecordPdf }: HistoryProps) => {
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<HistoryType | 'todos'>('todos');
   const [openId, setOpenId] = useState<number | null>(null);
+  const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
+  const [waRecord, setWaRecord] = useState<HistoryRecord | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<{ id: number; name: string } | null>(null);
 
   const loadHistory = useCallback(async () => {
     const results = query
@@ -282,9 +390,15 @@ const History = ({ doctorProfile, onLoadRecord }: HistoryProps) => {
     loadHistory();
   }, [loadHistory]);
 
-  const handleDelete = async (e: React.MouseEvent, id: number) => {
+  const handleDelete = (e: React.MouseEvent, id: number, name: string) => {
     e.stopPropagation();
-    await deleteHistoryRecord(id);
+    setPendingDeleteId({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    await deleteHistoryRecord(pendingDeleteId.id);
+    setPendingDeleteId(null);
     loadHistory();
   };
 
@@ -312,11 +426,21 @@ const History = ({ doctorProfile, onLoadRecord }: HistoryProps) => {
     if (doctorProfile.especialidad) msg += `\n_${doctorProfile.especialidad}_`;
     if (doctorProfile.telefono) msg += `\nTel: ${doctorProfile.telefono}`;
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    setWaConfig({ message: msg, defaultPhone: record.patientPhone || undefined });
+    setWaRecord(record);
   };
 
   return (
-    <Wrapper>
+    <>
+      {waConfig !== null && (
+        <WhatsAppModal
+          message={waConfig.message}
+          defaultPhone={waConfig.defaultPhone}
+          onClose={() => { setWaConfig(null); setWaRecord(null); }}
+          onSharePdf={waRecord && onShareHistoryRecordPdf ? async () => { await onShareHistoryRecordPdf(waRecord); } : undefined}
+        />
+      )}
+      <Wrapper>
       <Title>Historial de pacientes</Title>
 
       <SearchBar>
@@ -411,14 +535,17 @@ const History = ({ doctorProfile, onLoadRecord }: HistoryProps) => {
               )}
 
               <CardActions>
-                <ActionBtn onClick={(e) => { e.stopPropagation(); handleShare(record); }}>
-                  <MessageCircle size={14} /> Whatsapp
+                <ActionBtn title="Compartir" onClick={(e) => { e.stopPropagation(); handleShare(record); }}>
+                  <Share2 size={16} />
                 </ActionBtn>
-                <ActionBtn onClick={(e) => { e.stopPropagation(); onLoadRecord(record); }}>
-                  <Printer size={14} /> Imprimir
+                <ActionBtn title="Descargar PDF" onClick={(e) => { e.stopPropagation(); onDownloadRecord(record); }}>
+                  <Download size={16} />
                 </ActionBtn>
-                <ActionBtn $danger onClick={(e) => handleDelete(e, record.id!)}>
-                  <Trash2 size={14} /> Eliminar
+                <ActionBtn title="Editar documento" onClick={(e) => { e.stopPropagation(); onLoadRecord(record); }}>
+                  <Edit2 size={16} />
+                </ActionBtn>
+                <ActionBtn title="Eliminar" $danger onClick={(e) => handleDelete(e, record.id!, record.patientName || 'este registro')}>
+                  <Trash2 size={16} />
                 </ActionBtn>
               </CardActions>
             </CardBody>
@@ -426,6 +553,29 @@ const History = ({ doctorProfile, onLoadRecord }: HistoryProps) => {
         ))
       )}
     </Wrapper>
+
+      {/* ── Confirm delete modal ── */}
+      {pendingDeleteId !== null && (
+        <ConfirmOverlay onClick={() => setPendingDeleteId(null)}>
+          <ConfirmBox onClick={(e) => e.stopPropagation()}>
+            <ConfirmIconWrap>
+              <AlertTriangle size={22} />
+            </ConfirmIconWrap>
+            <ConfirmTitle>¿Eliminar registro?</ConfirmTitle>
+            <ConfirmDesc>
+              Se eliminará el registro de <strong>{pendingDeleteId.name}</strong> de forma permanente y no podrá recuperarse.
+            </ConfirmDesc>
+            <ConfirmBtns>
+              <ConfirmCancelBtn onClick={() => setPendingDeleteId(null)}>Cancelar</ConfirmCancelBtn>
+              <ConfirmDeleteBtn onClick={confirmDelete}>
+                <Trash2 size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                Eliminar
+              </ConfirmDeleteBtn>
+            </ConfirmBtns>
+          </ConfirmBox>
+        </ConfirmOverlay>
+      )}
+    </>
   );
 };
 

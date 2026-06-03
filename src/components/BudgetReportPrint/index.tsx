@@ -50,19 +50,31 @@ const BudgetReportPrint = ({
     <>
       {/* Watermark logo */}
       {logoSrc && (
-        <img
-          src={logoSrc}
+        <div
           style={{
             position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%) scale(1.5)',
-            zIndex: '-1',
-            width: '400px',
-            opacity: 0.06,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 0,
+            pointerEvents: 'none',
           }}
-          alt=""
-        />
+        >
+          <img
+            src={logoSrc}
+            style={{
+              width: '600px',
+              maxWidth: '80%',
+              opacity: 0.06,
+              objectFit: 'contain',
+            }}
+            alt="Watermark"
+          />
+        </div>
       )}
 
       {/* Header */}
@@ -81,7 +93,7 @@ const BudgetReportPrint = ({
             <div>
               <img
                 src={logoSrc}
-                style={{ width: '120px', height: '120px', objectFit: 'contain' }}
+                style={{ maxWidth: '120px', maxHeight: '120px', width: 'auto', height: 'auto', objectFit: 'contain' }}
                 alt="Logo"
               />
             </div>
@@ -170,7 +182,7 @@ const BudgetReportPrint = ({
             {treatmentsList.map((treatment, i) => (
               <div
                 key={i}
-                style={{ display: 'flex', width: '100%', textAlign: 'center' }}
+                style={{ display: 'flex', width: '100%', textAlign: 'center', marginBottom: '10px' }}
               >
                 <p style={{ flex: '2', textAlign: 'left' }}>{treatment.nombre}</p>
                 <p style={{ flex: '1' }}>{treatment.quantity}</p>

@@ -26,6 +26,33 @@ const PrintContentLayout = ({
 
   return (
     <>
+      {logoSrc && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 0,
+            pointerEvents: 'none',
+          }}
+        >
+          <img
+            src={logoSrc}
+            style={{
+              width: '350px',
+              maxWidth: '80%',
+              opacity: 0.06,
+              objectFit: 'contain',
+            }}
+            alt="Watermark"
+          />
+        </div>
+      )}
       <div
         className="header"
         style={{
@@ -40,7 +67,7 @@ const PrintContentLayout = ({
           <div>
             <img
               src={logoSrc}
-              style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+              style={{ maxWidth: '80px', maxHeight: '80px', width: 'auto', height: 'auto', objectFit: 'contain' }}
               alt="Logo"
             />
           </div>

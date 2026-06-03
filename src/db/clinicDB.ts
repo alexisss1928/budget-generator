@@ -41,6 +41,8 @@ export type HistoryRecord = {
   date: string;
   patientName: string;
   patientId: string;
+  patientPhone?: string;
+  patientEmail?: string;
   data: {
     medicines?: MedicineListItem[];
     treatments?: TreatmentListItem[];

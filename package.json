@@ -13,6 +13,7 @@
   "dependencies": {
     "axios": "^1.6.2",
     "html-to-image": "^1.11.11",
+    "html2pdf.js": "^0.14.0",
     "js-file-download": "^0.4.12",
     "js-html2pdf": "^1.1.4",
     "lucide-react": "^1.17.0",

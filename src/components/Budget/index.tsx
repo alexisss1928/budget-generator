@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import styled from 'styled-components';
 import { PlusCircle, ClipboardList, Plus } from 'lucide-react';
 import ItemPresupuesto from '../ItemPresupuesto';
@@ -39,6 +40,7 @@ const FieldRow = styled.div`
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
   align-items: center;
+  justify-content: space-between;
 
   &:last-child {
     border-bottom: none;
@@ -73,6 +75,41 @@ const FieldRow = styled.div`
   input[type="number"] {
     width: 80px;
     flex: none;
+  }
+`;
+
+const QuickBtnRow = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-right: 6px;
+`;
+
+const QuickBtn = styled.button<{ $active?: boolean }>`
+  background: ${(p) => p.$active ? 'var(--accent)18' : 'var(--surface-alt)'}; /* subtle bg tint if supported, else transparent fallback */
+  border: 2px solid ${(p) => p.$active ? 'var(--accent)' : 'transparent'};
+  border-radius: 8px;
+  color: ${(p) => p.$active ? 'var(--accent)' : 'var(--text)'};
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: ${(p) => p.$active ? '700' : '600'};
+  cursor: pointer;
+  transition: all 0.15s;
+
+  /* add a subtle background tint when active */
+  background-color: ${(p) => p.$active ? 'transparent' : 'var(--surface-alt)'};
+  box-shadow: ${(p) => p.$active ? 'inset 0 0 0 1px var(--accent)' : 'inset 0 0 0 1px var(--border)'};
+
+  &:hover {
+    box-shadow: inset 0 0 0 1px ${(p) => p.$active ? 'var(--accent)' : 'var(--border)'};
+    background-color: ${(p) => p.$active ? 'transparent' : 'var(--border)'};
+  }
+  
+  &:active {
+    transform: scale(0.95);
   }
 `;
 
@@ -159,6 +196,27 @@ const Budget = ({
   DeleteTreatment,
   insuranceCoverageisActive,
 }: BudgetType) => {
+  const quantityInputRef = useRef<HTMLInputElement>(null);
+  const [activeQuantity, setActiveQuantity] = useState<number | null>(null);
+
+  const setQuantity = (q: number) => {
+    setActiveQuantity(q);
+    if (quantityInputRef.current) {
+      quantityInputRef.current.value = q.toString();
+      handleCurrentBudget({ target: { name: 'quantity', value: q.toString() } } as any);
+    }
+  };
+
+  const handleQuantityInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setActiveQuantity(Number(e.target.value) || null);
+    handleCurrentBudget(e as any);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    AddTreatment(e as any);
+    setActiveQuantity(null);
+  };
+
   return (
     <>
       {/* ── Agregar un procedimiento ── */}
@@ -167,7 +225,7 @@ const Budget = ({
           <PlusCircle size={15} />
           <span>Agregar procedimiento</span>
         </CardTitle>
-        <form onSubmit={AddTreatment}>
+        <form onSubmit={handleFormSubmit}>
           <FieldRow>
             <label>Tratamiento</label>
             <select
@@ -190,19 +248,26 @@ const Budget = ({
                 ))}
             </select>
           </FieldRow>
-          
+
           <FieldRow>
             <label>Cantidad</label>
+            <QuickBtnRow>
+              <QuickBtn type="button" $active={activeQuantity === 1} onClick={() => setQuantity(1)}>1</QuickBtn>
+              <QuickBtn type="button" $active={activeQuantity === 2} onClick={() => setQuantity(2)}>2</QuickBtn>
+              <QuickBtn type="button" $active={activeQuantity === 3} onClick={() => setQuantity(3)}>3</QuickBtn>
+            </QuickBtnRow>
             <input
+              ref={quantityInputRef}
               type="number"
               name="quantity"
               min="1"
-              onChange={handleCurrentBudget}
+              onChange={handleQuantityInput}
               required
               autoComplete="off"
+              placeholder="Otra"
             />
           </FieldRow>
-          
+
           <FieldRow>
             <label>Observaciones</label>
             <input
@@ -213,7 +278,7 @@ const Budget = ({
               autoComplete="off"
             />
           </FieldRow>
-          
+
           <AddBtn type="submit">
             <Plus size={16} /> Agregar al plan
           </AddBtn>

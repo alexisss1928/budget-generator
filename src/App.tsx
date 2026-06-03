@@ -1,10 +1,11 @@
 // Packages imports
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { toPng } from 'html-to-image';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
   Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Save, MessageCircle, Database,
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2,
 } from 'lucide-react';
 
 // Context
@@ -25,6 +26,7 @@ import PacientData from './components/PacientData';
 import DoctorSettings from './components/DoctorSettings';
 import BackupScreen from './components/BackupScreen';
 import PWABanners from './components/PWABanners';
+import WhatsAppModal from './components/WhatsAppModal';
 import { usePWA } from './hooks/usePWA';
 
 // Branding
@@ -263,7 +265,7 @@ const PatientCard = styled.div`
     font-size: 11px; font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase; letter-spacing: 1.2px;
-    margin-bottom: 12px;
+    margin: 0 0 12px 0;
   }
 `;
 
@@ -321,7 +323,7 @@ const PrintPage = styled.div`
 // ─── Section title map ────────────────────────────────────────────────────────
 
 const sectionTitle: Record<string, string> = {
-  Inicio: 'ClinicManager',
+  Inicio: 'Doctor Companion',
   Presupuesto: 'Presupuesto',
   Informe: 'Informe clínico',
   Recipes: 'Recipe médico',
@@ -341,7 +343,8 @@ function InnerApp() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
 
-  const navigate = (s: string) => { setSection(s); setDrawerOpen(false); };
+  // ── WhatsApp modal ─────────────────────────────────────────────────────────
+  const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
 
   // ── Doctor profile ─────────────────────────────────────────────────────────
   const loadDoctorProfile = useCallback(async () => {
@@ -364,7 +367,7 @@ function InnerApp() {
       : setCurrentBudget({ ...currentBudget, [name]: value });
   };
 
-  const newBudget = () => { setTreatmentsList([]); setPersonalData({ name: '', identification: '' }); };
+  const newBudget = () => { setTreatmentsList([]); setPersonalData({ name: '', identification: '', phone: '', email: '' }); };
 
   const loadTreatmentsFromDB = useCallback(async () => {
     setMyTreatments(await getAllTreatments());
@@ -381,7 +384,7 @@ function InnerApp() {
   };
 
   // ── Patient ────────────────────────────────────────────────────────────────
-  const [personalData, setPersonalData] = useState({ name: '', identification: '' });
+  const [personalData, setPersonalData] = useState({ name: '', identification: '', phone: '', email: '' });
 
   const handlePersonalData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -389,11 +392,13 @@ function InnerApp() {
   };
 
   const handleLoadRecord = useCallback((record: HistoryRecord) => {
-    setPersonalData({ 
-      name: record.patientName, 
-      identification: record.patientId, 
+    setPersonalData({
+      name: record.patientName,
+      identification: record.patientId,
+      phone: '',
+      email: '',
     });
-    
+
     if (record.type === 'recipe') {
       setCurrentRecipe(record.data.medicines || []);
       setSection('Recipes');
@@ -436,31 +441,98 @@ function InnerApp() {
     const arr = [...currentRecipe]; arr.splice(index, 1); setCurrentRecipe(arr);
   };
 
-  const newRecipe = () => { setCurrentRecipe([]); setPersonalData({ name: '', identification: '' }); };
+  const newRecipe = () => { setCurrentRecipe([]); setPersonalData({ name: '', identification: '', phone: '', email: '' }); };
 
   // ── Print + history ────────────────────────────────────────────────────────
   const componentToPrintRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useCallback(async () => {
     if (!componentToPrintRef.current) return;
+    const contactData = {
+      patientPhone: personalData.phone || undefined,
+      patientEmail: personalData.email || undefined,
+    };
     try {
       if (section === 'Recipes' && currentRecipe.length > 0) {
-        await saveToHistory({ type: 'recipe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, data: { medicines: currentRecipe } });
+        await saveToHistory({ type: 'recipe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, ...contactData, data: { medicines: currentRecipe } });
       } else if (section === 'Presupuesto' && treatmentsList.length > 0) {
-        await saveToHistory({ type: 'presupuesto', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, data: { treatments: treatmentsList } });
+        await saveToHistory({ type: 'presupuesto', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, ...contactData, data: { treatments: treatmentsList } });
       } else if (section === 'Informe' && report !== '') {
-        await saveToHistory({ type: 'informe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, data: { report } });
+        await saveToHistory({ type: 'informe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, ...contactData, data: { report } });
       }
     } catch (err) { console.error('Error guardando historial:', err); }
 
-    toPng(componentToPrintRef.current, { cacheBust: true })
-      .then((dataUrl) => {
-        const link = document.createElement('a');
-        link.download = `${section}_${personalData.name || 'paciente'}.png`;
-        link.href = dataUrl; link.click();
-      })
-      .catch(console.error);
+    const filename = `${section}_${personalData.name || 'paciente'}.pdf`;
+
+    const opt = {
+      margin: 0,
+      filename: filename,
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
+    };
+
+    html2pdf().set(opt).from(componentToPrintRef.current).save();
   }, [componentToPrintRef, section, currentRecipe, treatmentsList, report, personalData]);
+
+  // ── Direct History Print & Share ───────────────────────────────────────────
+  const historyPrintRef = useRef<HTMLDivElement>(null);
+  const [historyPrintRecord, setHistoryPrintRecord] = useState<{ record: HistoryRecord; shouldShare: boolean; onComplete?: () => void } | null>(null);
+
+  const handleDownloadHistoryRecord = useCallback((record: HistoryRecord) => {
+    setHistoryPrintRecord({ record, shouldShare: false });
+  }, []);
+
+  const handleShareHistoryRecordPdf = useCallback((record: HistoryRecord) => {
+    return new Promise<void>((resolve) => {
+      setHistoryPrintRecord({ record, shouldShare: true, onComplete: resolve });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (historyPrintRecord && historyPrintRef.current) {
+      setTimeout(async () => {
+        const { record, shouldShare, onComplete } = historyPrintRecord;
+        let sectionName = 'Documento';
+        if (record.type === 'recipe') sectionName = 'Recipe';
+        if (record.type === 'presupuesto') sectionName = 'Presupuesto';
+        if (record.type === 'informe') sectionName = 'Informe';
+
+        const filename = `${sectionName}_${record.patientName || 'paciente'}.pdf`;
+
+        const opt = {
+          margin: 0,
+          filename: filename,
+          image: { type: 'jpeg' as const, quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
+        };
+
+        try {
+          if (shouldShare) {
+            const pdfBlob = await html2pdf().set(opt).from(historyPrintRef.current!).output('blob');
+            const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: `Documento de ${doctorProfile.clinicTitle}`,
+              });
+            } else {
+              html2pdf().set(opt).from(historyPrintRef.current!).save();
+              alert('Tu navegador no soporta enviar archivos directamente. El PDF ha sido descargado. Puedes enviarlo manualmente por WhatsApp.');
+            }
+          } else {
+            await html2pdf().set(opt).from(historyPrintRef.current!).save();
+          }
+        } catch (error) {
+          console.error('Error procesando PDF de historial', error);
+        } finally {
+          setHistoryPrintRecord(null);
+          if (onComplete) onComplete();
+        }
+      }, 300); // Wait for React to render the component fully before capturing
+    }
+  }, [historyPrintRecord, doctorProfile]);
 
   const handleWhatsApp = useCallback(() => {
     if (treatmentsList.length === 0) return;
@@ -484,8 +556,44 @@ function InnerApp() {
       doctorProfile.especialidad ? `_${doctorProfile.especialidad}_` : '',
       doctorProfile.telefono ? `Tel: ${doctorProfile.telefono}` : '',
     ].filter(Boolean).join('\n');
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    setWaConfig({ message: msg, defaultPhone: personalData.phone || undefined });
   }, [treatmentsList, personalData, doctorProfile]);
+
+  const handleSharePdfDirectly = useCallback(async () => {
+    if (!componentToPrintRef.current) return;
+
+    let sectionName = 'Documento';
+    if (section === 'Recipes') sectionName = 'Recipe';
+    if (section === 'Presupuesto') sectionName = 'Presupuesto';
+    if (section === 'Informe') sectionName = 'Informe';
+
+    const filename = `${sectionName}_${personalData.name || 'paciente'}.pdf`;
+    const opt = {
+      margin: 0,
+      filename: filename,
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
+    };
+
+    try {
+      const pdfBlob = await html2pdf().set(opt).from(componentToPrintRef.current).output('blob');
+      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Documento de ${doctorProfile.clinicTitle}`,
+        });
+      } else {
+        html2pdf().set(opt).from(componentToPrintRef.current).save();
+        alert('Tu navegador no soporta enviar archivos directamente. El PDF ha sido descargado. Puedes enviarlo manualmente por WhatsApp.');
+      }
+    } catch (error) {
+      console.error('Error al compartir PDF', error);
+      alert('Hubo un error al intentar compartir el PDF.');
+    }
+  }, [componentToPrintRef, section, personalData, doctorProfile]);
 
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -512,12 +620,33 @@ function InnerApp() {
     { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
   ];
 
+  const navigate = (s: string) => {
+    setSection(s);
+    setDrawerOpen(false);
+    if (s === 'Inicio') {
+      setPersonalData({ name: '', identification: '', phone: '', email: '' });
+      setTreatmentsList([]);
+      setCurrentBudget({ nombre: '', precio: '', insuranceCoverage: '', quantity: '', observations: '' });
+      setCurrentRecipe([]);
+      setCurrentMedicineSelected({ nombre: '', indicaciones: '' });
+      setReport('');
+    }
+  };
+
   const currentTitle = sectionTitle[section] ?? section;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <AppShell>
       <PWABanners {...pwa} />
+      {waConfig !== null && (
+        <WhatsAppModal
+          message={waConfig.message}
+          defaultPhone={waConfig.defaultPhone}
+          onClose={() => setWaConfig(null)}
+          onSharePdf={handleSharePdfDirectly}
+        />
+      )}
       {drawerOpen && <Backdrop onClick={() => setDrawerOpen(false)} />}
 
       {/* Drawer */}
@@ -585,7 +714,7 @@ function InnerApp() {
               </SectionHeader>
               <PatientCard>
                 <h3>Datos del paciente</h3>
-                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} />
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} showContactFields />
               </PatientCard>
               <Budget AddTreatment={AddTreatment} handleCurrentBudget={handleCurrentBudget}
                 myTreatments={myTreatments} treatmentsList={treatmentsList}
@@ -604,7 +733,7 @@ function InnerApp() {
               </SectionHeader>
               <PatientCard>
                 <h3>Datos del paciente</h3>
-                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} />
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} showContactFields />
               </PatientCard>
               <Report report={report} setReport={setReport} handleReportData={handleReportData} />
             </SectionInner>
@@ -624,7 +753,7 @@ function InnerApp() {
               </SectionHeader>
               <PatientCard>
                 <h3>Datos del paciente</h3>
-                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} />
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} showContactFields />
               </PatientCard>
               <Recipe AddMedicine={AddMedicine} handleCurrentRecipe={handleCurrentRecipe}
                 medicinesList={medicinesList} currentRecipe={currentRecipe}
@@ -642,7 +771,7 @@ function InnerApp() {
                   <ChevronLeft size={15} /> Inicio
                 </BackBtn>
               </SectionHeader>
-              <History doctorProfile={doctorProfile} onLoadRecord={handleLoadRecord} />
+              <History doctorProfile={doctorProfile} onLoadRecord={handleLoadRecord} onDownloadRecord={handleDownloadHistoryRecord} onShareHistoryRecordPdf={handleShareHistoryRecordPdf} />
             </SectionInner>
           </SectionView>
         )}
@@ -704,12 +833,12 @@ function InnerApp() {
       {hasContent && (
         <FABGroup>
           {section === 'Presupuesto' && treatmentsList.length > 0 && (
-            <WhatsAppFAB onClick={handleWhatsApp} aria-label="Compartir por WhatsApp" title="Compartir por WhatsApp">
-              <MessageCircle size={22} />
+            <WhatsAppFAB onClick={handleWhatsApp} aria-label="Compartir" title="Compartir">
+              <Share2 size={22} />
             </WhatsAppFAB>
           )}
-          <SaveFAB onClick={handlePrint} aria-label="Guardar">
-            <Save size={22} />
+          <SaveFAB onClick={handlePrint} aria-label="Descargar PDF" title="Descargar PDF">
+            <Download size={22} />
           </SaveFAB>
         </FABGroup>
       )}
@@ -717,7 +846,7 @@ function InnerApp() {
       {/* Hidden print canvas */}
       <PrintPage>
         <div
-          style={{ position: 'relative', backgroundColor: '#ffffff', padding: '40px 60px', width: '877px', height: '1240px', display: 'grid', gridTemplateRows: 'auto 1fr auto', color: '#4c4c4c' }}
+          style={{ position: 'relative', backgroundColor: '#ffffff', padding: '40px 50px', width: '816px', height: '1056px', display: 'grid', gridTemplateRows: 'auto 1fr auto', color: '#4c4c4c' }}
           ref={componentToPrintRef}
         >
           {section === 'Recipes' && (
@@ -727,6 +856,32 @@ function InnerApp() {
             <BudgetReportPrint personalData={personalData} section={section} report={report}
               treatmentsList={treatmentsList} insuranceCoverageisActive={insuranceCoverageisActive}
               doctorProfile={doctorProfile} />
+          )}
+        </div>
+      </PrintPage>
+
+      {/* Hidden print canvas for direct History download */}
+      <PrintPage>
+        <div
+          style={{ position: 'relative', backgroundColor: '#ffffff', padding: '40px 50px', width: '816px', height: '1056px', display: 'grid', gridTemplateRows: 'auto 1fr auto', color: '#4c4c4c' }}
+          ref={historyPrintRef}
+        >
+          {historyPrintRecord?.record?.type === 'recipe' && (
+            <RecipePrint
+              personalData={{ name: historyPrintRecord.record.patientName || '', identification: historyPrintRecord.record.patientId || '' }}
+              currentRecipe={historyPrintRecord.record.data.medicines || []}
+              doctorProfile={doctorProfile}
+            />
+          )}
+          {(historyPrintRecord?.record?.type === 'presupuesto' || historyPrintRecord?.record?.type === 'informe') && (
+            <BudgetReportPrint
+              personalData={{ name: historyPrintRecord.record.patientName || '', identification: historyPrintRecord.record.patientId || '' }}
+              section={historyPrintRecord.record.type === 'presupuesto' ? 'Presupuesto' : 'Informe'}
+              report={historyPrintRecord.record.data.report || ''}
+              treatmentsList={historyPrintRecord.record.data.treatments || []}
+              insuranceCoverageisActive={insuranceCoverageisActive}
+              doctorProfile={doctorProfile}
+            />
           )}
         </div>
       </PrintPage>
