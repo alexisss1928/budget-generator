@@ -680,7 +680,7 @@ function InnerApp() {
           ))}
         </DrawerNav>
 
-        <DrawerFooter>Doctor Companion · leaf4web</DrawerFooter>
+        <DrawerFooter>DoctorCompanion · leaf4web</DrawerFooter>
       </DrawerContainer>
 
       {/* Navbar */}
