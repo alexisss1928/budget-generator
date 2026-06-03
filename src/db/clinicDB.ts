@@ -272,6 +272,29 @@ export async function deleteHistoryRecord(id: number): Promise<void> {
   await promisifyRequest(getStore(db, 'history', 'readwrite').delete(id));
 }
 
+export type PatientData = {
+  identification: string;
+  name: string;
+  phone?: string;
+  email?: string;
+};
+
+export async function getUniquePatients(): Promise<PatientData[]> {
+  const history = await getAllHistory();
+  const map = new Map<string, PatientData>();
+  for (const record of history) {
+    if (record.patientId && !map.has(record.patientId)) {
+      map.set(record.patientId, {
+        identification: record.patientId,
+        name: record.patientName,
+        phone: record.patientPhone,
+        email: record.patientEmail,
+      });
+    }
+  }
+  return Array.from(map.values());
+}
+
 // ─── Doctor Profile ───────────────────────────────────────────────────────────
 
 const PROFILE_KEY = 'profile';

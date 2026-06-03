@@ -680,7 +680,7 @@ function InnerApp() {
           ))}
         </DrawerNav>
 
-        <DrawerFooter>ClinicManager · leaf4web</DrawerFooter>
+        <DrawerFooter>Doctor Companion · leaf4web</DrawerFooter>
       </DrawerContainer>
 
       {/* Navbar */}
@@ -714,7 +714,7 @@ function InnerApp() {
               </SectionHeader>
               <PatientCard>
                 <h3>Datos del paciente</h3>
-                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} showContactFields />
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
               </PatientCard>
               <Budget AddTreatment={AddTreatment} handleCurrentBudget={handleCurrentBudget}
                 myTreatments={myTreatments} treatmentsList={treatmentsList}
@@ -733,7 +733,7 @@ function InnerApp() {
               </SectionHeader>
               <PatientCard>
                 <h3>Datos del paciente</h3>
-                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} showContactFields />
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
               </PatientCard>
               <Report report={report} setReport={setReport} handleReportData={handleReportData} />
             </SectionInner>
@@ -753,7 +753,7 @@ function InnerApp() {
               </SectionHeader>
               <PatientCard>
                 <h3>Datos del paciente</h3>
-                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} showContactFields />
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
               </PatientCard>
               <Recipe AddMedicine={AddMedicine} handleCurrentRecipe={handleCurrentRecipe}
                 medicinesList={medicinesList} currentRecipe={currentRecipe}
