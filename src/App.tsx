@@ -784,7 +784,10 @@ function InnerApp() {
                   <ChevronLeft size={15} /> Inicio
                 </BackBtn>
               </SectionHeader>
-              <DoctorSettings onProfileSaved={(profile) => setDoctorProfile(profile)} />
+              <DoctorSettings onProfileSaved={(profile) => {
+                setDoctorProfile(profile);
+                navigate('Inicio');
+              }} />
             </SectionInner>
           </SectionView>
         )}

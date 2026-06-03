@@ -271,7 +271,6 @@ const DoctorSettings = ({ onProfileSaved }: DoctorSettingsProps) => {
 
   const handleSave = async () => {
     await saveDoctorProfile(profile);
-    toast.success('Perfil guardado correctamente');
     onProfileSaved?.(profile);
   };
 
