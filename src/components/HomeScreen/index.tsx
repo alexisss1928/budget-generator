@@ -359,12 +359,12 @@ const HomeScreen = ({ onNavigate, doctorProfile }: HomeScreenProps) => {
       {/* Welcome Banner */}
       <WelcomeCard $customColor={doctorProfile.color}>
         <BgLogo src={doctorProfile.logoDataUrl || Logo} alt="" />
-        
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative', zIndex: 1 }}>
           {doctorProfile.logoDataUrl ? (
-             <WelcomeLogo src={doctorProfile.logoDataUrl} alt="Logo" style={{ filter: 'none', objectFit: 'contain', width: 60, height: 60, borderRadius: '50%', background: '#fff', padding: 2, marginBottom: 0 }} />
+            <WelcomeLogo src={doctorProfile.logoDataUrl} alt="Logo" style={{ filter: 'none', objectFit: 'contain', width: 60, height: 60, borderRadius: '50%', background: '#fff', padding: 2, marginBottom: 0 }} />
           ) : (
-             <WelcomeLogo src={Logo} alt="Logo" style={{ width: 60, height: 60, marginBottom: 0 }} />
+            <WelcomeLogo src={Logo} alt="Logo" style={{ width: 60, height: 60, marginBottom: 0 }} />
           )}
           <div>
             <WelcomeName>{`${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim() || professionalData.name}</WelcomeName>
@@ -396,7 +396,7 @@ const HomeScreen = ({ onNavigate, doctorProfile }: HomeScreenProps) => {
       </ActionGrid>
 
       {/* Configuration */}
-      <SectionLabel>Configuración</SectionLabel>
+      {/* <SectionLabel>Configuración</SectionLabel>
       <ConfigList>
         <ConfigItem
           onClick={() => onNavigate('Datos del doctor')}
@@ -439,7 +439,7 @@ const HomeScreen = ({ onNavigate, doctorProfile }: HomeScreenProps) => {
           </span>
           <span className="cfg-arrow">›</span>
         </ConfigItem>
-      </ConfigList>
+      </ConfigList> */}
 
       {/* External tools */}
       <SectionLabel>Otras herramientas</SectionLabel>

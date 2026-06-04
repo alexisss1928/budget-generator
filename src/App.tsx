@@ -670,7 +670,7 @@ function InnerApp() {
           ))}
 
           <DrawerDivider />
-          <DrawerSubLabel>Configuración</DrawerSubLabel>
+          <DrawerSubLabel>Configuraón</DrawerSubLabel>
 
           {configItems.map((item) => (
             <DrawerItem key={item.section} $active={section === item.section}
