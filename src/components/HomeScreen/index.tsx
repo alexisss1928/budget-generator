@@ -3,7 +3,7 @@ import professionalData from '../../commons/professionalData';
 import Logo from '../../assets/leafAssets/logo.png';
 import LogoJarabito from '../../assets/leafAssets/logo-jarabito.png';
 import {
-  FileText, ClipboardList, Pill, History, Settings, Stethoscope,
+  FileText, ClipboardList, Pill, History, /* Settings, Stethoscope, */
 } from 'lucide-react';
 import { DoctorProfile } from '../../db/clinicDB';
 
@@ -190,7 +190,7 @@ const ConfigList = styled.div`
   margin-bottom: 12px;
 `;
 
-const ConfigItem = styled.button`
+/* const ConfigItem = styled.button`
   width: 100%;
   display: flex;
   align-items: center;
@@ -247,7 +247,7 @@ const ConfigItem = styled.button`
     font-size: 13px;
     color: var(--text-muted);
   }
-`;
+`; */
 
 const ExtLink = styled.a`
   width: 100%;
