@@ -699,7 +699,15 @@ function InnerApp() {
 
       {/* Content */}
       <ContentArea>
-        {section === 'Inicio' && <HomeScreen onNavigate={navigate} doctorProfile={doctorProfile} />}
+        {section === 'Inicio' && (
+          <HomeScreen
+            onNavigate={navigate}
+            doctorProfile={doctorProfile}
+            onLoadRecord={handleLoadRecord}
+            onDownloadRecord={handleDownloadHistoryRecord}
+            onSharePdf={handleShareHistoryRecordPdf}
+          />
+        )}
 
         {section === 'Presupuesto' && (
           <SectionView>

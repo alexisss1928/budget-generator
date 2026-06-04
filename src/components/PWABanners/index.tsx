@@ -100,6 +100,7 @@ type PWABannersProps = Pick<PWAState, 'isInstallable' | 'isInstalled' | 'trigger
 
 const PWABanners = ({ isInstallable, isInstalled, triggerInstall, hasUpdate, applyUpdate }: PWABannersProps) => {
   const [installDismissed, setInstallDismissed] = useState(false);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
   const [updating, setUpdating] = useState(false);
 
   const handleUpdate = () => {
@@ -108,7 +109,7 @@ const PWABanners = ({ isInstallable, isInstalled, triggerInstall, hasUpdate, app
   };
 
   // Show update banner first (higher priority)
-  if (hasUpdate) {
+  if (hasUpdate && !updateDismissed) {
     return (
       <Banner $variant="update">
         <BannerIcon $variant="update">
@@ -121,6 +122,9 @@ const PWABanners = ({ isInstallable, isInstalled, triggerInstall, hasUpdate, app
         <BannerBtn $variant="update" onClick={handleUpdate} disabled={updating}>
           {updating ? 'Actualizando...' : 'Actualizar'}
         </BannerBtn>
+        <DismissBtn $variant="update" onClick={() => setUpdateDismissed(true)} aria-label="Posponer actualización">
+          <X size={16} />
+        </DismissBtn>
       </Banner>
     );
   }

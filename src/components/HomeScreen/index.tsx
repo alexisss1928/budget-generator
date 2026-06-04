@@ -1,17 +1,27 @@
+import { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import professionalData from '../../commons/professionalData';
 import Logo from '../../assets/leafAssets/logo.png';
 import LogoJarabito from '../../assets/leafAssets/logo-jarabito.png';
 import {
-  FileText, ClipboardList, Pill, History, /* Settings, Stethoscope, */
+  FileText, ClipboardList, Pill,
+  ChevronDown, ChevronRight, Edit2,
+  Share2, Download, Trash2, AlertTriangle,
 } from 'lucide-react';
-import { DoctorProfile } from '../../db/clinicDB';
+import { DoctorProfile, HistoryRecord, getAllHistory, deleteHistoryRecord } from '../../db/clinicDB';
+import WhatsAppModal from '../WhatsAppModal';
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
 const slideUp = keyframes`
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
+`;
+
+const fadeIn = keyframes`from { opacity: 0 } to { opacity: 1 }`;
+const popIn  = keyframes`
+  from { opacity: 0; transform: scale(0.94) translateY(8px) }
+  to   { opacity: 1; transform: scale(1)    translateY(0) }
 `;
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -113,73 +123,138 @@ const SectionLabel = styled.p`
   padding-left: 2px;
 `;
 
+// ─── Action cards (Neumorphic Layout) ────────────────────────────────────────
+
 const ActionGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 13px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
   margin-bottom: 28px;
+  padding: 4px;
 `;
 
-const ActionCard = styled.div<{ $color: string; $delay?: string }>`
+const ActionCard = styled.div`
   background: var(--surface);
-  border-radius: 18px;
-  overflow: hidden;
+  border-radius: 20px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  position: relative;
   cursor: pointer;
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.18s ease;
-  box-shadow: var(--shadow-card);
+  
+  /* Neumorphic shadow */
+  box-shadow: 
+    6px 6px 12px rgba(0, 0, 0, 0.04), 
+    -6px -6px 12px rgba(255, 255, 255, 0.6);
+  
+  [data-theme='dark'] & {
+    box-shadow: 
+      6px 6px 12px rgba(0, 0, 0, 0.4), 
+      -6px -6px 12px rgba(255, 255, 255, 0.04);
+  }
+  
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   animation: ${slideUp} 0.4s ease both;
-  animation-delay: ${(p) => p.$delay ?? '0s'};
 
   &:hover {
-    transform: translateY(-4px) scale(1.01);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 
+      3px 3px 8px rgba(0, 0, 0, 0.03), 
+      -3px -3px 8px rgba(255, 255, 255, 0.5);
+    transform: translateY(2px);
+
+    [data-theme='dark'] & {
+      box-shadow: 
+        3px 3px 8px rgba(0, 0, 0, 0.4), 
+        -3px -3px 8px rgba(255, 255, 255, 0.03);
+    }
   }
 
   &:active {
-    transform: scale(0.97);
+    box-shadow: 
+      inset 4px 4px 10px rgba(0, 0, 0, 0.03), 
+      inset -4px -4px 10px rgba(255, 255, 255, 0.5);
+    transform: translateY(4px);
+
+    [data-theme='dark'] & {
+      box-shadow: 
+        inset 4px 4px 10px rgba(0, 0, 0, 0.5), 
+        inset -4px -4px 10px rgba(255, 255, 255, 0.03);
+    }
   }
 `;
 
-const CardTop = styled.div<{ $color: string }>`
-  background: ${(p) => p.$color}18;
-  padding: 22px 16px 14px;
-  display: flex;
-  justify-content: center;
-`;
-
-const IconCircle = styled.div<{ $color: string }>`
-  width: 52px;
-  height: 52px;
+const IconBadge = styled.div<{ $color: string }>`
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: ${(p) => p.$color};
+  background: var(--surface);
+  color: ${(p) => p.$color};
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px ${(p) => p.$color}55;
-
-  img, svg {
-    width: 22px;
-    height: 22px;
+  /* Neumorphic inset (dent) */
+  box-shadow: 
+    inset 3px 3px 6px rgba(0, 0, 0, 0.04), 
+    inset -3px -3px 6px rgba(255, 255, 255, 0.8);
+  
+  [data-theme='dark'] & {
+    box-shadow: 
+      inset 3px 3px 6px rgba(0, 0, 0, 0.5), 
+      inset -3px -3px 6px rgba(255, 255, 255, 0.04);
   }
+
+  margin-bottom: 10px;
+  flex-shrink: 0;
 `;
 
-const CardBottom = styled.div`
-  padding: 12px 14px 16px;
+const ActionContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 
   h4 {
     font-size: 13px;
     font-weight: 700;
     color: var(--text);
-    margin-bottom: 3px;
-    line-height: 1.3;
+    margin: 0;
+    line-height: 1.1;
+    text-align: center;
+    letter-spacing: -0.2px;
+  }
+`;
+
+const ActionSubtext = styled.span`
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-align: center;
+`;
+
+const ActionCountDot = styled.span<{ $color: string }>`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  color: ${(p) => p.$color};
+  background: var(--surface);
+  box-shadow: 
+    2px 2px 5px rgba(0, 0, 0, 0.04), 
+    -2px -2px 5px rgba(255, 255, 255, 0.7);
+
+  [data-theme='dark'] & {
+    box-shadow: 
+      2px 2px 5px rgba(0, 0, 0, 0.4), 
+      -2px -2px 5px rgba(255, 255, 255, 0.04);
   }
 
-  p {
-    font-size: 11px;
-    color: var(--text-secondary);
-    line-height: 1.4;
-  }
+  border-radius: 10px;
+  padding: 2px 6px;
+  z-index: 1;
 `;
 
 const ConfigList = styled.div`
@@ -188,6 +263,293 @@ const ConfigList = styled.div`
   overflow: hidden;
   box-shadow: var(--shadow-card);
   margin-bottom: 12px;
+`;
+
+// ─── Recent Activity (estilo History) ────────────────────────────────────────
+
+const RecentList = styled.div`
+  margin-bottom: 12px;
+`;
+
+const RecentCard = styled.div`
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s, transform 0.15s;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-1px);
+  }
+`;
+
+const RecentCardInner = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+`;
+
+const RecentPatientInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+
+  strong {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  span {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+`;
+
+const RecentBadgeRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-left: 10px;
+`;
+
+const RecentTypeBadge = styled.span<{ $type: string }>`
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background-color: ${
+    (p) => p.$type === 'recipe'
+      ? '#e8f5e9'
+      : p.$type === 'presupuesto'
+        ? '#e3f2fd'
+        : '#fff3e0'
+  };
+  color: ${
+    (p) => p.$type === 'recipe'
+      ? '#388e3c'
+      : p.$type === 'presupuesto'
+        ? '#1565c0'
+        : '#e65100'
+  };
+`;
+
+const EmptyRecent = styled.div`
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 10px;
+
+  .icon { font-size: 28px; margin-bottom: 8px; }
+`;
+
+const ViewAllBtn = styled.button`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 13px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  margin-bottom: 28px;
+  transition: all 0.15s;
+  box-shadow: var(--shadow-card);
+
+  &:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent);
+  }
+`;
+
+const RecentChevron = styled.span<{ $open: boolean }>`
+  font-size: 16px;
+  color: #aaa;
+  display: inline-flex;
+  transition: transform 0.2s;
+  transform: ${(p) => p.$open ? 'rotate(180deg)' : 'rotate(0deg)'};
+`;
+
+const RecentCardBody = styled.div<{ $open: boolean }>`
+  display: ${(p) => p.$open ? 'block' : 'none'};
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--border);
+`;
+
+const RecentBodyLabel = styled.p`
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 12px 0 6px;
+`;
+
+const RecentItemRow = styled.div`
+  font-size: 12px;
+  color: var(--text);
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--border);
+
+  &:last-child { border-bottom: none; }
+
+  span {
+    color: var(--text-secondary);
+    font-size: 11px;
+    display: block;
+  }
+`;
+
+const RecentReportText = styled.p`
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface-alt);
+  border-radius: 8px;
+  padding: 10px;
+  margin: 0;
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow-y: auto;
+`;
+
+const RecentActions = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+`;
+
+const RecentActionBtn = styled.button<{ $danger?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  background: var(--surface-alt);
+  color: ${(p) => p.$danger ? '#e53935' : 'var(--text)'};
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+
+  &:hover {
+    background: ${(p) => p.$danger ? '#ffebee' : 'var(--border)'};
+    border-color: ${(p) => p.$danger ? '#ef9a9a' : 'var(--border)'};
+  }
+`;
+
+// ─── Confirm delete modal ───────────────────────────────────────────────
+
+const ConfirmOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+  animation: ${fadeIn} 0.18s ease;
+  padding: 20px;
+  box-sizing: border-box;
+`;
+
+const ConfirmBox = styled.div`
+  background: var(--surface);
+  border-radius: 18px;
+  width: 90%;
+  max-width: 380px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  animation: ${popIn} 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
+`;
+
+const ConfirmIconWrap = styled.div`
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: #ffebee;
+  display: flex; align-items: center; justify-content: center;
+  color: #e53935;
+  margin: 0 auto 14px;
+`;
+
+const ConfirmTitle = styled.h3`
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+`;
+
+const ConfirmDesc = styled.p`
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.5;
+  strong { color: var(--text); }
+`;
+
+const ConfirmBtns = styled.div`
+  display: flex;
+  gap: 10px;
+`;
+
+const ConfirmCancelBtn = styled.button`
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+  &:hover { background: var(--surface-alt); }
+`;
+
+const ConfirmDeleteBtn = styled.button`
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: #e53935;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.12s;
+  font-family: inherit;
+  &:hover  { opacity: 0.9; transform: translateY(-1px); }
+  &:active { transform: scale(0.97); }
 `;
 
 /* const ConfigItem = styled.button`
@@ -314,48 +676,114 @@ const ExtLink = styled.a`
 const actions = [
   {
     section: 'Presupuesto',
+    type: 'presupuesto',
     label: 'Presupuesto',
-    desc: 'Plan de tratamiento',
+    desc: 'Plan médico',
     color: '#719e81',
-    icon: <FileText size={22} color="#fff" strokeWidth={1.5} />,
-    delay: '0.05s',
+    icon: <FileText size={20} strokeWidth={2.5} />,
   },
   {
     section: 'Informe',
+    type: 'informe',
     label: 'Informe',
-    desc: 'Informe clínico',
+    desc: 'Clínico',
     color: '#4a90d9',
-    icon: <ClipboardList size={22} color="#fff" strokeWidth={1.5} />,
-    delay: '0.10s',
+    icon: <ClipboardList size={20} strokeWidth={2.5} />,
   },
   {
     section: 'Recipes',
+    type: 'recipe',
     label: 'Recipe',
-    desc: 'Prescripción médica',
+    desc: 'Prescripción',
     color: '#9b59b6',
-    icon: <Pill size={22} color="#fff" strokeWidth={1.5} />,
-    delay: '0.15s',
-  },
-  {
-    section: 'Historial',
-    label: 'Historial',
-    desc: 'Buscar por paciente',
-    color: '#e67e22',
-    icon: <History size={22} color="#fff" strokeWidth={1.5} />,
-    delay: '0.20s',
+    icon: <Pill size={20} strokeWidth={2.5} />,
   },
 ];
+
+// ─── Type helpers ─────────────────────────────────────────────────────────────
+
+const TYPE_META: Record<string, { label: string; section: string }> = {
+  presupuesto: { label: 'Presupuesto', section: 'Presupuesto' },
+  informe:     { label: 'Informe',     section: 'Informe'     },
+  recipe:      { label: 'Recipe',      section: 'Recipes'     },
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface HomeScreenProps {
-  onNavigate: (section: string) => void;
-  doctorProfile: DoctorProfile;
+  onNavigate:      (section: string) => void;
+  doctorProfile:   DoctorProfile;
+  onLoadRecord:    (record: HistoryRecord) => void;
+  onDownloadRecord:(record: HistoryRecord) => void;
+  onSharePdf:      (record: HistoryRecord) => Promise<void>;
 }
 
-const HomeScreen = ({ onNavigate, doctorProfile }: HomeScreenProps) => {
+const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord, onSharePdf }: HomeScreenProps) => {
+  const [recent,         setRecent]         = useState<HistoryRecord[]>([]);
+  const [openId,         setOpenId]         = useState<number | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<{ id: number; name: string } | null>(null);
+  const [waConfig,       setWaConfig]       = useState<{ message: string; defaultPhone?: string } | null>(null);
+  const [waRecord,       setWaRecord]       = useState<HistoryRecord | null>(null);
+  const [counts,         setCounts]         = useState<Record<string, number>>({});
+
+  const refreshRecent = () => getAllHistory().then((all) => {
+    setRecent(all.slice(0, 5));
+    const c: Record<string, number> = {};
+    all.forEach((r) => { c[r.type] = (c[r.type] || 0) + 1; });
+    setCounts(c);
+  });
+
+  const toggleOpen = (id: number | undefined) => {
+    if (id === undefined) return;
+    setOpenId((prev) => (prev === id ? null : id));
+  };
+
+  const handleShare = (record: HistoryRecord) => {
+    const fecha = new Date(record.date).toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
+    const patient = record.patientName ? `Paciente: ${record.patientName}` : '';
+    let msg = '';
+    if (record.type === 'presupuesto' && record.data.treatments) {
+      const items = record.data.treatments.map((t) =>
+        `- ${t.nombre}${t.quantity && t.quantity !== '1' ? ` x${t.quantity}` : ''}${t.precio ? ` - $${t.precio}` : ''}${t.observations ? `\n  ${t.observations}` : ''}`
+      ).join('\n');
+      const total = record.data.treatments.reduce((acc, t) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1), 0);
+      msg = `*Plan de Tratamiento*\nFecha: ${fecha}\n${patient}\n\n${items}\n\n*Total: $${total.toFixed(2)}*`;
+    } else if (record.type === 'recipe' && record.data.medicines) {
+      const items = record.data.medicines.map((m) => `- ${m.nombre}\n  ${m.indicaciones}`).join('\n');
+      msg = `*Recipe Médico*\nFecha: ${fecha}\n${patient}\n\n${items}`;
+    } else if (record.type === 'informe' && record.data.report) {
+      msg = `*Informe Clínico*\nFecha: ${fecha}\n${patient}\n\n${record.data.report}`;
+    }
+    msg += `\n\n_${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}_`;
+    if (doctorProfile.especialidad) msg += `\n_${doctorProfile.especialidad}_`;
+    if (doctorProfile.telefono) msg += `\nTel: ${doctorProfile.telefono}`;
+    setWaConfig({ message: msg, defaultPhone: record.patientPhone || undefined });
+    setWaRecord(record);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    await deleteHistoryRecord(pendingDeleteId.id);
+    setPendingDeleteId(null);
+    setOpenId(null);
+    refreshRecent();
+  };
+
+  useEffect(() => { refreshRecent(); }, []);
+
   return (
-    <Wrapper>
+    <>
+      {/* WhatsApp modal */}
+      {waConfig !== null && (
+        <WhatsAppModal
+          message={waConfig.message}
+          defaultPhone={waConfig.defaultPhone}
+          onClose={() => { setWaConfig(null); setWaRecord(null); }}
+          onSharePdf={waRecord ? async () => { await onSharePdf(waRecord); } : undefined}
+        />
+      )}
+
+      <Wrapper>
       {/* Welcome Banner */}
       <WelcomeCard $customColor={doctorProfile.color}>
         <BgLogo src={doctorProfile.logoDataUrl || Logo} alt="" />
@@ -376,21 +804,27 @@ const HomeScreen = ({ onNavigate, doctorProfile }: HomeScreenProps) => {
       {/* Quick Actions */}
       <SectionLabel>Acciones rápidas</SectionLabel>
       <ActionGrid>
-        {actions.map((a) => (
+        {actions.map((a, i) => (
           <ActionCard
             key={a.section}
-            $color={a.color}
-            $delay={a.delay}
             onClick={() => onNavigate(a.section)}
             id={`home-card-${a.section.toLowerCase()}`}
+            style={{ animationDelay: `${i * 0.07}s` }}
           >
-            <CardTop $color={a.color}>
-              <IconCircle $color={a.color}>{a.icon}</IconCircle>
-            </CardTop>
-            <CardBottom>
-              <h4>{a.label}</h4>
-              <p>{a.desc}</p>
-            </CardBottom>
+            {counts[a.type] !== undefined && (
+              <ActionCountDot $color={a.color}>
+                {counts[a.type]}
+              </ActionCountDot>
+            )}
+            
+            <IconBadge $color={a.color}>
+              {a.icon}
+            </IconBadge>
+
+            <ActionContent>
+              <h4 style={{ whiteSpace: 'pre-line' }}>{a.label}</h4>
+              <ActionSubtext>{a.desc}</ActionSubtext>
+            </ActionContent>
           </ActionCard>
         ))}
       </ActionGrid>
@@ -441,6 +875,110 @@ const HomeScreen = ({ onNavigate, doctorProfile }: HomeScreenProps) => {
         </ConfigItem>
       </ConfigList> */}
 
+      {/* Recent Activity */}
+      <SectionLabel>Actividad reciente</SectionLabel>
+      <RecentList>
+        {recent.length === 0 && (
+          <EmptyRecent>
+            <div className="icon">🗂️</div>
+            Aún no hay documentos creados
+          </EmptyRecent>
+        )}
+        {recent.map((record) => {
+          const meta = TYPE_META[record.type];
+          if (!meta) return null;
+          const isOpen = openId === record.id;
+          return (
+            <RecentCard key={record.id}>
+              {/* Header — click to toggle */}
+              <RecentCardInner onClick={() => toggleOpen(record.id)}>
+                <RecentPatientInfo>
+                  <strong>{record.patientName || <span style={{ color: '#ccc' }}>Sin nombre</span>}</strong>
+                  <span>
+                    {new Date(record.date).toLocaleDateString('es-VE', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </span>
+                </RecentPatientInfo>
+                <RecentBadgeRow>
+                  <RecentTypeBadge $type={record.type}>{meta.label}</RecentTypeBadge>
+                  <RecentChevron $open={isOpen}><ChevronDown size={16} /></RecentChevron>
+                </RecentBadgeRow>
+              </RecentCardInner>
+
+              {/* Body — expandable content */}
+              <RecentCardBody $open={isOpen}>
+                {/* Recipe */}
+                {record.type === 'recipe' && record.data.medicines && (
+                  <>
+                    <RecentBodyLabel>Medicamentos recetados</RecentBodyLabel>
+                    {record.data.medicines.map((m, i) => (
+                      <RecentItemRow key={i}>
+                        {m.nombre}<span>{m.indicaciones}</span>
+                      </RecentItemRow>
+                    ))}
+                  </>
+                )}
+
+                {/* Presupuesto */}
+                {record.type === 'presupuesto' && record.data.treatments && (
+                  <>
+                    <RecentBodyLabel>Tratamientos</RecentBodyLabel>
+                    {record.data.treatments.map((t, i) => (
+                      <RecentItemRow key={i}>
+                        {t.nombre} × {t.quantity || '1'}
+                        <span>${t.precio}{t.observations ? ` — ${t.observations}` : ''}</span>
+                      </RecentItemRow>
+                    ))}
+                  </>
+                )}
+
+                {/* Informe */}
+                {record.type === 'informe' && record.data.report && (
+                  <>
+                    <RecentBodyLabel>Informe clínico</RecentBodyLabel>
+                    <RecentReportText>{record.data.report}</RecentReportText>
+                  </>
+                )}
+
+                <RecentActions>
+                  <RecentActionBtn
+                    title="Compartir por WhatsApp"
+                    onClick={(e) => { e.stopPropagation(); handleShare(record); }}
+                  >
+                    <Share2 size={14} />
+                  </RecentActionBtn>
+                  <RecentActionBtn
+                    title="Descargar PDF"
+                    onClick={(e) => { e.stopPropagation(); onDownloadRecord(record); }}
+                  >
+                    <Download size={14} />
+                  </RecentActionBtn>
+                  <RecentActionBtn
+                    title="Editar documento"
+                    onClick={(e) => { e.stopPropagation(); onLoadRecord(record); }}
+                  >
+                    <Edit2 size={14} />
+                  </RecentActionBtn>
+                  <RecentActionBtn
+                    $danger
+                    title="Eliminar"
+                    onClick={(e) => { e.stopPropagation(); setPendingDeleteId({ id: record.id!, name: record.patientName || 'este registro' }); }}
+                  >
+                    <Trash2 size={14} />
+                  </RecentActionBtn>
+                </RecentActions>
+              </RecentCardBody>
+            </RecentCard>
+          );
+        })}
+      </RecentList>
+      <ViewAllBtn onClick={() => onNavigate('Historial')} id="home-btn-ver-historial">
+        <ChevronRight size={15} />
+        Ver historial completo
+      </ViewAllBtn>
+
       {/* External tools */}
       <SectionLabel>Otras herramientas</SectionLabel>
       <ConfigList>
@@ -461,6 +999,27 @@ const HomeScreen = ({ onNavigate, doctorProfile }: HomeScreenProps) => {
         </ExtLink>
       </ConfigList>
     </Wrapper>
+
+      {/* Confirm delete modal */}
+      {pendingDeleteId !== null && (
+        <ConfirmOverlay onClick={() => setPendingDeleteId(null)}>
+          <ConfirmBox onClick={(e) => e.stopPropagation()}>
+            <ConfirmIconWrap><AlertTriangle size={22} /></ConfirmIconWrap>
+            <ConfirmTitle>¿Eliminar registro?</ConfirmTitle>
+            <ConfirmDesc>
+              Se eliminará el registro de <strong>{pendingDeleteId.name}</strong> de forma permanente.
+            </ConfirmDesc>
+            <ConfirmBtns>
+              <ConfirmCancelBtn onClick={() => setPendingDeleteId(null)}>Cancelar</ConfirmCancelBtn>
+              <ConfirmDeleteBtn onClick={confirmDelete}>
+                <Trash2 size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                Eliminar
+              </ConfirmDeleteBtn>
+            </ConfirmBtns>
+          </ConfirmBox>
+        </ConfirmOverlay>
+      )}
+    </>
   );
 };
 
