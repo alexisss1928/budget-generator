@@ -5,7 +5,7 @@ import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
   Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2,
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard
 } from 'lucide-react';
 
 // Context
@@ -26,6 +26,7 @@ import PacientData from './components/PacientData';
 import DoctorSettings from './components/DoctorSettings';
 import BackupScreen from './components/BackupScreen';
 import PWABanners from './components/PWABanners';
+import PaymentMethods from './components/PaymentMethods';
 import WhatsAppModal from './components/WhatsAppModal';
 import { usePWA } from './hooks/usePWA';
 
@@ -330,6 +331,7 @@ const sectionTitle: Record<string, string> = {
   Historial: 'Historial',
   'Administrar tratamientos': 'Tratamientos',
   'Administrar medicamentos': 'Medicamentos',
+  'Métodos de pago': 'Métodos de pago',
   'Datos del doctor': 'Datos del doctor',
   Respaldo: 'Respaldo y Restauración',
 };
@@ -615,6 +617,7 @@ function InnerApp() {
 
   const configItems = [
     { label: 'Datos del doctor', section: 'Datos del doctor', icon: <Stethoscope size={13} /> },
+    { label: 'Métodos de pago', section: 'Métodos de pago', icon: <CreditCard size={13} /> },
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
     { label: 'Medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
     { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
@@ -796,6 +799,19 @@ function InnerApp() {
                 setDoctorProfile(profile);
                 navigate('Inicio');
               }} />
+            </SectionInner>
+          </SectionView>
+        )}
+
+        {section === 'Métodos de pago' && (
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+              </SectionHeader>
+              <PaymentMethods />
             </SectionInner>
           </SectionView>
         )}

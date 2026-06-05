@@ -20,8 +20,10 @@ const Wrapper = styled.div`
 
 const Title = styled.h3`
   text-align: center;
-  color: #5b5b5b;
+  color: var(--text);
   margin-top: 0;
+  margin-bottom: 24px;
+  font-size: 20px;
 `;
 
 const SearchBar = styled.div`
@@ -233,6 +235,42 @@ const ActionBtn = styled.button<{ $danger?: boolean }>`
   }
 `;
 
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0 30px;
+  
+  button {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    &:not(:disabled):hover {
+      border-color: var(--text-muted);
+      background: var(--surface-alt);
+    }
+  }
+
+  span {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+`;
+
 // ─── Confirm delete modal styles ──────────────────────────────────────────────
 
 const fadeIn = keyframes`from { opacity: 0 } to { opacity: 1 }`;
@@ -378,6 +416,9 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
   const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
   const [waRecord, setWaRecord] = useState<HistoryRecord | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<{ id: number; name: string } | null>(null);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const loadHistory = useCallback(async () => {
     const results = query
@@ -404,6 +445,17 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
 
   const visible = records.filter(
     (r) => filter === 'todos' || r.type === filter
+  );
+
+  // Reset page when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, filter]);
+
+  const totalPages = Math.ceil(visible.length / ITEMS_PER_PAGE);
+  const paginatedRecords = visible.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
   const handleShare = (record: HistoryRecord) => {
@@ -476,7 +528,7 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
           </p>
         </EmptyState>
       ) : (
-        visible.map((record) => (
+        paginatedRecords.map((record) => (
           <RecordCard key={record.id}>
             <CardHeader onClick={() => setOpenId(openId === record.id ? null : record.id!)}>
               <PatientInfo>
@@ -551,6 +603,24 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
             </CardBody>
           </RecordCard>
         ))
+      )}
+
+      {totalPages > 1 && visible.length > 0 && (
+        <PaginationContainer>
+          <button 
+            disabled={currentPage === 1} 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          >
+            Anterior
+          </button>
+          <span>Página {currentPage} de {totalPages}</span>
+          <button 
+            disabled={currentPage === totalPages} 
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          >
+            Siguiente
+          </button>
+        </PaginationContainer>
       )}
     </Wrapper>
 

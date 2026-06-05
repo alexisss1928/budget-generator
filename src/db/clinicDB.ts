@@ -3,7 +3,7 @@
 // Stores: treatments, medicines, history, doctorProfile
 
 const DB_NAME = 'ClinicManagerDB';
-const DB_VERSION = 3; // bumped to add reportTemplates store
+const DB_VERSION = 4; // bumped to add paymentMethods store
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,6 +83,16 @@ export type ReportTemplate = {
   content: string;
 };
 
+export type PaymentMethodType = 'Pago Móvil' | 'Zelle' | 'Transferencia Bancaria' | 'Transferencia Internacional' | 'PayPal' | 'Otro';
+
+export type PaymentMethodRecord = {
+  id?: number;
+  type: PaymentMethodType;
+  customName?: string; // Used if type is 'Otro'
+  details: string; // JSON string with specific fields (e.g. { banco: "Banesco", telefono: "04141234567", ... })
+  isActive: boolean;
+};
+
 export const DEFAULT_DOCTOR_PROFILE: DoctorProfile = {
   prefix: 'Dra.',
   nombre: 'Lisa',
@@ -154,6 +164,15 @@ export function initDB(): Promise<IDBDatabase> {
           autoIncrement: true,
         });
         tplStore.createIndex('title', 'title', { unique: false });
+      }
+
+      // v4: payment methods
+      if (!db.objectStoreNames.contains('paymentMethods')) {
+        const pmStore = db.createObjectStore('paymentMethods', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
+        pmStore.createIndex('type', 'type', { unique: false });
       }
     };
 
@@ -336,11 +355,30 @@ export async function deleteReportTemplate(id: number): Promise<void> {
   await promisifyRequest(getStore(db, 'reportTemplates', 'readwrite').delete(id));
 }
 
+// ─── Payment Methods ──────────────────────────────────────────────────────────
+
+export async function getAllPaymentMethods(): Promise<PaymentMethodRecord[]> {
+  const db = await initDB();
+  return getAllFromStore<PaymentMethodRecord>(db, 'paymentMethods');
+}
+
+export async function savePaymentMethod(method: PaymentMethodRecord): Promise<number> {
+  const db = await initDB();
+  return promisifyRequest<number>(
+    getStore(db, 'paymentMethods', 'readwrite').put(method) as IDBRequest<number>
+  );
+}
+
+export async function deletePaymentMethod(id: number): Promise<void> {
+  const db = await initDB();
+  await promisifyRequest(getStore(db, 'paymentMethods', 'readwrite').delete(id));
+}
+
 // ─── Export / Import ──────────────────────────────────────────────────────────
 
 export async function exportDB(): Promise<string> {
   const db = await initDB();
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods'];
   const exportData: Record<string, any> = {};
 
   for (const storeName of stores) {
@@ -360,7 +398,7 @@ export async function exportDB(): Promise<string> {
 export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 'replace'): Promise<void> {
   const db = await initDB();
   const data = JSON.parse(jsonData);
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods'];
 
   for (const storeName of stores) {
     if (data[storeName] && db.objectStoreNames.contains(storeName)) {

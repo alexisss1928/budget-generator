@@ -8,8 +8,9 @@ import {
   ChevronDown, ChevronRight, Edit2,
   Share2, Download, Trash2, AlertTriangle,
 } from 'lucide-react';
-import { DoctorProfile, HistoryRecord, getAllHistory, deleteHistoryRecord } from '../../db/clinicDB';
+import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods } from '../../db/clinicDB';
 import WhatsAppModal from '../WhatsAppModal';
+import ShareModal from '../ShareModal';
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -131,6 +132,43 @@ const ActionGrid = styled.div`
   gap: 12px;
   margin-bottom: 28px;
   padding: 4px;
+`;
+
+const ShareButtonsRow = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+
+  button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 16px;
+    border: none;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    svg {
+      color: var(--accent);
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    }
+
+    &:active {
+      transform: translateY(2px);
+    }
+  }
 `;
 
 const ActionCard = styled.div`
@@ -725,6 +763,11 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
   const [waConfig,       setWaConfig]       = useState<{ message: string; defaultPhone?: string } | null>(null);
   const [waRecord,       setWaRecord]       = useState<HistoryRecord | null>(null);
   const [counts,         setCounts]         = useState<Record<string, number>>({});
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRecord[]>([]);
+  const [shareModal, setShareModal] = useState<{ isOpen: boolean; type: 'doctor' | 'payment' }>({
+    isOpen: false,
+    type: 'doctor'
+  });
 
   const refreshRecent = () => getAllHistory().then((all) => {
     setRecent(all.slice(0, 5));
@@ -769,7 +812,10 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
     refreshRecent();
   };
 
-  useEffect(() => { refreshRecent(); }, []);
+  useEffect(() => { 
+    refreshRecent(); 
+    getAllPaymentMethods().then(setPaymentMethods);
+  }, []);
 
   return (
     <>
@@ -782,6 +828,14 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
           onSharePdf={waRecord ? async () => { await onSharePdf(waRecord); } : undefined}
         />
       )}
+
+      <ShareModal
+        isOpen={shareModal.isOpen}
+        onClose={() => setShareModal({ ...shareModal, isOpen: false })}
+        type={shareModal.type}
+        doctorProfile={doctorProfile}
+        paymentMethods={paymentMethods}
+      />
 
       <Wrapper>
       {/* Welcome Banner */}
@@ -800,6 +854,16 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
           </div>
         </div>
       </WelcomeCard>
+
+      {/* Share Buttons */}
+      <ShareButtonsRow>
+        <button onClick={() => setShareModal({ isOpen: true, type: 'doctor' })}>
+          <Share2 size={16} /> Perfil
+        </button>
+        <button onClick={() => setShareModal({ isOpen: true, type: 'payment' })}>
+          <Share2 size={16} /> Pagos
+        </button>
+      </ShareButtonsRow>
 
       {/* Quick Actions */}
       <SectionLabel>Acciones rápidas</SectionLabel>
