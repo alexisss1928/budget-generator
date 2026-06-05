@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import styled from 'styled-components';
-import { PlusCircle, Pill, Plus } from 'lucide-react';
+import { PlusCircle, Pill, Plus, X } from 'lucide-react';
 import ItemRecipeComponent from '../ItemRecipe';
 
 // ─── Styled Components (Matching Budget & DoctorSettings) ──────────────────
@@ -118,6 +119,74 @@ const EmptyState = styled.div`
   font-size: 13px;
 `;
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+  padding: 20px;
+`;
+
+const ModalContent = styled.div`
+  background: var(--surface);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  
+  /* Overrides for FormCard inside modal */
+  & > div {
+    margin: 0;
+    box-shadow: none;
+  }
+`;
+
+const CloseBtn = styled.button`
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  z-index: 10;
+  
+  &:hover {
+    color: var(--text);
+  }
+`;
+
+const PrimaryBtn = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+
+  svg {
+    color: #fff !important;
+  }
+
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type MedicinesInLocalStorage = {
@@ -146,74 +215,90 @@ const Recipe = ({
   DeleteMedicine,
   currentMedicineSelected,
 }: RecipeProps) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    AddMedicine(e as any);
+    setIsModalOpen(false);
+  };
+
   return (
     <>
-      {/* ── Agregar medicamento ── */}
-      <FormCard>
-        <CardTitle>
-          <PlusCircle size={15} />
-          <span>Agregar medicamento</span>
-        </CardTitle>
-        <form onSubmit={AddMedicine}>
-          <FieldRow>
-            <label>Elegir guardado</label>
-            <select
-              name="treatment"
-              onChange={handleCurrentRecipe}
-              defaultValue=""
-              required
-            >
-              <option value="" disabled>
-                {medicinesList.length !== 0
-                  ? 'Selecciona un medicamento predefinido...'
-                  : 'Sin medicamentos guardados'}
-              </option>
-              {medicinesList
-                ?.sort((a, b) => a.nombre.localeCompare(b.nombre))
-                .map((medicamento, index) => (
-                  <option value={index} key={index}>
-                    {medicamento.nombre}
-                  </option>
-                ))}
-            </select>
-          </FieldRow>
-          
-          <FieldRow>
-            <label>Medicamento</label>
-            <input
-              type="text"
-              name="nombre"
-              onChange={handleCurrentRecipe}
-              placeholder="Nombre y presentación (Ej: Ibuprofeno 400mg)"
-              value={currentMedicineSelected.nombre}
-              required
-              autoComplete="off"
-            />
-          </FieldRow>
+      {isModalOpen && (
+        <ModalOverlay onClick={() => setIsModalOpen(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <CloseBtn onClick={() => setIsModalOpen(false)}><X size={18} /></CloseBtn>
+            <FormCard>
+              <CardTitle style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                <PlusCircle size={15} />
+                <span>Agregar medicamento</span>
+              </CardTitle>
+              <form onSubmit={handleFormSubmit}>
+                <FieldRow>
+                  <label>Elegir guardado</label>
+                  <select
+                    name="treatment"
+                    onChange={handleCurrentRecipe}
+                    defaultValue=""
+                    required
+                  >
+                    <option value="" disabled>
+                      {medicinesList.length !== 0
+                        ? 'Selecciona un medicamento predefinido...'
+                        : 'Sin medicamentos guardados'}
+                    </option>
+                    {medicinesList
+                      ?.sort((a, b) => a.nombre.localeCompare(b.nombre))
+                      .map((medicamento, index) => (
+                        <option value={index} key={index}>
+                          {medicamento.nombre}
+                        </option>
+                      ))}
+                  </select>
+                </FieldRow>
+                
+                <FieldRow>
+                  <label>Medicamento</label>
+                  <input
+                    type="text"
+                    name="nombre"
+                    onChange={handleCurrentRecipe}
+                    placeholder="Nombre y presentación (Ej: Ibuprofeno 400mg)"
+                    value={currentMedicineSelected.nombre}
+                    required
+                    autoComplete="off"
+                  />
+                </FieldRow>
 
-          <FieldRow>
-            <label>Posología</label>
-            <input
-              type="text"
-              name="indicaciones"
-              onChange={handleCurrentRecipe}
-              placeholder="Ej: Tomar 1 tableta cada 8 horas por 3 días"
-              value={currentMedicineSelected.indicaciones}
-              autoComplete="off"
-            />
-          </FieldRow>
+                <FieldRow>
+                  <label>Posología</label>
+                  <input
+                    type="text"
+                    name="indicaciones"
+                    onChange={handleCurrentRecipe}
+                    placeholder="Ej: Tomar 1 tableta cada 8 horas por 3 días"
+                    value={currentMedicineSelected.indicaciones}
+                    autoComplete="off"
+                  />
+                </FieldRow>
 
-          <AddBtn type="submit">
-            <Plus size={16} /> Agregar al recipe
-          </AddBtn>
-        </form>
-      </FormCard>
+                <AddBtn type="submit">
+                  <Plus size={16} /> Agregar al recipe
+                </AddBtn>
+              </form>
+            </FormCard>
+          </ModalContent>
+        </ModalOverlay>
+      )}
 
       {/* ── Lista del recipe ── */}
       <FormCard>
         <CardTitle>
           <Pill size={15} />
           <span>Recipe Médico</span>
+          <PrimaryBtn onClick={() => setIsModalOpen(true)}>
+            <PlusCircle size={14} /> Agregar
+          </PrimaryBtn>
         </CardTitle>
         <ListContainer>
           {currentRecipe.length === 0 ? (

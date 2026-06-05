@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import styled from 'styled-components';
-import { PlusCircle, ClipboardList, Plus } from 'lucide-react';
+import { PlusCircle, ClipboardList, Plus, X } from 'lucide-react';
 import ItemPresupuesto from '../ItemPresupuesto';
 
 // ─── Styled Components (Matching DoctorSettings) ─────────────────────────────
@@ -160,6 +160,74 @@ const EmptyState = styled.div`
   font-size: 13px;
 `;
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+  padding: 20px;
+`;
+
+const ModalContent = styled.div`
+  background: var(--surface);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  
+  /* Overrides for FormCard inside modal */
+  & > div {
+    margin: 0;
+    box-shadow: none;
+  }
+`;
+
+const CloseBtn = styled.button`
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  z-index: 10;
+  
+  &:hover {
+    color: var(--text);
+  }
+`;
+
+const PrimaryBtn = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+
+  svg {
+    color: #fff !important;
+  }
+
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type TreatmentInLocalStorage = {
@@ -198,6 +266,7 @@ const Budget = ({
 }: BudgetType) => {
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const [activeQuantity, setActiveQuantity] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const setQuantity = (q: number) => {
     setActiveQuantity(q);
@@ -215,81 +284,91 @@ const Budget = ({
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     AddTreatment(e as any);
     setActiveQuantity(null);
+    setIsModalOpen(false);
   };
 
   return (
     <>
-      {/* ── Agregar un procedimiento ── */}
-      <FormCard>
-        <CardTitle>
-          <PlusCircle size={15} />
-          <span>Agregar procedimiento</span>
-        </CardTitle>
-        <form onSubmit={handleFormSubmit}>
-          <FieldRow>
-            <label>Tratamiento</label>
-            <select
-              name="treatment"
-              onChange={handleCurrentBudget}
-              defaultValue=""
-              required
-            >
-              <option value="" disabled>
-                {myTreatments.length !== 0
-                  ? 'Selecciona un procedimiento'
-                  : 'Sin procedimientos guardados'}
-              </option>
-              {myTreatments
-                ?.sort((a, b) => a.nombre.localeCompare(b.nombre))
-                .map((procedimiento, index) => (
-                  <option value={index} key={index}>
-                    {procedimiento.nombre} • ${procedimiento.precio}
-                  </option>
-                ))}
-            </select>
-          </FieldRow>
+      {isModalOpen && (
+        <ModalOverlay onClick={() => setIsModalOpen(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <CloseBtn onClick={() => setIsModalOpen(false)}><X size={18} /></CloseBtn>
+            <FormCard>
+              <CardTitle style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                <PlusCircle size={15} />
+                <span>Agregar procedimiento</span>
+              </CardTitle>
+              <form onSubmit={handleFormSubmit}>
+                <FieldRow>
+                  <label>Tratamiento</label>
+                  <select
+                    name="treatment"
+                    onChange={handleCurrentBudget}
+                    defaultValue=""
+                    required
+                  >
+                    <option value="" disabled>
+                      {myTreatments.length !== 0
+                        ? 'Selecciona un procedimiento'
+                        : 'Sin procedimientos guardados'}
+                    </option>
+                    {myTreatments
+                      ?.sort((a, b) => a.nombre.localeCompare(b.nombre))
+                      .map((procedimiento, index) => (
+                        <option value={index} key={index}>
+                          {procedimiento.nombre} • ${procedimiento.precio}
+                        </option>
+                      ))}
+                  </select>
+                </FieldRow>
 
-          <FieldRow>
-            <label>Cantidad</label>
-            <QuickBtnRow>
-              <QuickBtn type="button" $active={activeQuantity === 1} onClick={() => setQuantity(1)}>1</QuickBtn>
-              <QuickBtn type="button" $active={activeQuantity === 2} onClick={() => setQuantity(2)}>2</QuickBtn>
-              <QuickBtn type="button" $active={activeQuantity === 3} onClick={() => setQuantity(3)}>3</QuickBtn>
-            </QuickBtnRow>
-            <input
-              ref={quantityInputRef}
-              type="number"
-              name="quantity"
-              min="1"
-              onChange={handleQuantityInput}
-              required
-              autoComplete="off"
-              placeholder="Otra"
-            />
-          </FieldRow>
+                <FieldRow>
+                  <label>Cantidad</label>
+                  <QuickBtnRow>
+                    <QuickBtn type="button" $active={activeQuantity === 1} onClick={() => setQuantity(1)}>1</QuickBtn>
+                    <QuickBtn type="button" $active={activeQuantity === 2} onClick={() => setQuantity(2)}>2</QuickBtn>
+                    <QuickBtn type="button" $active={activeQuantity === 3} onClick={() => setQuantity(3)}>3</QuickBtn>
+                  </QuickBtnRow>
+                  <input
+                    ref={quantityInputRef}
+                    type="number"
+                    name="quantity"
+                    min="1"
+                    onChange={handleQuantityInput}
+                    required
+                    autoComplete="off"
+                    placeholder="Otra"
+                  />
+                </FieldRow>
 
-          <FieldRow>
-            <label>Observaciones</label>
-            <input
-              type="text"
-              name="observations"
-              placeholder="Opcional"
-              onChange={handleCurrentBudget}
-              autoComplete="off"
-            />
-          </FieldRow>
+                <FieldRow>
+                  <label>Observaciones</label>
+                  <input
+                    type="text"
+                    name="observations"
+                    placeholder="Opcional"
+                    onChange={handleCurrentBudget}
+                    autoComplete="off"
+                  />
+                </FieldRow>
 
-          <AddBtn type="submit">
-            <Plus size={16} /> Agregar al plan
-          </AddBtn>
-        </form>
-      </FormCard>
+                <AddBtn type="submit">
+                  <Plus size={16} /> Agregar al plan
+                </AddBtn>
+              </form>
+            </FormCard>
+          </ModalContent>
+        </ModalOverlay>
+      )}
 
       {/* ── Plan de tratamiento ── */}
       <FormCard>
         <CardTitle>
           <ClipboardList size={15} />
           <span>Plan de tratamiento</span>
+          <PrimaryBtn onClick={() => setIsModalOpen(true)}>
+            <PlusCircle size={14} /> Agregar
+          </PrimaryBtn>
         </CardTitle>
         <ListContainer>
           {treatmentsList.length === 0 ? (

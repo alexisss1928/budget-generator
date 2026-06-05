@@ -418,7 +418,25 @@ export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 're
     }
   }
 
-  if (data['doctorProfile']) {
-    await saveDoctorProfile(data['doctorProfile']);
+    if (data['doctorProfile']) {
+      await saveDoctorProfile(data['doctorProfile']);
+    }
+}
+
+export async function clearAllData(): Promise<void> {
+  const db = await initDB();
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods'];
+
+  for (const storeName of stores) {
+    if (db.objectStoreNames.contains(storeName)) {
+      const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+      await promisifyRequest(store.clear());
+    }
+  }
+
+  if (db.objectStoreNames.contains('doctorProfile')) {
+    const store = db.transaction('doctorProfile', 'readwrite').objectStore('doctorProfile');
+    await promisifyRequest(store.clear());
   }
 }
+

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Trash2, PlusCircle, Info, CreditCard } from 'lucide-react';
+import { Trash2, PlusCircle, Info, CreditCard, Edit2 } from 'lucide-react';
 import { 
   getAllPaymentMethods, 
   savePaymentMethod, 
@@ -132,7 +132,7 @@ const ListItem = styled.div`
       align-items: center;
       gap: 12px;
 
-      button.delete {
+      button.edit, button.delete {
         background: transparent;
         border: none;
         color: var(--text-muted);
@@ -141,34 +141,30 @@ const ListItem = styled.div`
         padding: 4px;
         border-radius: 6px;
         transition: all 0.15s;
+      }
 
-        &:hover {
-          background: #ffebee;
-          color: #e53935;
-        }
+      button.edit:hover {
+        background: #e3f2fd;
+        color: #1e88e5;
+      }
+
+      button.delete:hover {
+        background: #ffebee;
+        color: #e53935;
       }
     }
   }
 
   .details {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    
-    div {
-      background: var(--bg);
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      
-      span {
-        font-weight: 600;
-        color: var(--text);
-        margin-right: 4px;
-      }
-    }
+    background: var(--bg);
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text);
+    white-space: pre-wrap;
+    line-height: 1.6;
+    font-family: inherit;
   }
 `;
 
@@ -198,6 +194,10 @@ const PrimaryBtn = styled(SecondaryBtn)<{ $disabled?: boolean }>`
   color: ${(p) => p.$disabled ? 'var(--text-muted)' : '#fff'};
   border: none;
   pointer-events: ${(p) => p.$disabled ? 'none' : 'auto'};
+
+  svg {
+    color: ${(p) => p.$disabled ? 'var(--text-muted)' : '#fff'} !important;
+  }
 
   &:hover {
     background: var(--accent);
@@ -298,6 +298,8 @@ export default function PaymentMethods() {
   // Modal state
   const [selectedType, setSelectedType] = useState<PaymentMethodType>('Pago Móvil');
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const loadMethods = async () => {
     const data = await getAllPaymentMethods();
@@ -311,12 +313,25 @@ export default function PaymentMethods() {
   const openModal = () => {
     setSelectedType('Pago Móvil');
     setFormData({});
+    setEditingId(null);
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setFormData({});
+    setEditingId(null);
+  };
+
+  const editMethod = (method: PaymentMethodRecord) => {
+    setSelectedType(method.type);
+    const parsedDetails = parseDetails(method.details);
+    if (method.type === 'Otro' && method.customName) {
+        parsedDetails.customName = method.customName;
+    }
+    setFormData(parsedDetails);
+    setEditingId(method.id || null);
+    setIsModalOpen(true);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -337,6 +352,7 @@ export default function PaymentMethods() {
     }
     
     const newMethod: PaymentMethodRecord = {
+      ...(editingId ? { id: editingId } : {}),
       type: selectedType,
       customName: selectedType === 'Otro' ? formData.customName : undefined,
       details: JSON.stringify(formData),
@@ -346,15 +362,24 @@ export default function PaymentMethods() {
     await savePaymentMethod(newMethod);
     closeModal();
     loadMethods();
-    toast.success('Método de pago agregado');
+    toast.success(editingId ? 'Método de pago actualizado' : 'Método de pago agregado');
   };
 
-  const deleteMethod = async (id: number) => {
-    if (window.confirm('¿Seguro que deseas eliminar este método de pago?')) {
-      await deletePaymentMethod(id);
+  const deleteMethod = (id: number) => {
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirmId !== null) {
+      await deletePaymentMethod(deleteConfirmId);
       loadMethods();
       toast.info('Método eliminado');
+      setDeleteConfirmId(null);
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmId(null);
   };
 
   const parseDetails = (jsonStr: string) => {
@@ -395,25 +420,23 @@ export default function PaymentMethods() {
                       {method.type === 'Otro' ? method.customName : method.type}
                     </div>
                     <div className="actions">
+                      <button className="edit" onClick={() => editMethod(method)} title="Editar">
+                        <Edit2 size={16} />
+                      </button>
                       <button className="delete" onClick={() => deleteMethod(method.id!)} title="Eliminar">
                         <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
                   <div className="details">
-                    {Object.entries(details).map(([key, value]) => {
-                      if (key === 'customName' || !value) return null;
-                      // Format key (e.g. "numeroCuenta" -> "Numero Cuenta")
-                      const formattedKey = key
-                        .replace(/([A-Z])/g, ' $1')
-                        .replace(/^./, str => str.toUpperCase());
-                      
-                      return (
-                        <div key={key}>
-                          <span>{formattedKey}:</span> {value as string}
-                        </div>
-                      );
-                    })}
+                    {Object.entries(details)
+                      .filter(([key, value]) => key !== 'customName' && value)
+                      .map(([key, value]) => {
+                        const formattedKey = key
+                          .replace(/([A-Z])/g, ' $1')
+                          .replace(/^./, str => str.toUpperCase());
+                        return `${formattedKey}: ${value}`;
+                      }).join('\n')}
                   </div>
                 </ListItem>
               );
@@ -428,14 +451,16 @@ export default function PaymentMethods() {
       {isModalOpen && (
         <ModalOverlay onClick={closeModal}>
           <ModalContent onClick={(e) => e.stopPropagation()}>
-            <h3>Agregar Método de Pago</h3>
+            <h3>{editingId ? `Editar ${selectedType === 'Otro' ? (formData.customName || selectedType) : selectedType}` : 'Agregar Método de Pago'}</h3>
             
-            <div className="field">
-              <label>Tipo de Método</label>
-              <select value={selectedType} onChange={handleTypeChange}>
-                {paymentTypes.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
+            {!editingId && (
+              <div className="field">
+                <label>Tipo de Método</label>
+                <select value={selectedType} onChange={handleTypeChange}>
+                  {paymentTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            )}
 
             {/* Dynamic Fields based on Type */}
             {selectedType === 'Pago Móvil' && (
@@ -539,6 +564,22 @@ export default function PaymentMethods() {
             <div className="buttons">
               <SecondaryBtn onClick={closeModal}>Cancelar</SecondaryBtn>
               <PrimaryBtn onClick={saveMethod}>Guardar</PrimaryBtn>
+            </div>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* Modal Confirmar Eliminar */}
+      {deleteConfirmId !== null && (
+        <ModalOverlay onClick={cancelDelete}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <h3>Eliminar Método</h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+              ¿Seguro que deseas eliminar este método de pago? Esta acción no se puede deshacer.
+            </p>
+            <div className="buttons">
+              <SecondaryBtn onClick={cancelDelete}>Cancelar</SecondaryBtn>
+              <PrimaryBtn onClick={confirmDelete} style={{ background: '#e53935' }}>Eliminar</PrimaryBtn>
             </div>
           </ModalContent>
         </ModalOverlay>

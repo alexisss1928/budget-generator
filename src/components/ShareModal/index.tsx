@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { X, Share2 } from 'lucide-react';
+import styled, { keyframes } from 'styled-components';
+import { X, Share2, RefreshCw } from 'lucide-react';
 import { DoctorProfile, PaymentMethodRecord } from '../../db/clinicDB';
 
 const ModalOverlay = styled.div`
@@ -122,6 +122,134 @@ const Button = styled.button<{ $primary?: boolean }>`
   }
 `;
 
+const AmountContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--surface-alt);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+`;
+
+const AmountInputRow = styled.div`
+  display: flex;
+  gap: 8px;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    font-family: inherit;
+    &:focus { border-color: var(--accent); }
+  }
+
+  select {
+    width: 60px;
+    flex-shrink: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 4px;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    font-family: inherit;
+    &:focus { border-color: var(--accent); }
+  }
+
+  .convert-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-bg);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 0 10px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    
+    &:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+  }
+`;
+
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
+
+const BcvBox = styled.div`
+  margin-top: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    strong { color: var(--text); font-size: 13px; }
+    button {
+      background: transparent;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+
+      &:hover { text-decoration: underline; }
+      &:disabled { opacity: 0.5; pointer-events: none; }
+      
+      .spin { animation: ${spin} 1s linear infinite; }
+    }
+  }
+
+  .rates {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+
+    div {
+      flex: 1;
+      background: var(--surface);
+      padding: 8px;
+      border-radius: 6px;
+      text-align: center;
+      border: 1px solid var(--border);
+      
+      span { display: block; color: var(--text-secondary); font-size: 10px; text-transform: uppercase; margin-bottom: 2px; }
+      b { color: var(--text); font-size: 13px; }
+    }
+  }
+
+  .date {
+    text-align: right;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+`;
+
 interface SelectableItem {
   id: string;
   label: string;
@@ -139,9 +267,65 @@ interface ShareModalProps {
 
 export default function ShareModal({ isOpen, onClose, type, doctorProfile, paymentMethods }: ShareModalProps) {
   const [items, setItems] = useState<SelectableItem[]>([]);
+  const [includeAmount, setIncludeAmount] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('Bs.');
+  const [bcvData, setBcvData] = useState<{ usd: number, eur: number, date: string } | null>(null);
+  const [isFetchingBcv, setIsFetchingBcv] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) return;
+    const saved = localStorage.getItem('bcv_rates');
+    if (saved) {
+      try {
+        setBcvData(JSON.parse(saved));
+      } catch { }
+    }
+  }, []);
+
+  const fetchBCV = async () => {
+    setIsFetchingBcv(true);
+    try {
+      const [resUsd, resEur] = await Promise.all([
+        fetch('https://ve.dolarapi.com/v1/dolares/oficial'),
+        fetch('https://ve.dolarapi.com/v1/euros/oficial')
+      ]);
+      const dataUsd = await resUsd.json();
+      const dataEur = await resEur.json();
+
+      const newData = {
+        usd: dataUsd.promedio || dataUsd.venta || 0,
+        eur: dataEur.promedio || dataEur.venta || 0,
+        date: new Date().toLocaleString('es-VE')
+      };
+      setBcvData(newData);
+      localStorage.setItem('bcv_rates', JSON.stringify(newData));
+    } catch (error) {
+      console.error('Error fetching BCV:', error);
+      alert('Error al obtener tasas del BCV. Verifique su conexión.');
+    } finally {
+      setIsFetchingBcv(false);
+    }
+  };
+
+  const handleConvertToBs = () => {
+    if (!bcvData || !amount || isNaN(Number(amount))) return;
+    const numAmount = Number(amount);
+    if (currency === '$') {
+      setAmount((numAmount * bcvData.usd).toFixed(2));
+      setCurrency('Bs.');
+    } else if (currency === '€') {
+      setAmount((numAmount * bcvData.eur).toFixed(2));
+      setCurrency('Bs.');
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIncludeAmount(false);
+      setAmount('');
+      setCurrency('Bs.');
+      return;
+    }
 
     if (type === 'doctor' && doctorProfile) {
       const list: SelectableItem[] = [];
@@ -209,6 +393,11 @@ export default function ShareModal({ isOpen, onClose, type, doctorProfile, payme
       });
     } else {
       textToShare = "💳 *Métodos de Pago Aceptados*\n\n";
+      
+      if (includeAmount && amount.trim() !== '') {
+        textToShare += `*Monto a pagar:* ${amount} ${currency}\n\n`;
+      }
+
       selectedItems.forEach(i => {
         textToShare += `*${i.label}*\n${i.value}\n\n`;
       });
@@ -256,6 +445,73 @@ export default function ShareModal({ isOpen, onClose, type, doctorProfile, payme
             <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, marginTop: 20 }}>
               No hay datos configurados para compartir.
             </p>
+          )}
+
+          {type === 'payment' && items.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <CheckboxLabel>
+                <input 
+                  type="checkbox" 
+                  checked={includeAmount} 
+                  onChange={(e) => setIncludeAmount(e.target.checked)} 
+                />
+                <div className="info">
+                  <strong>Enviar métodos con monto a pagar</strong>
+                  <span>Añade el monto específico al mensaje.</span>
+                </div>
+              </CheckboxLabel>
+              
+              {includeAmount && (
+                <AmountContainer>
+                  <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Monto y Moneda</label>
+                  <AmountInputRow>
+                    <input 
+                      type="number" 
+                      placeholder="Ej. 50" 
+                      value={amount} 
+                      onChange={(e) => setAmount(e.target.value)} 
+                    />
+                    <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                      <option value="Bs.">Bs.</option>
+                      <option value="$">$</option>
+                      <option value="€">€</option>
+                    </select>
+                    {bcvData && currency !== 'Bs.' && amount && (
+                      <button 
+                        className="convert-btn" 
+                        onClick={handleConvertToBs} 
+                        title="Convertir a Bolívares usando tasa BCV"
+                      >
+                        a Bs.
+                      </button>
+                    )}
+                  </AmountInputRow>
+
+                  <BcvBox>
+                    <div className="header">
+                      <strong>Tasas BCV</strong>
+                      <button onClick={fetchBCV} disabled={isFetchingBcv}>
+                        <RefreshCw size={12} className={isFetchingBcv ? 'spin' : ''} />
+                        {isFetchingBcv ? 'Actualizando...' : 'Actualizar'}
+                      </button>
+                    </div>
+                    {bcvData ? (
+                      <>
+                        <div className="rates">
+                          <div><span>Dólar (USD)</span><b>Bs. {bcvData.usd.toFixed(2)}</b></div>
+                          <div><span>Euro (EUR)</span><b>Bs. {bcvData.eur.toFixed(2)}</b></div>
+                        </div>
+                        <div className="date">Última extr: {bcvData.date}</div>
+                      </>
+                    ) : (
+                      <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 11, padding: '10px 0' }}>
+                        Haz clic en Actualizar para obtener las tasas de hoy.
+                      </div>
+                    )}
+                  </BcvBox>
+                </AmountContainer>
+              )}
+            </div>
           )}
         </ScrollableList>
 

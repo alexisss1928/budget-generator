@@ -227,6 +227,10 @@ const PrimaryBtn = styled(SecondaryBtn)<{ $disabled?: boolean }>`
   border: none;
   pointer-events: ${(p) => p.$disabled ? 'none' : 'auto'};
 
+  svg {
+    color: ${(p) => p.$disabled ? 'var(--text-muted)' : '#fff'} !important;
+  }
+
   &:hover {
     background: var(--accent);
     opacity: 0.9;

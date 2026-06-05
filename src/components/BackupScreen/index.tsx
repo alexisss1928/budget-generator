@@ -1,13 +1,13 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import {
   Database, Download, Upload, AlertTriangle,
   CloudUpload, CloudDownload, LogOut, WifiOff,
-  RefreshCw, FileJson, Clock,
+  RefreshCw, FileJson, Clock, Trash2
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { exportDB, importDB } from '../../db/clinicDB';
+import { exportDB, importDB, clearAllData, getDoctorProfile } from '../../db/clinicDB';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { CLIENT_ID, BACKUP_FILE_NAME } from '../../services/googleDrive';
 
@@ -179,6 +179,38 @@ const RadioOption = styled.label<{ $active?: boolean }>`
       color: ${(p) => p.$active ? 'var(--accent)' : 'var(--text)'};
     }
     span { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+  }
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+  padding: 20px;
+`;
+
+const ModalContent = styled.div`
+  background: var(--surface);
+  padding: 24px;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  max-height: 90vh;
+  overflow-y: auto;
+
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 0 0 18px 0;
   }
 `;
 
@@ -436,6 +468,17 @@ function formatFileDate(isoString: string): string {
 const BackupScreen = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [restoreMode, setRestoreMode] = useState<'replace' | 'merge'>('replace');
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetInput, setResetInput] = useState('');
+  const [doctorName, setDoctorName] = useState('');
+
+  useEffect(() => {
+    getDoctorProfile().then(profile => {
+      if (profile && profile.nombre) {
+        setDoctorName(profile.nombre);
+      }
+    });
+  }, []);
 
   // Google Drive
   const drive = useGoogleDrive();
@@ -526,6 +569,20 @@ const BackupScreen = () => {
     }
   };
 
+  // ── Factory Reset ──────────────────────────────────────────────────────────
+
+  const handleFactoryReset = async () => {
+    try {
+      await clearAllData();
+      localStorage.clear();
+      toast.success('Aplicación restablecida con éxito', { autoClose: 2000 });
+      setResetConfirmOpen(false);
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err) {
+      toast.error('Error al restablecer la base de datos');
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -549,6 +606,51 @@ const BackupScreen = () => {
           <PrimaryBtn onClick={handleExport}>
             <Download size={15} /> Exportar Datos
           </PrimaryBtn>
+        </ActionRow>
+      </FormCard>
+
+      {/* ── Modo de Restauración ─────────────────────────────────────────── */}
+      <FormCard>
+        <CardTitle>
+          <Database size={15} />
+          <span>Modo de Restauración</span>
+        </CardTitle>
+        <ActionRow>
+          <p>Selecciona cómo se comportarán los datos al restaurar (tanto desde Drive como local).</p>
+
+          <RadioGroup>
+            <RadioOption $active={restoreMode === 'replace'}>
+              <input
+                type="radio"
+                name="restoreMode"
+                checked={restoreMode === 'replace'}
+                onChange={() => setRestoreMode('replace')}
+              />
+              <div>
+                <strong>Reemplazar Todo</strong>
+                <span>Borra la información actual y carga únicamente la del respaldo.</span>
+              </div>
+            </RadioOption>
+            <RadioOption $active={restoreMode === 'merge'}>
+              <input
+                type="radio"
+                name="restoreMode"
+                checked={restoreMode === 'merge'}
+                onChange={() => setRestoreMode('merge')}
+              />
+              <div>
+                <strong>Mezclar Datos</strong>
+                <span>Mantiene tu información actual y añade los registros del respaldo.</span>
+              </div>
+            </RadioOption>
+          </RadioGroup>
+
+          {restoreMode === 'replace' && (
+            <WarningBox>
+              <AlertTriangle size={16} />
+              <span><strong>¡Atención!</strong> Se eliminarán tus datos actuales al restaurar.</span>
+            </WarningBox>
+          )}
         </ActionRow>
       </FormCard>
 
@@ -629,11 +731,6 @@ const BackupScreen = () => {
                 <DriveErrorBox>{drive.error}</DriveErrorBox>
               )}
 
-              {/* Mode selector (reuses the same restoreMode state as local import) */}
-              <p style={{ marginBottom: 0 }}>
-                <strong>Modo de restauración activo:</strong> aplica al restaurar desde Drive también.
-              </p>
-
               {/* Action buttons */}
               <DriveActionRow>
                 <PrimaryBtn onClick={handleDriveUpload} disabled={isBusy}>
@@ -691,41 +788,7 @@ const BackupScreen = () => {
           <span>Restaurar desde Archivo Local</span>
         </CardTitle>
         <ActionRow>
-          <p>Selecciona cómo deseas restaurar y luego elige el archivo de respaldo.</p>
-
-          <RadioGroup>
-            <RadioOption $active={restoreMode === 'replace'}>
-              <input
-                type="radio"
-                name="restoreMode"
-                checked={restoreMode === 'replace'}
-                onChange={() => setRestoreMode('replace')}
-              />
-              <div>
-                <strong>Reemplazar Todo</strong>
-                <span>Borra la información actual y carga únicamente la del archivo.</span>
-              </div>
-            </RadioOption>
-            <RadioOption $active={restoreMode === 'merge'}>
-              <input
-                type="radio"
-                name="restoreMode"
-                checked={restoreMode === 'merge'}
-                onChange={() => setRestoreMode('merge')}
-              />
-              <div>
-                <strong>Mezclar Datos</strong>
-                <span>Mantiene tu información actual y añade los registros del archivo.</span>
-              </div>
-            </RadioOption>
-          </RadioGroup>
-
-          {restoreMode === 'replace' && (
-            <WarningBox>
-              <AlertTriangle size={16} />
-              <span><strong>¡Atención!</strong> Se eliminarán tus datos actuales.</span>
-            </WarningBox>
-          )}
+          <p>Selecciona un archivo .json de tu dispositivo para aplicar el respaldo.</p>
 
           <FileLabel>
             <Upload size={16} />
@@ -734,6 +797,61 @@ const BackupScreen = () => {
           </FileLabel>
         </ActionRow>
       </FormCard>
+
+      {/* ── Factory Reset ─────────────────────────────────────────────────── */}
+      <FormCard style={{ border: '1px solid #ffcdd2' }}>
+        <CardTitle>
+          <AlertTriangle size={15} color="#e53935" />
+          <span style={{ color: '#e53935' }}>Restablecer de Fábrica</span>
+        </CardTitle>
+        <ActionRow>
+          <p>Se borrará <strong>toda</strong> la información guardada en esta aplicación (tratamientos, métodos de pago, historial, recetas, perfil). Esta acción no se puede deshacer y tu app quedará como recién instalada.</p>
+          <PrimaryBtn $danger onClick={() => { setResetInput(''); setResetConfirmOpen(true); }}>
+            <Trash2 size={15} /> Borrar Todo
+          </PrimaryBtn>
+        </ActionRow>
+      </FormCard>
+
+      {/* Modal Confirmar Reset */}
+      {resetConfirmOpen && (
+        <ModalOverlay onClick={() => setResetConfirmOpen(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ color: '#e53935', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={18} /> Confirmar Restablecimiento
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
+              ¿Estás absolutamente seguro de que deseas borrar <strong>todos</strong> los datos guardados en esta aplicación? Esta acción es irreversible y tu aplicación quedará como recién instalada. Asegúrate de haber realizado un respaldo previamente si necesitas esta información a futuro.
+            </p>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                Para confirmar, escribe: <strong>{doctorName || 'CONFIRMAR'}</strong>
+              </label>
+              <input 
+                type="text" 
+                value={resetInput}
+                onChange={(e) => setResetInput(e.target.value)}
+                placeholder={doctorName || 'CONFIRMAR'}
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: '8px', 
+                  border: '1px solid var(--border)', background: 'var(--input-bg)',
+                  color: 'var(--text)', outline: 'none', fontSize: '13px', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <div className="buttons" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <SecondaryBtn onClick={() => setResetConfirmOpen(false)}>Cancelar</SecondaryBtn>
+              <PrimaryBtn 
+                $danger 
+                onClick={handleFactoryReset}
+                disabled={resetInput !== (doctorName || 'CONFIRMAR')}
+                style={{ opacity: resetInput !== (doctorName || 'CONFIRMAR') ? 0.5 : 1 }}
+              >
+                Sí, Borrar Todo
+              </PrimaryBtn>
+            </div>
+          </ModalContent>
+        </ModalOverlay>
+      )}
 
       <ToastContainer
         position="bottom-center"
