@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import api from '../../services/api';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Search } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Container = styled.div`
@@ -12,8 +12,9 @@ const Container = styled.div`
 
 const Header = styled.div`
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
   margin-bottom: 24px;
 `;
 
@@ -34,21 +35,21 @@ const Title = styled.h2`
   margin: 0;
   font-size: 18px;
   color: var(--text);
+  align-self: center;
+  text-align: center;
+  width: 100%;
 `;
 
 const StatsGrid = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 32px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  &::-webkit-scrollbar { height: 4px; }
-  &::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 `;
 
-const StatCard = styled.div<{ $color?: string; $bg?: string }>`
-  flex: 1;
-  min-width: 130px;
+const StatCard = styled.div<{ $color?: string; $bg?: string; $fullWidth?: boolean }>`
+  flex: ${props => props.$fullWidth ? '1 1 100%' : '1 1 calc(50% - 8px)'};
+  min-width: ${props => props.$fullWidth ? '100%' : '130px'};
   background: ${props => props.$bg || 'var(--surface)'};
   padding: 20px;
   border-radius: 16px;
@@ -110,6 +111,44 @@ const MobileView = styled.div`
   }
 `;
 
+const FilterBar = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+
+  .search-input {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    background: var(--surface) !important;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 12px;
+    
+    && input {
+      border: none;
+      background-color: transparent !important;
+      padding: 10px 0;
+      width: 100%;
+      margin-left: 8px;
+      color: var(--text) !important;
+      &:focus { outline: none; }
+    }
+    &:focus-within { border-color: var(--accent); }
+  }
+
+  select {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface) !important;
+    color: var(--text);
+    &:focus { outline: none; border-color: var(--accent); }
+  }
+`;
+
 const UserMobileCard = styled.details`
   background: var(--surface);
   border-radius: 12px;
@@ -118,13 +157,43 @@ const UserMobileCard = styled.details`
   
   summary {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    justify-content: space-between;
+    align-items: center;
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;
     list-style: none;
     &::-webkit-details-marker { display: none; }
+  }
+
+  &[open] summary .arrow {
+    transform: rotate(180deg);
+  }
+
+  .summary-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .summary-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .arrow {
+    transition: transform 0.2s;
+    color: var(--text-muted);
   }
 
   .email {
@@ -193,6 +262,9 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterPlan, setFilterPlan] = useState('ALL');
 
   const loadData = useCallback(async () => {
     try {
@@ -224,6 +296,13 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
     }
   };
 
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPlan = filterPlan === 'ALL' || u.plan === filterPlan;
+    return matchesSearch && matchesPlan;
+  });
+
   if (loading) return <Container>Cargando panel...</Container>;
 
   return (
@@ -237,7 +316,7 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
 
       {stats && (
         <StatsGrid>
-          <StatCard $color="var(--accent)" $bg="var(--accent-bg)">
+          <StatCard $fullWidth $color="var(--accent)" $bg="var(--accent-bg)">
             <h3>Usuarios</h3>
             <p>{stats.total}</p>
           </StatCard>
@@ -252,6 +331,23 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
         </StatsGrid>
       )}
 
+      <FilterBar>
+        <div className="search-input">
+          <Search size={16} color="var(--text-muted)" />
+          <input 
+            type="text" 
+            placeholder="Buscar por nombre o correo..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <select value={filterPlan} onChange={(e) => setFilterPlan(e.target.value)}>
+          <option value="ALL">Todos los planes</option>
+          <option value="FREE">Free</option>
+          <option value="FULL_ACCESS">Full Access</option>
+        </select>
+      </FilterBar>
+
       <TableContainer>
         <DesktopTable>
           <thead>
@@ -264,7 +360,7 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
             </tr>
           </thead>
           <tbody>
-            {users.map(user => (
+            {filteredUsers.map(user => (
               <tr key={user.id}>
                 <td>{user.name}</td>
                 <td>{user.email}</td>
@@ -285,11 +381,17 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
         </DesktopTable>
 
         <MobileView>
-          {users.map(user => (
+          {filteredUsers.map(user => (
             <UserMobileCard key={user.id}>
               <summary>
-                <span>{user.name}</span>
-                <span className="email">{user.email}</span>
+                <div className="summary-info">
+                  <span>{user.name}</span>
+                  <span className="email">{user.email}</span>
+                </div>
+                <div className="summary-actions">
+                  <span className="badge">{user.plan === 'FULL_ACCESS' ? 'PRO' : 'FREE'}</span>
+                  <ChevronDown size={18} className="arrow" />
+                </div>
               </summary>
               <div className="details-content">
                 <div className="detail-row">

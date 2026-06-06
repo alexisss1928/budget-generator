@@ -139,7 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: !!user,
     isLoading,
     plan: user?.plan ?? null,
-    isFullAccess: user?.plan === 'FULL_ACCESS',
+    isFullAccess: user?.plan === 'FULL_ACCESS' || user?.role === 'ADMIN',
     signInWithGoogle,
     signOut,
     refreshUser,
