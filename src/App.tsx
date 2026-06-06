@@ -5,7 +5,7 @@ import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
   Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users
 } from 'lucide-react';
 
 // Context
@@ -28,6 +28,9 @@ import BackupScreen from './components/BackupScreen';
 import PWABanners from './components/PWABanners';
 import PaymentMethods from './components/PaymentMethods';
 import WhatsAppModal from './components/WhatsAppModal';
+import SignIn from './components/SignIn';
+import AdminPanel from './components/AdminPanel';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { usePWA } from './hooks/usePWA';
 
 // Branding
@@ -334,11 +337,13 @@ const sectionTitle: Record<string, string> = {
   'Métodos de pago': 'Métodos de pago',
   'Datos del doctor': 'Datos del doctor',
   Respaldo: 'Respaldo y Restauración',
+  AdminPanel: 'Panel de Administración',
 };
 
 // ─── Inner App ────────────────────────────────────────────────────────────────
 
 function InnerApp() {
+  const { signOut, user, plan, isFullAccess } = useAuth();
   const pwa = usePWA();
   const { theme, toggleTheme } = useTheme();
   const [section, setSection] = useState('Inicio');
@@ -361,6 +366,17 @@ function InnerApp() {
     nombre: '', precio: '', insuranceCoverage: '', quantity: '', observations: '',
   });
   const [treatmentsList, setTreatmentsList] = useState<CurrentTreatmentListItem[]>([]);
+
+  const checkFreeLimits = async (type: 'presupuesto' | 'recipe') => {
+    if (isFullAccess) return true;
+    const history = await getAllHistory();
+    const count = history.filter(h => h.type === type).length;
+    if (count >= 10) {
+      alert(`Has alcanzado el límite de 10 ${type}s del plan FREE. Actualiza tu plan para continuar.`);
+      return false;
+    }
+    return true;
+  };
 
   const handleCurrentBudget = (e: React.ChangeEvent<HTMLFormElement>) => {
     const { name, value } = e.target;
@@ -450,6 +466,15 @@ function InnerApp() {
 
   const handlePrint = useCallback(async () => {
     if (!componentToPrintRef.current) return;
+    
+    if (section === 'Recipes' && currentRecipe.length > 0) {
+      const allowed = await checkFreeLimits('recipe');
+      if (!allowed) return;
+    } else if (section === 'Presupuesto' && treatmentsList.length > 0) {
+      const allowed = await checkFreeLimits('presupuesto');
+      if (!allowed) return;
+    }
+
     const contactData = {
       patientPhone: personalData.phone || undefined,
       patientEmail: personalData.email || undefined,
@@ -610,7 +635,7 @@ function InnerApp() {
   const navItems = [
     { label: 'Inicio', section: 'Inicio', icon: <Home size={15} /> },
     { label: 'Presupuesto', section: 'Presupuesto', icon: <FileText size={15} /> },
-    { label: 'Informe', section: 'Informe', icon: <ClipboardList size={15} /> },
+    ...(!isFullAccess ? [] : [{ label: 'Informe', section: 'Informe', icon: <ClipboardList size={15} /> }]),
     { label: 'Recipe', section: 'Recipes', icon: <Pill size={15} /> },
     { label: 'Historial', section: 'Historial', icon: <HistoryIcon size={15} /> },
   ];
@@ -620,7 +645,8 @@ function InnerApp() {
     { label: 'Métodos de pago', section: 'Métodos de pago', icon: <CreditCard size={13} /> },
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
     { label: 'Medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
-    { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
+    ...(!isFullAccess ? [] : [{ label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> }]),
+    ...(user?.role === 'ADMIN' ? [{ label: 'Panel Admin', section: 'AdminPanel', icon: <Users size={13} /> }] : []),
   ];
 
   const navigate = (s: string) => {
@@ -673,7 +699,7 @@ function InnerApp() {
           ))}
 
           <DrawerDivider />
-          <DrawerSubLabel>Configuraón</DrawerSubLabel>
+          <DrawerSubLabel>Configuración</DrawerSubLabel>
 
           {configItems.map((item) => (
             <DrawerItem key={item.section} $active={section === item.section}
@@ -681,6 +707,11 @@ function InnerApp() {
               {item.icon}{item.label}
             </DrawerItem>
           ))}
+          
+          <DrawerDivider />
+          <DrawerItem onClick={signOut}>
+            <LogOut size={15} /> Cerrar Sesión
+          </DrawerItem>
         </DrawerNav>
 
         <DrawerFooter>DoctorCompanion · leaf4web</DrawerFooter>
@@ -842,7 +873,7 @@ function InnerApp() {
           </SectionView>
         )}
 
-        {section === 'Respaldo' && (
+        {section === 'Respaldo' && isFullAccess && (
           <SectionView>
             <SectionInner>
               <SectionHeader>
@@ -852,6 +883,12 @@ function InnerApp() {
               </SectionHeader>
               <BackupScreen />
             </SectionInner>
+          </SectionView>
+        )}
+
+        {section === 'AdminPanel' && user?.role === 'ADMIN' && (
+          <SectionView>
+            <AdminPanel onBack={() => navigate('Inicio')} />
           </SectionView>
         )}
       </ContentArea>
@@ -923,10 +960,26 @@ function InnerApp() {
   );
 }
 
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <AppShell style={{ alignItems: 'center', justifyContent: 'center' }}>Cargando...</AppShell>;
+  }
+
+  if (!isAuthenticated) {
+    return <SignIn />;
+  }
+
+  return <InnerApp />;
+}
+
 function App() {
   return (
     <ThemeProvider>
-      <InnerApp />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ThemeProvider>
   );
 }
