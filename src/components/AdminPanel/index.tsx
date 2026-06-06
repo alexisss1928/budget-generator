@@ -37,21 +37,27 @@ const Title = styled.h2`
 `;
 
 const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: flex;
   gap: 16px;
   margin-bottom: 32px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  &::-webkit-scrollbar { height: 4px; }
+  &::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 `;
 
-const StatCard = styled.div`
-  background: var(--surface);
+const StatCard = styled.div<{ $color?: string; $bg?: string }>`
+  flex: 1;
+  min-width: 130px;
+  background: ${props => props.$bg || 'var(--surface)'};
   padding: 20px;
   border-radius: 16px;
   box-shadow: var(--shadow-card);
   text-align: center;
+  border-bottom: 3px solid ${props => props.$color || 'transparent'};
   
-  h3 { margin: 0 0 8px; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
-  p { margin: 0; font-size: 28px; font-weight: 700; color: var(--text); }
+  h3 { margin: 0 0 8px; font-size: 11px; color: ${props => props.$color || 'var(--text-secondary)'}; text-transform: uppercase; letter-spacing: 1px; }
+  p { margin: 0; font-size: 26px; font-weight: 700; color: var(--text); }
 `;
 
 const TableContainer = styled.div`
@@ -59,13 +65,22 @@ const TableContainer = styled.div`
   border-radius: 16px;
   box-shadow: var(--shadow-card);
   overflow: hidden;
-  overflow-x: auto;
+  
+  @media (max-width: 650px) {
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
 `;
 
-const Table = styled.table`
+const DesktopTable = styled.table`
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+
+  @media (max-width: 650px) {
+    display: none;
+  }
 
   th, td {
     padding: 14px 16px;
@@ -83,6 +98,61 @@ const Table = styled.table`
 
   tbody tr:hover {
     background: var(--surface-alt);
+  }
+`;
+
+const MobileView = styled.div`
+  display: none;
+  @media (max-width: 650px) {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+`;
+
+const UserMobileCard = styled.details`
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  padding: 14px;
+  
+  summary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    list-style: none;
+    &::-webkit-details-marker { display: none; }
+  }
+
+  .email {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+
+  .details-content {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .label {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
   }
 `;
 
@@ -167,15 +237,15 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
 
       {stats && (
         <StatsGrid>
-          <StatCard>
+          <StatCard $color="var(--accent)" $bg="var(--accent-bg)">
             <h3>Usuarios</h3>
             <p>{stats.total}</p>
           </StatCard>
-          <StatCard>
+          <StatCard $color="var(--text-secondary)">
             <h3>Plan Free</h3>
             <p>{stats.free}</p>
           </StatCard>
-          <StatCard>
+          <StatCard $color="var(--accent-2)">
             <h3>Full Access</h3>
             <p>{stats.fullAccess}</p>
           </StatCard>
@@ -183,7 +253,7 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
       )}
 
       <TableContainer>
-        <Table>
+        <DesktopTable>
           <thead>
             <tr>
               <th>Nombre</th>
@@ -212,7 +282,38 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
               </tr>
             ))}
           </tbody>
-        </Table>
+        </DesktopTable>
+
+        <MobileView>
+          {users.map(user => (
+            <UserMobileCard key={user.id}>
+              <summary>
+                <span>{user.name}</span>
+                <span className="email">{user.email}</span>
+              </summary>
+              <div className="details-content">
+                <div className="detail-row">
+                  <span className="label">Rol</span>
+                  <span>{user.role}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="label">Registro</span>
+                  <span>{new Date(user.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="label">Plan</span>
+                  <SelectPlan 
+                    value={user.plan} 
+                    onChange={(e) => handlePlanChange(user.id, e.target.value)}
+                  >
+                    <option value="FREE">Free</option>
+                    <option value="FULL_ACCESS">Full Access</option>
+                  </SelectPlan>
+                </div>
+              </div>
+            </UserMobileCard>
+          ))}
+        </MobileView>
       </TableContainer>
     </Container>
   );
