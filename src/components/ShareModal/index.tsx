@@ -465,17 +465,17 @@ export default function ShareModal({ isOpen, onClose, type, doctorProfile, payme
                 <AmountContainer>
                   <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Monto y Moneda</label>
                   <AmountInputRow>
+                    <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                      <option value="Bs.">Bs.</option>
+                      <option value="$">$</option>
+                      <option value="€">€</option>
+                    </select>
                     <input 
                       type="number" 
                       placeholder="Ej. 50" 
                       value={amount} 
                       onChange={(e) => setAmount(e.target.value)} 
                     />
-                    <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                      <option value="Bs.">Bs.</option>
-                      <option value="$">$</option>
-                      <option value="€">€</option>
-                    </select>
                     {bcvData && currency !== 'Bs.' && amount && (
                       <button 
                         className="convert-btn" 
