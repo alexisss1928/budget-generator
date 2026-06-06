@@ -48,6 +48,7 @@ import {
   DoctorProfile,
   DEFAULT_DOCTOR_PROFILE,
   HistoryRecord,
+  getAllHistory
 } from './db/clinicDB';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -343,7 +344,7 @@ const sectionTitle: Record<string, string> = {
 // ─── Inner App ────────────────────────────────────────────────────────────────
 
 function InnerApp() {
-  const { signOut, user, plan, isFullAccess } = useAuth();
+  const { signOut, user, isFullAccess } = useAuth();
   const pwa = usePWA();
   const { theme, toggleTheme } = useTheme();
   const [section, setSection] = useState('Inicio');

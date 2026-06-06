@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { ChevronLeft, Users, CheckCircle, XCircle } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Container = styled.div`

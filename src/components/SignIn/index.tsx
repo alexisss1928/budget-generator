@@ -1,9 +1,9 @@
-import React from 'react';
+
 import styled, { keyframes } from 'styled-components';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../assets/leafAssets/logo.png';
 import professionalData from '../../commons/professionalData';
-import { Leaf, LogIn } from 'lucide-react';
+import { Leaf } from 'lucide-react';
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(10px); }
