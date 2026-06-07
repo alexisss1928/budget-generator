@@ -279,12 +279,13 @@ const ProUpgradeSidebarBtn = styled.button`
 const Navbar = styled.header`
   height: 60px;
   flex: 0 0 60px;
-  background: var(--bg);
+  background: ${professionalData.primaryColor};
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 12px;
   z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
 `;
 
 const NavBtn = styled.button`
@@ -292,16 +293,16 @@ const NavBtn = styled.button`
   border: none; background: transparent; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   border-radius: 10px;
-  color: var(--text-secondary);
+  color: rgba(255,255,255,0.85);
   transition: background 0.15s, color 0.15s;
-  &:hover { background: rgba(128,128,128,0.1); color: var(--text); }
+  &:hover { background: rgba(255,255,255,0.14); color: #fff; }
 `;
 
-const NavCenter = styled.div<{ $theme?: string }>`
+const NavCenter = styled.div`
   display: flex; align-items: center; gap: 9px;
   flex: 1; justify-content: center;
-  img { width: 26px; filter: ${(p) => p.$theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)'}; opacity: 0.8; }
-  span { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: 0.2px; }
+  img { width: 26px; filter: brightness(0) invert(1); }
+  span { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.2px; }
 `;
 
 const ContentArea = styled.main`
@@ -476,8 +477,8 @@ function InnerApp() {
     const count = history.filter(h => h.type === type).length;
     if (count >= 5) {
       const typeName = type === 'presupuesto' ? 'presupuestos' : type === 'recipe' ? 'recipes' : 'informes';
-      setProModal({ 
-        isOpen: true, 
+      setProModal({
+        isOpen: true,
         message: `Has alcanzado el límite de 5 ${typeName} del plan FREE. Puedes eliminar algunos en el Historial o adquirir la licencia de por vida para crear ilimitados.`
       });
       return false;
@@ -492,11 +493,11 @@ function InnerApp() {
       : setCurrentBudget({ ...currentBudget, [name]: value });
   };
 
-  const newBudget = async () => { 
+  const newBudget = async () => {
     const allowed = await checkFreeLimits('presupuesto');
     if (!allowed) return;
-    setTreatmentsList([]); 
-    setPersonalData({ name: '', identification: '', phone: '', email: '' }); 
+    setTreatmentsList([]);
+    setPersonalData({ name: '', identification: '', phone: '', email: '' });
     setDocumentDate(getLocalDateString());
   };
 
@@ -572,11 +573,11 @@ function InnerApp() {
     const arr = [...currentRecipe]; arr.splice(index, 1); setCurrentRecipe(arr);
   };
 
-  const newRecipe = async () => { 
+  const newRecipe = async () => {
     const allowed = await checkFreeLimits('recipe');
     if (!allowed) return;
-    setCurrentRecipe([]); 
-    setPersonalData({ name: '', identification: '', phone: '', email: '' }); 
+    setCurrentRecipe([]);
+    setPersonalData({ name: '', identification: '', phone: '', email: '' });
     setDocumentDate(getLocalDateString());
   };
 
@@ -585,7 +586,7 @@ function InnerApp() {
 
   const handlePrint = useCallback(async () => {
     if (!componentToPrintRef.current) return;
-    
+
     if (section === 'Recipes' && currentRecipe.length > 0) {
       const allowed = await checkFreeLimits('recipe');
       if (!allowed) return;
@@ -815,13 +816,13 @@ function InnerApp() {
           onSharePdf={handleSharePdfDirectly}
         />
       )}
-      <ProUpgradeModal 
-        isOpen={proModal.isOpen} 
+      <ProUpgradeModal
+        isOpen={proModal.isOpen}
         onClose={() => {
           setProModal({ ...proModal, isOpen: false });
           navigate('Inicio');
-        }} 
-        message={proModal.message} 
+        }}
+        message={proModal.message}
       />
       {drawerOpen && <Backdrop onClick={() => setDrawerOpen(false)} />}
 
@@ -867,7 +868,7 @@ function InnerApp() {
                   </DrawerItem>
                 );
               })}
-              
+
               <DrawerDivider />
               <DrawerItem onClick={toggleTheme}>
                 <div className="item-content">
@@ -948,7 +949,7 @@ function InnerApp() {
         <NavBtn onClick={() => setDrawerOpen(true)} aria-label="Menú">
           <Menu size={20} />
         </NavBtn>
-        <NavCenter $theme={theme}>
+        <NavCenter>
           <img src={Logo} alt="Logo" />
           <span>{currentTitle}</span>
         </NavCenter>
@@ -991,23 +992,23 @@ function InnerApp() {
                     Selecciona la fecha que aparecerá en el documento
                   </label>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <input 
-                      type="date" 
-                      value={documentDate} 
-                      onChange={(e) => setDocumentDate(e.target.value)} 
-                      style={{ 
+                    <input
+                      type="date"
+                      value={documentDate}
+                      onChange={(e) => setDocumentDate(e.target.value)}
+                      style={{
                         flex: 1,
-                        padding: '10px 12px', 
-                        borderRadius: '8px', 
-                        border: '1px solid var(--border)', 
-                        background: 'var(--input-bg)', 
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--input-bg)',
                         color: 'var(--text)',
                         fontFamily: 'inherit',
                         outline: 'none'
                       }}
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setDocumentDate(getLocalDateString())}
                       style={{
                         padding: '10px 16px',
@@ -1054,23 +1055,23 @@ function InnerApp() {
                     Selecciona la fecha que aparecerá en el documento
                   </label>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <input 
-                      type="date" 
-                      value={documentDate} 
-                      onChange={(e) => setDocumentDate(e.target.value)} 
-                      style={{ 
+                    <input
+                      type="date"
+                      value={documentDate}
+                      onChange={(e) => setDocumentDate(e.target.value)}
+                      style={{
                         flex: 1,
-                        padding: '10px 12px', 
-                        borderRadius: '8px', 
-                        border: '1px solid var(--border)', 
-                        background: 'var(--input-bg)', 
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--input-bg)',
                         color: 'var(--text)',
                         fontFamily: 'inherit',
                         outline: 'none'
                       }}
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setDocumentDate(getLocalDateString())}
                       style={{
                         padding: '10px 16px',
@@ -1118,23 +1119,23 @@ function InnerApp() {
                     Selecciona la fecha que aparecerá en el documento
                   </label>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <input 
-                      type="date" 
-                      value={documentDate} 
-                      onChange={(e) => setDocumentDate(e.target.value)} 
-                      style={{ 
+                    <input
+                      type="date"
+                      value={documentDate}
+                      onChange={(e) => setDocumentDate(e.target.value)}
+                      style={{
                         flex: 1,
-                        padding: '10px 12px', 
-                        borderRadius: '8px', 
-                        border: '1px solid var(--border)', 
-                        background: 'var(--input-bg)', 
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--input-bg)',
                         color: 'var(--text)',
                         fontFamily: 'inherit',
                         outline: 'none'
                       }}
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setDocumentDate(getLocalDateString())}
                       style={{
                         padding: '10px 16px',
@@ -1184,11 +1185,11 @@ function InnerApp() {
                   <ChevronLeft size={15} /> Inicio
                 </BackBtn>
               </SectionHeader>
-              <DoctorSettings 
+              <DoctorSettings
                 onProfileSaved={(profile) => {
                   setDoctorProfile(profile);
                   navigate('Inicio');
-                }} 
+                }}
                 isFullAccess={isFullAccess}
                 onProRequired={() => setProModal({ isOpen: true, message: 'La personalización de colores es exclusiva del plan PRO.' })}
               />
@@ -1243,9 +1244,9 @@ function InnerApp() {
                   <ChevronLeft size={15} /> Inicio
                 </BackBtn>
               </SectionHeader>
-              <BackupScreen 
-                isFullAccess={isFullAccess} 
-                onProRequired={() => setProModal({ isOpen: true, message: 'Los respaldos en Google Drive son exclusivos del plan PRO.' })} 
+              <BackupScreen
+                isFullAccess={isFullAccess}
+                onProRequired={() => setProModal({ isOpen: true, message: 'Los respaldos en Google Drive son exclusivos del plan PRO.' })}
               />
             </SectionInner>
           </SectionView>

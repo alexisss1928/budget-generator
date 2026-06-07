@@ -258,18 +258,18 @@ const BudgetReportPrint = ({
         {/* Informe text */}
         {section === 'Informe'
           ? report.split('\n').map((parrafo, i) => (
-              <p
-                key={i}
-                style={{
-                  marginTop: '30px',
-                  marginBottom: '0',
-                  fontSize: '16px',
-                  textIndent: '30px',
-                }}
-              >
-                {parrafo}
-              </p>
-            ))
+            <p
+              key={i}
+              style={{
+                marginTop: '30px',
+                marginBottom: '0',
+                fontSize: '16px',
+                textIndent: '30px',
+              }}
+            >
+              {parrafo}
+            </p>
+          ))
           : null}
       </div>
 
@@ -311,7 +311,7 @@ const BudgetReportPrint = ({
             <span style={Bold}>Instagram:</span> {doctorProfile.instagram}.
           </p>
         </div>
-        
+
         {/* Leaf4web Footer */}
         {!isFullAccess && (
           <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '10px', color: '#999' }}>
