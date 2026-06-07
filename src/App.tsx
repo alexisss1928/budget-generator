@@ -229,14 +229,6 @@ const DrawerDivider = styled.div`
   margin: 8px 18px;
 `;
 
-const DrawerSubLabel = styled.p`
-  padding: 10px 18px 4px;
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.35);
-  text-transform: uppercase;
-  letter-spacing: 1.8px;
-`;
 
 const DrawerFooter = styled.div`
   padding: 14px 18px;
