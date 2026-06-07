@@ -1,18 +1,23 @@
 import { DoctorProfile, DEFAULT_DOCTOR_PROFILE } from '../../db/clinicDB';
+import LogoLeafWeb from '../../assets/leafAssets/logo_horz.png';
 
 interface PrintContentLayoutProps {
   professionalData?: DoctorProfile;
   personalData: { name: string; identification: string };
   currentRecipe?: any[];
+  isFullAccess?: boolean;
+  documentDate?: string;
   children: React.ReactNode;
 }
 
 const PrintContentLayout = ({
   professionalData = DEFAULT_DOCTOR_PROFILE,
   personalData,
+  isFullAccess,
+  documentDate,
   children,
 }: PrintContentLayoutProps) => {
-  const date = new Date();
+  const date = documentDate ? new Date(documentDate + 'T12:00:00') : new Date();
 
   const Bold = {
     fontWeight: '700',
@@ -164,7 +169,7 @@ const PrintContentLayout = ({
           className="footer"
           style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}
         >
-          <p style={{ textAlign: 'center', width: '100%', fontSize: '10px' }}>
+          <p style={{ textAlign: 'center', width: '100%', fontSize: '10px', marginBottom: '4px' }}>
             <span style={Bold}>Dirección:</span> {professionalData.direccion}.
             <br />
             <span style={Bold}>Teléfono:</span> {professionalData.telefono}
@@ -174,6 +179,12 @@ const PrintContentLayout = ({
             <span style={Bold}>Instagram:</span> {professionalData.instagram}.
           </p>
         </div>
+        {!isFullAccess && (
+          <div style={{ marginTop: '4px', borderTop: '1px solid #eee', paddingTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '7px', color: '#999' }}>
+            <span>Documento emitido de forma segura a través de DoctorCompanion por leaf4web</span>
+            <img src={LogoLeafWeb} alt="leaf4web" style={{ height: '9px', opacity: 0.7 }} />
+          </div>
+        )}
       </div>
     </>
   );

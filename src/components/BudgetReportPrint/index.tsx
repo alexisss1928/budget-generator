@@ -1,4 +1,5 @@
 import { DoctorProfile, DEFAULT_DOCTOR_PROFILE } from '../../db/clinicDB';
+import LogoLeafWeb from '../../assets/leafAssets/logo_horz.png';
 
 type PersonalDataType = {
   name: string;
@@ -20,6 +21,8 @@ type BudgetReportPrintType = {
   treatmentsList: CurrentTreatmentListItem[];
   insuranceCoverageisActive: boolean;
   doctorProfile?: DoctorProfile;
+  isFullAccess?: boolean;
+  documentDate?: string;
 };
 
 const BudgetReportPrint = ({
@@ -29,8 +32,10 @@ const BudgetReportPrint = ({
   treatmentsList,
   insuranceCoverageisActive,
   doctorProfile = DEFAULT_DOCTOR_PROFILE,
+  isFullAccess,
+  documentDate,
 }: BudgetReportPrintType) => {
-  const date = new Date();
+  const date = documentDate ? new Date(documentDate + 'T12:00:00') : new Date();
 
   const Bold = {
     fontWeight: '700',
@@ -306,6 +311,14 @@ const BudgetReportPrint = ({
             <span style={Bold}>Instagram:</span> {doctorProfile.instagram}.
           </p>
         </div>
+        
+        {/* Leaf4web Footer */}
+        {!isFullAccess && (
+          <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '10px', color: '#999' }}>
+            <span>Documento emitido de forma segura a través de DoctorCompanion por leaf4web</span>
+            <img src={LogoLeafWeb} alt="leaf4web" style={{ height: '14px', opacity: 0.7 }} />
+          </div>
+        )}
       </div>
     </>
   );

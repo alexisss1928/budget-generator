@@ -465,7 +465,12 @@ function formatFileDate(isoString: string): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const BackupScreen = () => {
+interface BackupScreenProps {
+  isFullAccess: boolean;
+  onProRequired: () => void;
+}
+
+const BackupScreen = ({ isFullAccess, onProRequired }: BackupScreenProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [restoreMode, setRestoreMode] = useState<'replace' | 'merge'>('replace');
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
@@ -672,13 +677,26 @@ const BackupScreen = () => {
             ? <NotConfiguredBadge>Sin configurar</NotConfiguredBadge>
             : drive.isConnected
               ? <ConnectedBadge>Conectado</ConnectedBadge>
-              : null
+              : !isFullAccess ? <span className="badge" style={{ background: '#eab308', color: '#fff' }}>PRO</span> : null
           }
         </DriveCardTitle>
 
         <ActionRow>
+          {/* Locked for Free users */}
+          {!isFullAccess && (
+            <DriveNotConfiguredBox style={{ border: '2px solid #eab308' }}>
+              <CloudUpload size={32} color="#eab308" />
+              <p>
+                La integración con Google Drive para tus respaldos en la nube es exclusiva del plan <strong>PRO</strong>.
+              </p>
+              <PrimaryBtn onClick={onProRequired} style={{ background: '#eab308' }}>
+                Actualizar Plan
+              </PrimaryBtn>
+            </DriveNotConfiguredBox>
+          )}
+
           {/* Not configured warning */}
-          {!isDriveConfigured && (
+          {isFullAccess && !isDriveConfigured && (
             <DriveNotConfiguredBox>
               <WifiOff size={32} />
               <p>
@@ -690,7 +708,7 @@ const BackupScreen = () => {
           )}
 
           {/* Configured but not connected */}
-          {isDriveConfigured && !drive.isConnected && (
+          {isFullAccess && isDriveConfigured && !drive.isConnected && (
             <>
               <p>
                 Conecta tu cuenta de Google para guardar respaldos automáticos en Drive.
@@ -706,7 +724,7 @@ const BackupScreen = () => {
           )}
 
           {/* Connected state */}
-          {isDriveConfigured && drive.isConnected && (
+          {isFullAccess && isDriveConfigured && drive.isConnected && (
             <>
               {/* Status bar */}
               <DriveStatusBar>

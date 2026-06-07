@@ -15,9 +15,11 @@ type RecipePrintType = {
   personalData: PersonalDataType;
   currentRecipe: Medicine[];
   doctorProfile?: DoctorProfile;
+  isFullAccess?: boolean;
+  documentDate?: string;
 };
 
-const RecipePrint = ({ personalData, currentRecipe, doctorProfile }: RecipePrintType) => {
+const RecipePrint = ({ personalData, currentRecipe, doctorProfile, isFullAccess, documentDate }: RecipePrintType) => {
   return (
     <>
       <div style={{ height: '20px' }}></div>
@@ -37,6 +39,8 @@ const RecipePrint = ({ personalData, currentRecipe, doctorProfile }: RecipePrint
           <PrintContentLayout
             professionalData={doctorProfile}
             personalData={personalData}
+            isFullAccess={isFullAccess}
+            documentDate={documentDate}
           >
             <h2 style={{ textDecoration: 'underline' }}>RP.:</h2>
             {currentRecipe.map((medicine, i) => (
@@ -61,6 +65,8 @@ const RecipePrint = ({ personalData, currentRecipe, doctorProfile }: RecipePrint
           <PrintContentLayout
             professionalData={doctorProfile}
             personalData={personalData}
+            isFullAccess={isFullAccess}
+            documentDate={documentDate}
           >
             <h2 style={{ textDecoration: 'underline' }}>Indicaciones:</h2>
             {currentRecipe.map((medicine, i) => (

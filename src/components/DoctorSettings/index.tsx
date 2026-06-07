@@ -236,9 +236,11 @@ const OptionalTag = styled.span`
 
 interface DoctorSettingsProps {
   onProfileSaved?: (profile: DoctorProfile) => void;
+  isFullAccess?: boolean;
+  onProRequired?: () => void;
 }
 
-const DoctorSettings = ({ onProfileSaved }: DoctorSettingsProps) => {
+const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorSettingsProps) => {
   const [profile, setProfile] = useState<DoctorProfile>({ ...DEFAULT_DOCTOR_PROFILE });
   const [loaded, setLoaded] = useState(false);
 
@@ -347,14 +349,29 @@ const DoctorSettings = ({ onProfileSaved }: DoctorSettingsProps) => {
           />
         </FieldRow>
 
-        <FieldRow>
-          <label>Color</label>
-          <input
-            type="color"
-            value={profile.color || '#719e81'}
-            onChange={(e) => set('color', e.target.value)}
-            style={{ padding: '0', height: '36px', cursor: 'pointer' }}
-          />
+        <FieldRow 
+          style={{ opacity: !isFullAccess ? 0.6 : 1, cursor: !isFullAccess ? 'pointer' : 'default' }}
+          onClickCapture={(e) => {
+            if (!isFullAccess && onProRequired) {
+              e.preventDefault();
+              e.stopPropagation();
+              onProRequired();
+            }
+          }}
+        >
+          <label style={{ width: 'auto', flexShrink: 0, marginRight: '12px' }}>
+            Color
+            {!isFullAccess && <span style={{ background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontSize: '9px', fontWeight: 700, marginLeft: '6px', letterSpacing: '0.5px' }}>PRO</span>}
+          </label>
+          <div style={{ flex: 1 }}>
+            <input
+              type="color"
+              value={profile.color || '#719e81'}
+              onChange={(e) => { if (isFullAccess) set('color', e.target.value); }}
+              style={{ padding: '0', height: '36px', cursor: 'pointer', width: '100%', pointerEvents: !isFullAccess ? 'none' : 'auto' }}
+              disabled={!isFullAccess}
+            />
+          </div>
         </FieldRow>
       </FormCard>
 

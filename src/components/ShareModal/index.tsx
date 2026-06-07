@@ -263,9 +263,11 @@ interface ShareModalProps {
   type: 'doctor' | 'payment';
   doctorProfile?: DoctorProfile;
   paymentMethods?: PaymentMethodRecord[];
+  isFullAccess?: boolean;
+  onProRequired?: () => void;
 }
 
-export default function ShareModal({ isOpen, onClose, type, doctorProfile, paymentMethods }: ShareModalProps) {
+export default function ShareModal({ isOpen, onClose, type, doctorProfile, paymentMethods, isFullAccess, onProRequired }: ShareModalProps) {
   const [items, setItems] = useState<SelectableItem[]>([]);
   const [includeAmount, setIncludeAmount] = useState(false);
   const [amount, setAmount] = useState('');
@@ -449,14 +451,28 @@ export default function ShareModal({ isOpen, onClose, type, doctorProfile, payme
 
           {type === 'payment' && items.length > 0 && (
             <div style={{ marginTop: '8px' }}>
-              <CheckboxLabel>
+              <CheckboxLabel 
+                style={{ opacity: !isFullAccess ? 0.6 : 1 }}
+                onClick={(e) => {
+                  if (!isFullAccess && onProRequired) {
+                    e.preventDefault();
+                    onProRequired();
+                  }
+                }}
+              >
                 <input 
                   type="checkbox" 
                   checked={includeAmount} 
-                  onChange={(e) => setIncludeAmount(e.target.checked)} 
+                  onChange={(e) => {
+                    if (isFullAccess) setIncludeAmount(e.target.checked);
+                  }} 
+                  disabled={!isFullAccess}
                 />
                 <div className="info">
-                  <strong>Enviar métodos con monto a pagar</strong>
+                  <strong>
+                    Enviar métodos con monto a pagar 
+                    {!isFullAccess && <span style={{ background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontSize: '9px', fontWeight: 700, marginLeft: '6px', letterSpacing: '0.5px' }}>PRO</span>}
+                  </strong>
                   <span>Añade el monto específico al mensaje.</span>
                 </div>
               </CheckboxLabel>

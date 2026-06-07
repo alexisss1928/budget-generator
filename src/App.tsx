@@ -5,7 +5,7 @@ import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
   Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown
 } from 'lucide-react';
 
 // Context
@@ -30,6 +30,7 @@ import PaymentMethods from './components/PaymentMethods';
 import WhatsAppModal from './components/WhatsAppModal';
 import SignIn from './components/SignIn';
 import AdminPanel from './components/AdminPanel';
+import ProUpgradeModal from './components/ProUpgradeModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { usePWA } from './hooks/usePWA';
 
@@ -136,22 +137,35 @@ const DrawerNav = styled.nav`
   padding: 10px 0;
 `;
 
-const DrawerItem = styled.button<{ $active?: boolean }>`
+const DrawerItem = styled.button<{ $active?: boolean; $locked?: boolean }>`
   width: 100%;
-  display: flex; align-items: center; gap: 13px;
+  display: flex; align-items: center; justify-content: space-between;
   padding: 13px 18px;
   background: ${(p) => p.$active ? 'rgba(255,255,255,0.16)' : 'transparent'};
   border: none;
   border-left: 3px solid ${(p) => p.$active ? 'rgba(255,255,255,0.8)' : 'transparent'};
-  cursor: pointer;
+  cursor: ${(p) => p.$locked ? 'not-allowed' : 'pointer'};
+  opacity: ${(p) => p.$locked ? 0.75 : 1};
   color: ${(p) => p.$active ? '#fff' : 'rgba(255,255,255,0.7)'};
   font-size: 13px;
   font-weight: ${(p) => p.$active ? '600' : '400'};
   font-family: 'Inter', sans-serif;
   text-align: left;
   transition: all 0.15s;
+
+  .item-content {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+  }
+
   svg { flex-shrink: 0; opacity: ${(p) => p.$active ? 1 : 0.65}; }
-  &:hover { background: rgba(255,255,255,0.1); color: #fff; svg { opacity: 1; } }
+
+  &:hover { 
+    background: ${(p) => p.$locked ? 'transparent' : 'rgba(255,255,255,0.1)'}; 
+    color: ${(p) => p.$locked ? 'rgba(255,255,255,0.7)' : '#fff'}; 
+    svg { opacity: ${(p) => p.$locked ? 0.65 : 1}; } 
+  }
 `;
 
 const DrawerDivider = styled.div`
@@ -175,6 +189,29 @@ const DrawerFooter = styled.div`
   font-size: 11px;
   color: rgba(255,255,255,0.35);
   text-align: center;
+`;
+
+const ProUpgradeSidebarBtn = styled.button`
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.25);
+  transition: all 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(234, 179, 8, 0.4);
+  }
 `;
 
 const Navbar = styled.header`
@@ -350,6 +387,7 @@ function InnerApp() {
   const [section, setSection] = useState('Inicio');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
+  const [proModal, setProModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
   // ── WhatsApp modal ─────────────────────────────────────────────────────────
   const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
@@ -368,12 +406,26 @@ function InnerApp() {
   });
   const [treatmentsList, setTreatmentsList] = useState<CurrentTreatmentListItem[]>([]);
 
-  const checkFreeLimits = async (type: 'presupuesto' | 'recipe') => {
+  const getLocalDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [documentDate, setDocumentDate] = useState<string>(getLocalDateString());
+
+  const checkFreeLimits = async (type: 'presupuesto' | 'recipe' | 'informe') => {
     if (isFullAccess) return true;
     const history = await getAllHistory();
     const count = history.filter(h => h.type === type).length;
-    if (count >= 10) {
-      alert(`Has alcanzado el límite de 10 ${type}s del plan FREE. Actualiza tu plan para continuar.`);
+    if (count >= 5) {
+      const typeName = type === 'presupuesto' ? 'presupuestos' : type === 'recipe' ? 'recipes' : 'informes';
+      setProModal({ 
+        isOpen: true, 
+        message: `Has alcanzado el límite de 5 ${typeName} del plan FREE. Puedes eliminar algunos en el Historial o adquirir la licencia de por vida para crear ilimitados.`
+      });
       return false;
     }
     return true;
@@ -386,7 +438,13 @@ function InnerApp() {
       : setCurrentBudget({ ...currentBudget, [name]: value });
   };
 
-  const newBudget = () => { setTreatmentsList([]); setPersonalData({ name: '', identification: '', phone: '', email: '' }); };
+  const newBudget = async () => { 
+    const allowed = await checkFreeLimits('presupuesto');
+    if (!allowed) return;
+    setTreatmentsList([]); 
+    setPersonalData({ name: '', identification: '', phone: '', email: '' }); 
+    setDocumentDate(getLocalDateString());
+  };
 
   const loadTreatmentsFromDB = useCallback(async () => {
     setMyTreatments(await getAllTreatments());
@@ -460,7 +518,13 @@ function InnerApp() {
     const arr = [...currentRecipe]; arr.splice(index, 1); setCurrentRecipe(arr);
   };
 
-  const newRecipe = () => { setCurrentRecipe([]); setPersonalData({ name: '', identification: '', phone: '', email: '' }); };
+  const newRecipe = async () => { 
+    const allowed = await checkFreeLimits('recipe');
+    if (!allowed) return;
+    setCurrentRecipe([]); 
+    setPersonalData({ name: '', identification: '', phone: '', email: '' }); 
+    setDocumentDate(getLocalDateString());
+  };
 
   // ── Print + history ────────────────────────────────────────────────────────
   const componentToPrintRef = useRef<HTMLDivElement>(null);
@@ -473,6 +537,9 @@ function InnerApp() {
       if (!allowed) return;
     } else if (section === 'Presupuesto' && treatmentsList.length > 0) {
       const allowed = await checkFreeLimits('presupuesto');
+      if (!allowed) return;
+    } else if (section === 'Informe' && report !== '') {
+      const allowed = await checkFreeLimits('informe');
       if (!allowed) return;
     }
 
@@ -636,7 +703,7 @@ function InnerApp() {
   const navItems = [
     { label: 'Inicio', section: 'Inicio', icon: <Home size={15} /> },
     { label: 'Presupuesto', section: 'Presupuesto', icon: <FileText size={15} /> },
-    ...(!isFullAccess ? [] : [{ label: 'Informe', section: 'Informe', icon: <ClipboardList size={15} /> }]),
+    { label: 'Informe', section: 'Informe', icon: <ClipboardList size={15} />, proOnly: true },
     { label: 'Recipe', section: 'Recipes', icon: <Pill size={15} /> },
     { label: 'Historial', section: 'Historial', icon: <HistoryIcon size={15} /> },
   ];
@@ -646,11 +713,20 @@ function InnerApp() {
     { label: 'Métodos de pago', section: 'Métodos de pago', icon: <CreditCard size={13} /> },
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
     { label: 'Medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
-    ...(!isFullAccess ? [] : [{ label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> }]),
+    { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
     ...(user?.role === 'ADMIN' ? [{ label: 'Panel Admin', section: 'AdminPanel', icon: <Users size={13} /> }] : []),
   ];
 
-  const navigate = (s: string) => {
+  const navigate = async (s: string) => {
+    // Show limit modal early if navigating to an empty section
+    if (s === 'Presupuesto' && treatmentsList.length === 0) {
+      await checkFreeLimits('presupuesto');
+    } else if (s === 'Recipes' && currentRecipe.length === 0) {
+      await checkFreeLimits('recipe');
+    } else if (s === 'Informe' && report === '') {
+      await checkFreeLimits('informe');
+    }
+
     setSection(s);
     setDrawerOpen(false);
     if (s === 'Inicio') {
@@ -660,6 +736,7 @@ function InnerApp() {
       setCurrentRecipe([]);
       setCurrentMedicineSelected({ nombre: '', indicaciones: '' });
       setReport('');
+      setDocumentDate(getLocalDateString());
     }
   };
 
@@ -677,6 +754,14 @@ function InnerApp() {
           onSharePdf={handleSharePdfDirectly}
         />
       )}
+      <ProUpgradeModal 
+        isOpen={proModal.isOpen} 
+        onClose={() => {
+          setProModal({ ...proModal, isOpen: false });
+          navigate('Inicio');
+        }} 
+        message={proModal.message} 
+      />
       {drawerOpen && <Backdrop onClick={() => setDrawerOpen(false)} />}
 
       {/* Drawer */}
@@ -692,28 +777,62 @@ function InnerApp() {
         </DrawerHead>
 
         <DrawerNav>
-          {navItems.map((item) => (
-            <DrawerItem key={item.section} $active={section === item.section}
-              onClick={() => navigate(item.section)}>
-              {item.icon}{item.label}
-            </DrawerItem>
-          ))}
+          {navItems.map((item) => {
+            const locked = item.proOnly && !isFullAccess;
+            return (
+              <DrawerItem key={item.section} $active={section === item.section} $locked={locked}
+                onClick={() => {
+                  if (locked) {
+                    setProModal({ isOpen: true, message: 'Esta función es exclusiva del plan PRO.' });
+                    return;
+                  }
+                  navigate(item.section);
+                }}>
+                <div className="item-content">
+                  {item.icon}{item.label}
+                </div>
+                {item.proOnly && <span style={{ fontSize: '9px', background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>PRO</span>}
+              </DrawerItem>
+            );
+          })}
 
           <DrawerDivider />
           <DrawerSubLabel>Configuración</DrawerSubLabel>
 
-          {configItems.map((item) => (
-            <DrawerItem key={item.section} $active={section === item.section}
-              onClick={() => navigate(item.section)}>
-              {item.icon}{item.label}
-            </DrawerItem>
-          ))}
+          {configItems.map((item) => {
+            const locked = item.proOnly && !isFullAccess;
+            return (
+              <DrawerItem key={item.section} $active={section === item.section} $locked={locked}
+                onClick={() => {
+                  if (locked) {
+                    setProModal({ isOpen: true, message: 'Esta función es exclusiva del plan PRO.' });
+                    return;
+                  }
+                  navigate(item.section);
+                }}>
+                <div className="item-content">
+                  {item.icon}{item.label}
+                </div>
+                {item.proOnly && <span style={{ fontSize: '9px', background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>PRO</span>}
+              </DrawerItem>
+            );
+          })}
           
           <DrawerDivider />
           <DrawerItem onClick={signOut}>
-            <LogOut size={15} /> Cerrar Sesión
+            <div className="item-content">
+              <LogOut size={15} /> Cerrar Sesión
+            </div>
           </DrawerItem>
         </DrawerNav>
+
+        {!isFullAccess && (
+          <div style={{ padding: '0 18px 14px' }}>
+            <ProUpgradeSidebarBtn onClick={() => setProModal({ isOpen: true, message: 'Obtén acceso ilimitado y funciones exclusivas.' })}>
+              <Crown size={15} /> Cambiar a PRO
+            </ProUpgradeSidebarBtn>
+          </div>
+        )}
 
         <DrawerFooter>DoctorCompanion · leaf4web</DrawerFooter>
       </DrawerContainer>
@@ -741,6 +860,8 @@ function InnerApp() {
             onLoadRecord={handleLoadRecord}
             onDownloadRecord={handleDownloadHistoryRecord}
             onSharePdf={handleShareHistoryRecordPdf}
+            isFullAccess={isFullAccess}
+            onProRequired={() => setProModal({ isOpen: true, message: 'Esta función es exclusiva del plan PRO.' })}
           />
         )}
 
@@ -758,6 +879,50 @@ function InnerApp() {
               <PatientCard>
                 <h3>Datos del paciente</h3>
                 <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
+              </PatientCard>
+              <PatientCard>
+                <h3>Fecha del documento</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Selecciona la fecha que aparecerá en el documento
+                  </label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                      type="date" 
+                      value={documentDate} 
+                      onChange={(e) => setDocumentDate(e.target.value)} 
+                      style={{ 
+                        flex: 1,
+                        padding: '10px 12px', 
+                        borderRadius: '8px', 
+                        border: '1px solid var(--border)', 
+                        background: 'var(--input-bg)', 
+                        color: 'var(--text)',
+                        fontFamily: 'inherit',
+                        outline: 'none'
+                      }}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setDocumentDate(getLocalDateString())}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--accent)',
+                        background: 'var(--accent-bg)',
+                        color: 'var(--accent)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontSize: '13px'
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                    >
+                      Hoy
+                    </button>
+                  </div>
+                </div>
               </PatientCard>
               <Budget AddTreatment={AddTreatment} handleCurrentBudget={handleCurrentBudget}
                 myTreatments={myTreatments} treatmentsList={treatmentsList}
@@ -778,6 +943,50 @@ function InnerApp() {
                 <h3>Datos del paciente</h3>
                 <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
               </PatientCard>
+              <PatientCard>
+                <h3>Fecha del documento</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Selecciona la fecha que aparecerá en el documento
+                  </label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                      type="date" 
+                      value={documentDate} 
+                      onChange={(e) => setDocumentDate(e.target.value)} 
+                      style={{ 
+                        flex: 1,
+                        padding: '10px 12px', 
+                        borderRadius: '8px', 
+                        border: '1px solid var(--border)', 
+                        background: 'var(--input-bg)', 
+                        color: 'var(--text)',
+                        fontFamily: 'inherit',
+                        outline: 'none'
+                      }}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setDocumentDate(getLocalDateString())}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--accent)',
+                        background: 'var(--accent-bg)',
+                        color: 'var(--accent)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontSize: '13px'
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                    >
+                      Hoy
+                    </button>
+                  </div>
+                </div>
+              </PatientCard>
               <Report report={report} setReport={setReport} handleReportData={handleReportData} />
             </SectionInner>
           </SectionView>
@@ -797,6 +1006,50 @@ function InnerApp() {
               <PatientCard>
                 <h3>Datos del paciente</h3>
                 <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
+              </PatientCard>
+              <PatientCard>
+                <h3>Fecha del documento</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Selecciona la fecha que aparecerá en el documento
+                  </label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                      type="date" 
+                      value={documentDate} 
+                      onChange={(e) => setDocumentDate(e.target.value)} 
+                      style={{ 
+                        flex: 1,
+                        padding: '10px 12px', 
+                        borderRadius: '8px', 
+                        border: '1px solid var(--border)', 
+                        background: 'var(--input-bg)', 
+                        color: 'var(--text)',
+                        fontFamily: 'inherit',
+                        outline: 'none'
+                      }}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setDocumentDate(getLocalDateString())}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--accent)',
+                        background: 'var(--accent-bg)',
+                        color: 'var(--accent)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontSize: '13px'
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                    >
+                      Hoy
+                    </button>
+                  </div>
+                </div>
               </PatientCard>
               <Recipe AddMedicine={AddMedicine} handleCurrentRecipe={handleCurrentRecipe}
                 medicinesList={medicinesList} currentRecipe={currentRecipe}
@@ -827,10 +1080,14 @@ function InnerApp() {
                   <ChevronLeft size={15} /> Inicio
                 </BackBtn>
               </SectionHeader>
-              <DoctorSettings onProfileSaved={(profile) => {
-                setDoctorProfile(profile);
-                navigate('Inicio');
-              }} />
+              <DoctorSettings 
+                onProfileSaved={(profile) => {
+                  setDoctorProfile(profile);
+                  navigate('Inicio');
+                }} 
+                isFullAccess={isFullAccess}
+                onProRequired={() => setProModal({ isOpen: true, message: 'La personalización de colores es exclusiva del plan PRO.' })}
+              />
             </SectionInner>
           </SectionView>
         )}
@@ -874,7 +1131,7 @@ function InnerApp() {
           </SectionView>
         )}
 
-        {section === 'Respaldo' && isFullAccess && (
+        {section === 'Respaldo' && (
           <SectionView>
             <SectionInner>
               <SectionHeader>
@@ -882,7 +1139,10 @@ function InnerApp() {
                   <ChevronLeft size={15} /> Inicio
                 </BackBtn>
               </SectionHeader>
-              <BackupScreen />
+              <BackupScreen 
+                isFullAccess={isFullAccess} 
+                onProRequired={() => setProModal({ isOpen: true, message: 'Los respaldos en Google Drive son exclusivos del plan PRO.' })} 
+              />
             </SectionInner>
           </SectionView>
         )}
@@ -915,12 +1175,12 @@ function InnerApp() {
           ref={componentToPrintRef}
         >
           {section === 'Recipes' && (
-            <RecipePrint personalData={personalData} currentRecipe={currentRecipe} doctorProfile={doctorProfile} />
+            <RecipePrint personalData={personalData} currentRecipe={currentRecipe} doctorProfile={doctorProfile} isFullAccess={isFullAccess} documentDate={documentDate} />
           )}
           {(section === 'Presupuesto' || section === 'Informe') && (
             <BudgetReportPrint personalData={personalData} section={section} report={report}
               treatmentsList={treatmentsList} insuranceCoverageisActive={insuranceCoverageisActive}
-              doctorProfile={doctorProfile} />
+              doctorProfile={doctorProfile} isFullAccess={isFullAccess} documentDate={documentDate} />
           )}
         </div>
       </PrintPage>
@@ -936,6 +1196,7 @@ function InnerApp() {
               personalData={{ name: historyPrintRecord.record.patientName || '', identification: historyPrintRecord.record.patientId || '' }}
               currentRecipe={historyPrintRecord.record.data.medicines || []}
               doctorProfile={doctorProfile}
+              isFullAccess={isFullAccess}
             />
           )}
           {(historyPrintRecord?.record?.type === 'presupuesto' || historyPrintRecord?.record?.type === 'informe') && (

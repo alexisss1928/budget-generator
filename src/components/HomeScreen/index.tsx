@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import professionalData from '../../commons/professionalData';
 import Logo from '../../assets/leafAssets/logo.png';
 import LogoJarabito from '../../assets/leafAssets/logo-jarabito.png';
@@ -17,6 +17,11 @@ import ShareModal from '../ShareModal';
 const slideUp = keyframes`
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
+`;
+
+const slideUpLocked = keyframes`
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 0.4; transform: translateY(0); }
 `;
 
 const fadeIn = keyframes`from { opacity: 0 } to { opacity: 1 }`;
@@ -171,7 +176,7 @@ const ShareButtonsRow = styled.div`
   }
 `;
 
-const ActionCard = styled.div`
+const ActionCard = styled.div<{ $locked?: boolean }>`
   background: var(--surface);
   border-radius: 20px;
   padding: 12px 8px;
@@ -182,6 +187,7 @@ const ActionCard = styled.div`
   aspect-ratio: 1 / 1;
   position: relative;
   cursor: pointer;
+  opacity: ${(p) => p.$locked ? 0.4 : 1};
   
   /* Neumorphic shadow */
   box-shadow: 
@@ -195,7 +201,7 @@ const ActionCard = styled.div`
   }
   
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  animation: ${slideUp} 0.4s ease both;
+  animation: ${(p) => p.$locked ? css`${slideUpLocked} 0.4s ease both` : css`${slideUp} 0.4s ease both`};
 
   &:hover {
     box-shadow: 
@@ -727,6 +733,7 @@ const actions = [
     desc: 'Clínico',
     color: '#4a90d9',
     icon: <ClipboardList size={20} strokeWidth={2.5} />,
+    proOnly: true,
   },
   {
     section: 'Recipes',
@@ -754,9 +761,11 @@ interface HomeScreenProps {
   onLoadRecord:    (record: HistoryRecord) => void;
   onDownloadRecord:(record: HistoryRecord) => void;
   onSharePdf:      (record: HistoryRecord) => Promise<void>;
+  isFullAccess:    boolean;
+  onProRequired:   () => void;
 }
 
-const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord, onSharePdf }: HomeScreenProps) => {
+const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord, onSharePdf, isFullAccess, onProRequired }: HomeScreenProps) => {
   const [recent,         setRecent]         = useState<HistoryRecord[]>([]);
   const [openId,         setOpenId]         = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<{ id: number; name: string } | null>(null);
@@ -835,6 +844,8 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         type={shareModal.type}
         doctorProfile={doctorProfile}
         paymentMethods={paymentMethods}
+        isFullAccess={isFullAccess}
+        onProRequired={onProRequired}
       />
 
       <Wrapper>
@@ -868,29 +879,34 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
       {/* Quick Actions */}
       <SectionLabel>Acciones rápidas</SectionLabel>
       <ActionGrid>
-        {actions.map((a, i) => (
-          <ActionCard
-            key={a.section}
-            onClick={() => onNavigate(a.section)}
-            id={`home-card-${a.section.toLowerCase()}`}
-            style={{ animationDelay: `${i * 0.07}s` }}
-          >
-            {counts[a.type] !== undefined && (
-              <ActionCountDot $color={a.color}>
-                {counts[a.type]}
-              </ActionCountDot>
-            )}
-            
-            <IconBadge $color={a.color}>
-              {a.icon}
-            </IconBadge>
+        {actions.map((a, i) => {
+          const locked = a.proOnly && !isFullAccess;
+          return (
+            <ActionCard
+              key={a.section}
+              $locked={locked}
+              onClick={() => locked ? onProRequired() : onNavigate(a.section)}
+              id={`home-card-${a.section.toLowerCase()}`}
+              style={{ animationDelay: `${i * 0.07}s` }}
+            >
+              {locked && <ActionCountDot $color="#fff" style={{ background: '#eab308', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>PRO</ActionCountDot>}
+              {!locked && counts[a.type] !== undefined && (
+                <ActionCountDot $color={a.color}>
+                  {counts[a.type]}
+                </ActionCountDot>
+              )}
+              
+              <IconBadge $color={a.color}>
+                {a.icon}
+              </IconBadge>
 
-            <ActionContent>
-              <h4 style={{ whiteSpace: 'pre-line' }}>{a.label}</h4>
-              <ActionSubtext>{a.desc}</ActionSubtext>
-            </ActionContent>
-          </ActionCard>
-        ))}
+              <ActionContent>
+                <h4 style={{ whiteSpace: 'pre-line' }}>{a.label}</h4>
+                <ActionSubtext>{a.desc}</ActionSubtext>
+              </ActionContent>
+            </ActionCard>
+          );
+        })}
       </ActionGrid>
 
       {/* Configuration */}
