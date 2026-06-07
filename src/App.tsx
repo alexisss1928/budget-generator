@@ -196,12 +196,14 @@ const SidebarTabBtn = styled.button<{ $active: boolean }>`
   border: none;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: ${(p) => p.$active ? '600' : '400'};
+  font-weight: 400;
   cursor: pointer;
   transition: color 0.3s;
   gap: 6px;
   position: relative;
   z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 
   &:hover {
     color: #fff;
@@ -226,6 +228,8 @@ const DrawerItem = styled.button<{ $active?: boolean; $locked?: boolean; $highli
   text-align: left;
   transition: all 0.15s;
   box-shadow: ${(p) => p.$highlight ? '0 4px 12px rgba(106, 106, 106, 0.35)' : 'none'};
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 
   .item-content {
     display: flex;
