@@ -208,21 +208,24 @@ const SidebarTabBtn = styled.button<{ $active: boolean }>`
   }
 `;
 
-const DrawerItem = styled.button<{ $active?: boolean; $locked?: boolean }>`
-  width: 100%;
+const DrawerItem = styled.button<{ $active?: boolean; $locked?: boolean; $highlight?: boolean }>`
+  width: ${(p) => p.$highlight ? 'calc(100% - 36px)' : '100%'};
+  margin: ${(p) => p.$highlight ? '8px 18px' : '0'};
   display: flex; align-items: center; justify-content: space-between;
   padding: 13px 18px;
-  background: ${(p) => p.$active ? 'rgba(255,255,255,0.16)' : 'transparent'};
+  background: ${(p) => p.$highlight ? '#6a6a6a' : (p.$active ? 'rgba(255,255,255,0.16)' : 'transparent')};
   border: none;
-  border-left: 3px solid ${(p) => p.$active ? 'rgba(255,255,255,0.8)' : 'transparent'};
+  border-radius: ${(p) => p.$highlight ? '10px' : '0'};
+  border-left: ${(p) => p.$highlight ? 'none' : `3px solid ${p.$active ? 'rgba(255,255,255,0.8)' : 'transparent'}`};
   cursor: ${(p) => p.$locked ? 'not-allowed' : 'pointer'};
   opacity: ${(p) => p.$locked ? 0.75 : 1};
-  color: ${(p) => p.$active ? '#fff' : 'rgba(255,255,255,0.7)'};
+  color: ${(p) => p.$highlight ? '#fff' : (p.$active ? '#fff' : 'rgba(255,255,255,0.7)')};
   font-size: 13px;
-  font-weight: ${(p) => p.$active ? '600' : '400'};
+  font-weight: ${(p) => p.$highlight || p.$active ? '600' : '400'};
   font-family: 'Inter', sans-serif;
   text-align: left;
   transition: all 0.15s;
+  box-shadow: ${(p) => p.$highlight ? '0 4px 12px rgba(106, 106, 106, 0.35)' : 'none'};
 
   .item-content {
     display: flex;
@@ -230,12 +233,13 @@ const DrawerItem = styled.button<{ $active?: boolean; $locked?: boolean }>`
     gap: 13px;
   }
 
-  svg { flex-shrink: 0; opacity: ${(p) => p.$active ? 1 : 0.65}; }
+  svg { flex-shrink: 0; opacity: ${(p) => p.$active || p.$highlight ? 1 : 0.65}; }
 
   &:hover { 
-    background: ${(p) => p.$locked ? 'transparent' : 'rgba(255,255,255,0.1)'}; 
+    background: ${(p) => p.$locked ? 'transparent' : (p.$highlight ? '#555555' : 'rgba(255,255,255,0.1)')}; 
     color: ${(p) => p.$locked ? 'rgba(255,255,255,0.7)' : '#fff'}; 
     svg { opacity: ${(p) => p.$locked ? 0.65 : 1}; } 
+    transform: ${(p) => p.$highlight && !p.$locked ? 'translateY(-1px)' : 'none'};
   }
 `;
 
@@ -872,33 +876,17 @@ function InnerApp() {
                     <div className="item-content">
                       {item.icon}{item.label}
                     </div>
-                    {item.proOnly && <span style={{ fontSize: '9px', background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>PRO</span>}
+                    {item.proOnly && !isFullAccess && <span style={{ fontSize: '9px', background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>PRO</span>}
                   </DrawerItem>
                 );
               })}
-
-              <DrawerDivider />
-              <DrawerItem onClick={toggleTheme}>
-                <div className="item-content">
-                  {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
-                  Modo Oscuro
-                </div>
-                <ToggleTrack $isOn={theme === 'dark'}>
-                  <ToggleThumb $isOn={theme === 'dark'} />
-                </ToggleTrack>
-              </DrawerItem>
-              <DrawerItem onClick={signOut}>
-                <div className="item-content">
-                  <LogOut size={15} /> Cerrar Sesión
-                </div>
-              </DrawerItem>
             </>
           ) : (
             <>
               {configItems.map((item) => {
                 const locked = item.proOnly && !isFullAccess;
                 return (
-                  <DrawerItem key={item.section} $active={section === item.section} $locked={locked}
+                  <DrawerItem key={item.section} $active={section === item.section} $locked={locked} $highlight={item.label === 'Panel Admin'}
                     onClick={() => {
                       if (locked) {
                         setProModal({ isOpen: true, message: 'Esta función es exclusiva del plan PRO.' });
@@ -909,12 +897,30 @@ function InnerApp() {
                     <div className="item-content">
                       {item.icon}{item.label}
                     </div>
-                    {item.proOnly && <span style={{ fontSize: '9px', background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>PRO</span>}
+                    {item.proOnly && !isFullAccess && <span style={{ fontSize: '9px', background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>PRO</span>}
                   </DrawerItem>
                 );
               })}
             </>
           )}
+
+          <div style={{ marginTop: 'auto' }}>
+            <DrawerDivider />
+            <DrawerItem onClick={toggleTheme}>
+              <div className="item-content">
+                {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+                Modo Oscuro
+              </div>
+              <ToggleTrack $isOn={theme === 'dark'}>
+                <ToggleThumb $isOn={theme === 'dark'} />
+              </ToggleTrack>
+            </DrawerItem>
+            <DrawerItem onClick={signOut}>
+              <div className="item-content">
+                <LogOut size={15} /> Cerrar Sesión
+              </div>
+            </DrawerItem>
+          </div>
         </DrawerNav>
 
         {!isFullAccess ? (
@@ -954,7 +960,7 @@ function InnerApp() {
 
       {/* Navbar */}
       <Navbar>
-        <NavBtn onClick={() => setDrawerOpen(true)} aria-label="Menú">
+        <NavBtn onClick={() => { setSidebarTab('main'); setDrawerOpen(true); }} aria-label="Menú">
           <Menu size={20} />
         </NavBtn>
         <NavCenter $theme={theme}>
