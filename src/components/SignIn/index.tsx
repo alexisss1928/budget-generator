@@ -15,7 +15,7 @@ const Container = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--bg) 0%, var(--surface-alt) 100%);
+  background: var(--bg);
   padding: 20px;
 `;
 
