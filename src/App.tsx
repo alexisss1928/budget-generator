@@ -31,6 +31,7 @@ import WhatsAppModal from './components/WhatsAppModal';
 import SignIn from './components/SignIn';
 import AdminPanel from './components/AdminPanel';
 import ProUpgradeModal from './components/ProUpgradeModal';
+import AnalysisLoader from './components/AnalysisLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { usePWA } from './hooks/usePWA';
 
@@ -826,11 +827,30 @@ function InnerApp() {
           </DrawerItem>
         </DrawerNav>
 
-        {!isFullAccess && (
+        {!isFullAccess ? (
           <div style={{ padding: '0 18px 14px' }}>
             <ProUpgradeSidebarBtn onClick={() => setProModal({ isOpen: true, message: 'Obtén acceso ilimitado y funciones exclusivas.' })}>
               <Crown size={15} /> Cambiar a PRO
             </ProUpgradeSidebarBtn>
+          </div>
+        ) : (
+          <div style={{ padding: '0 18px 14px' }}>
+            <div style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              background: 'rgba(234, 179, 8, 0.1)',
+              border: '1px solid rgba(234, 179, 8, 0.3)',
+              color: '#eab308',
+              fontSize: '13px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}>
+              <Crown size={15} /> Eres usuario PRO
+            </div>
           </div>
         )}
 
@@ -1226,7 +1246,7 @@ function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <AppShell style={{ alignItems: 'center', justifyContent: 'center' }}>Cargando...</AppShell>;
+    return <AnalysisLoader />;
   }
 
   if (!isAuthenticated) {
