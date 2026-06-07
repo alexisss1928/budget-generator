@@ -701,7 +701,14 @@ function InnerApp() {
   const hasContent = report !== '' || treatmentsList.length > 0 || currentRecipe.length > 0;
 
   // ── Nav items ──────────────────────────────────────────────────────────────
-  const navItems = [
+  type NavItemType = {
+    label: string;
+    section: string;
+    icon: React.ReactNode;
+    proOnly?: boolean;
+  };
+
+  const navItems: NavItemType[] = [
     { label: 'Inicio', section: 'Inicio', icon: <Home size={15} /> },
     { label: 'Presupuesto', section: 'Presupuesto', icon: <FileText size={15} /> },
     { label: 'Informe', section: 'Informe', icon: <ClipboardList size={15} />, proOnly: true },
@@ -709,7 +716,7 @@ function InnerApp() {
     { label: 'Historial', section: 'Historial', icon: <HistoryIcon size={15} /> },
   ];
 
-  const configItems = [
+  const configItems: NavItemType[] = [
     { label: 'Datos del doctor', section: 'Datos del doctor', icon: <Stethoscope size={13} /> },
     { label: 'Métodos de pago', section: 'Métodos de pago', icon: <CreditCard size={13} /> },
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
