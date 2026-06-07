@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import api from '../../services/api';
-import { ChevronLeft, ChevronDown, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Search, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Container = styled.div`
@@ -254,6 +254,98 @@ const DeleteBtn = styled.button`
   }
 `;
 
+const fadeIn = keyframes`from { opacity: 0 } to { opacity: 1 }`;
+const popIn  = keyframes`
+  from { opacity: 0; transform: scale(0.94) translateY(8px) }
+  to   { opacity: 1; transform: scale(1)    translateY(0) }
+`;
+
+const ConfirmOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+  animation: ${fadeIn} 0.18s ease;
+  padding: 20px;
+  box-sizing: border-box;
+`;
+
+const ConfirmBox = styled.div`
+  background: var(--surface);
+  border-radius: 18px;
+  width: 90%;
+  max-width: 380px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  animation: ${popIn} 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
+`;
+
+const ConfirmIconWrap = styled.div`
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: #ffebee;
+  display: flex; align-items: center; justify-content: center;
+  color: #e53935;
+  margin: 0 auto 14px;
+`;
+
+const ConfirmTitle = styled.h3`
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+`;
+
+const ConfirmDesc = styled.p`
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.5;
+  strong { color: var(--text); }
+`;
+
+const ConfirmBtns = styled.div`
+  display: flex;
+  gap: 10px;
+`;
+
+const ConfirmCancelBtn = styled.button`
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+  &:hover { background: var(--surface-alt); }
+`;
+
+const ConfirmDeleteBtn = styled.button`
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: #e53935;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.12s;
+  font-family: inherit;
+  &:hover  { opacity: 0.9; transform: translateY(-1px); }
+  &:active { transform: scale(0.97); }
+`;
+
 type UserData = {
   id: string;
   email: string;
@@ -281,6 +373,7 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPlan, setFilterPlan] = useState('ALL');
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -312,14 +405,16 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
     }
   };
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar al usuario ${userName}? Esta acción no se puede deshacer.`)) {
-      return;
-    }
-    
+  const handleDeleteUser = (userId: string, userName: string) => {
+    setPendingDelete({ id: userId, name: userName });
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
     try {
-      await api.delete(`/users/${userId}`);
+      await api.delete(`/users/${pendingDelete.id}`);
       toast.success('Usuario eliminado correctamente');
+      setPendingDelete(null);
       loadData();
     } catch (err) {
       toast.error('No se pudo eliminar el usuario');
@@ -336,7 +431,28 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
   if (loading) return <Container>Cargando panel...</Container>;
 
   return (
-    <Container>
+    <>
+      {pendingDelete && (
+        <ConfirmOverlay onClick={() => setPendingDelete(null)}>
+          <ConfirmBox onClick={(e) => e.stopPropagation()}>
+            <ConfirmIconWrap>
+              <AlertTriangle size={24} strokeWidth={2.5} />
+            </ConfirmIconWrap>
+            <ConfirmTitle>Eliminar Usuario</ConfirmTitle>
+            <ConfirmDesc>
+              ¿Estás seguro de que deseas eliminar a <strong>{pendingDelete.name}</strong>?
+              <br />
+              Esta acción no se puede deshacer.
+            </ConfirmDesc>
+            <ConfirmBtns>
+              <ConfirmCancelBtn onClick={() => setPendingDelete(null)}>Cancelar</ConfirmCancelBtn>
+              <ConfirmDeleteBtn onClick={confirmDelete}>Eliminar</ConfirmDeleteBtn>
+            </ConfirmBtns>
+          </ConfirmBox>
+        </ConfirmOverlay>
+      )}
+      
+      <Container>
       <Header>
         <BackBtn onClick={onBack}>
           <ChevronLeft size={15} /> Volver
@@ -459,9 +575,10 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
               </div>
             </UserMobileCard>
           ))}
-        </MobileView>
-      </TableContainer>
-    </Container>
+          </MobileView>
+        </TableContainer>
+      </Container>
+    </>
   );
 };
 

@@ -30,6 +30,7 @@ import PaymentMethods from './components/PaymentMethods';
 import WhatsAppModal from './components/WhatsAppModal';
 import SignIn from './components/SignIn';
 import AdminPanel from './components/AdminPanel';
+import TermsAndConditionsScreen from './components/TermsAndConditionsScreen';
 import ProUpgradeModal from './components/ProUpgradeModal';
 import AnalysisLoader from './components/AnalysisLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -780,8 +781,9 @@ function InnerApp() {
     { label: 'Datos del doctor', section: 'Datos del doctor', icon: <Stethoscope size={13} /> },
     { label: 'Métodos de pago', section: 'Métodos de pago', icon: <CreditCard size={13} /> },
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
-    { label: 'Medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
+    { label: 'Administrar medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
     { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
+    { label: 'Términos y condiciones', section: 'Términos y condiciones', icon: <FileText size={13} /> },
     ...(user?.role === 'ADMIN' ? [{ label: 'Panel Admin', section: 'AdminPanel', icon: <Users size={13} /> }] : []),
   ];
 
@@ -1261,6 +1263,12 @@ function InnerApp() {
         {section === 'AdminPanel' && user?.role === 'ADMIN' && (
           <SectionView>
             <AdminPanel onBack={() => navigate('Inicio')} />
+          </SectionView>
+        )}
+
+        {section === 'Términos y condiciones' && (
+          <SectionView>
+            <TermsAndConditionsScreen onBack={() => navigate('Inicio')} />
           </SectionView>
         )}
       </ContentArea>
