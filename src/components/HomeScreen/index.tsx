@@ -6,11 +6,12 @@ import LogoJarabito from '../../assets/leafAssets/logo-jarabito.png';
 import {
   FileText, ClipboardList, Pill,
   ChevronDown, ChevronRight, Edit2,
-  Share2, Download, Trash2, AlertTriangle,
+  Share2, Download, Trash2, AlertTriangle, Clock,
 } from 'lucide-react';
 import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods } from '../../db/clinicDB';
 import WhatsAppModal from '../WhatsAppModal';
 import ShareModal from '../ShareModal';
+import { useAuth } from '../../context/AuthContext';
 
 // ─── Animations ──────────────────────────────────────────────────────────────
 
@@ -127,6 +128,62 @@ const SectionLabel = styled.p`
   letter-spacing: 1.5px;
   margin-bottom: 12px;
   padding-left: 2px;
+`;
+
+// ─── Trial Banner ──────────────────────────────────────────────────────────────
+
+const TrialBanner = styled.div`
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.05) 100%);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: ${popIn} 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+
+  .trial-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .trial-content {
+    flex: 1;
+    h3 {
+      margin: 0 0 2px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #eab308;
+    }
+    p {
+      margin: 0;
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+  }
+
+  button {
+    padding: 8px 12px;
+    background: #eab308;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    &:hover { opacity: 0.9; }
+    &:active { transform: scale(0.95); }
+  }
 `;
 
 // ─── Action cards (Neumorphic Layout) ────────────────────────────────────────
@@ -777,6 +834,14 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
     isOpen: false,
     type: 'doctor'
   });
+  
+  const { user } = useAuth();
+  
+  let trialDaysLeft = 0;
+  if (user?.plan === 'FREE_TRIAL' && user.createdAt) {
+    const diff = (new Date().getTime() - new Date(user.createdAt).getTime()) / (1000 * 3600 * 24);
+    trialDaysLeft = Math.max(0, 14 - Math.floor(diff));
+  }
 
   const refreshRecent = () => getAllHistory().then((all) => {
     setRecent(all.slice(0, 5));
@@ -865,6 +930,19 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
           </div>
         </div>
       </WelcomeCard>
+
+      {user?.plan === 'FREE_TRIAL' && (
+        <TrialBanner>
+          <div className="trial-icon">
+            <Clock size={20} strokeWidth={2.5} />
+          </div>
+          <div className="trial-content">
+            <h3>Periodo de Prueba</h3>
+            <p>Te quedan {trialDaysLeft} días de prueba gratuita. Disfruta de todas las funciones PRO.</p>
+          </div>
+          <button onClick={onProRequired}>Ser PRO</button>
+        </TrialBanner>
+      )}
 
       {/* Share Buttons */}
       <ShareButtonsRow>

@@ -162,12 +162,26 @@ const DrawerNav = styled.nav`
   padding: 10px 0;
 `;
 
-const SidebarTabsContainer = styled.div`
+const SidebarTabsContainer = styled.div<{ $activeTab: 'main' | 'config' }>`
   display: flex;
   margin: 16px 18px 4px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
   padding: 4px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: ${(p) => p.$activeTab === 'main' ? '4px' : 'calc(50% + 2px)'};
+    width: calc(50% - 6px);
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
+  }
 `;
 
 const SidebarTabBtn = styled.button<{ $active: boolean }>`
@@ -176,18 +190,19 @@ const SidebarTabBtn = styled.button<{ $active: boolean }>`
   align-items: center;
   justify-content: center;
   padding: 8px;
-  background: ${(p) => p.$active ? 'rgba(255, 255, 255, 0.15)' : 'transparent'};
+  background: transparent;
   color: ${(p) => p.$active ? '#fff' : 'rgba(255, 255, 255, 0.5)'};
   border: none;
   border-radius: 6px;
   font-size: 12px;
   font-weight: ${(p) => p.$active ? '600' : '400'};
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.3s;
   gap: 6px;
+  position: relative;
+  z-index: 2;
 
   &:hover {
-    background: ${(p) => p.$active ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)'};
     color: #fff;
   }
 `;
@@ -271,13 +286,12 @@ const ProUpgradeSidebarBtn = styled.button`
 const Navbar = styled.header`
   height: 60px;
   flex: 0 0 60px;
-  background: ${professionalData.primaryColor};
+  background: var(--bg);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 12px;
   z-index: 100;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
 `;
 
 const NavBtn = styled.button`
@@ -285,16 +299,16 @@ const NavBtn = styled.button`
   border: none; background: transparent; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   border-radius: 10px;
-  color: rgba(255,255,255,0.85);
+  color: var(--text-secondary);
   transition: background 0.15s, color 0.15s;
-  &:hover { background: rgba(255,255,255,0.14); color: #fff; }
+  &:hover { background: rgba(128,128,128,0.1); color: var(--text); }
 `;
 
-const NavCenter = styled.div`
+const NavCenter = styled.div<{ $theme?: string }>`
   display: flex; align-items: center; gap: 9px;
   flex: 1; justify-content: center;
-  img { width: 26px; filter: brightness(0) invert(1); }
-  span { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.2px; }
+  img { width: 26px; filter: ${(p) => p.$theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)'}; opacity: 0.8; }
+  span { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: 0.2px; }
 `;
 
 const ContentArea = styled.main`
@@ -830,7 +844,7 @@ function InnerApp() {
           </DrawerCloseBtn>
         </DrawerHead>
 
-        <SidebarTabsContainer>
+        <SidebarTabsContainer $activeTab={sidebarTab}>
           <SidebarTabBtn $active={sidebarTab === 'main'} onClick={() => setSidebarTab('main')}>
             <Home size={14} /> Principal
           </SidebarTabBtn>
@@ -941,7 +955,7 @@ function InnerApp() {
         <NavBtn onClick={() => setDrawerOpen(true)} aria-label="Menú">
           <Menu size={20} />
         </NavBtn>
-        <NavCenter>
+        <NavCenter $theme={theme}>
           <img src={Logo} alt="Logo" />
           <span>{currentTitle}</span>
         </NavCenter>

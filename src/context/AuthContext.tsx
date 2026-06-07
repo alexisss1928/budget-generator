@@ -10,7 +10,7 @@ import api from '../services/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type UserPlan = 'FREE' | 'FULL_ACCESS';
+export type UserPlan = 'FREE' | 'FREE_TRIAL' | 'FULL_ACCESS';
 export type UserRole = 'USER' | 'ADMIN';
 
 export interface AuthUser {
@@ -139,7 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: !!user,
     isLoading,
     plan: user?.plan ?? null,
-    isFullAccess: user?.plan === 'FULL_ACCESS' || user?.role === 'ADMIN',
+    isFullAccess: user?.plan === 'FULL_ACCESS' || user?.plan === 'FREE_TRIAL' || user?.role === 'ADMIN',
     signInWithGoogle,
     signOut,
     refreshUser,

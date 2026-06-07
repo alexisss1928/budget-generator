@@ -2,8 +2,8 @@
 import styled, { keyframes } from 'styled-components';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../assets/leafAssets/logo.png';
+import LogoLeafWeb from '../../assets/leafAssets/logo_horz.png';
 import professionalData from '../../commons/professionalData';
-import { Leaf } from 'lucide-react';
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(10px); }
@@ -20,12 +20,9 @@ const Container = styled.div`
 `;
 
 const Card = styled.div`
-  background: var(--surface);
-  border-radius: 24px;
   padding: 40px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
   text-align: center;
   animation: ${fadeIn} 0.6s ease-out;
 `;
@@ -104,14 +101,35 @@ const GoogleLogoSVG = () => (
   </svg>
 );
 
-const FooterText = styled.p`
-  font-size: 12px;
+const FooterText = styled.div`
+  font-size: 11px;
   color: var(--text-muted);
   margin: 24px 0 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
+  
+  a {
+    display: flex;
+    align-items: center;
+  }
+  
+  img {
+    width: 70px;
+    opacity: 0.8;
+    filter: brightness(0);
+    transition: all 0.2s;
+  }
+  
+  &:hover img {
+    opacity: 1;
+  }
+
+  html[data-theme='dark'] & img {
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+  }
 `;
 
 const SignIn = () => {
@@ -134,7 +152,10 @@ const SignIn = () => {
         </GoogleButton>
 
         <FooterText>
-          Desarrollado por leaf4web <Leaf size={12} color="var(--accent)" />
+          Diseñado por
+          <a href="https://www.instagram.com/leaf4web/" target="_blank" rel="noreferrer">
+            <img src={LogoLeafWeb} alt="leaf4web" />
+          </a>
         </FooterText>
       </Card>
     </Container>

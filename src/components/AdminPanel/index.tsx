@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import api from '../../services/api';
-import { ChevronLeft, ChevronDown, Search } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Search, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Container = styled.div`
@@ -238,6 +238,22 @@ const SelectPlan = styled.select`
   &:focus { outline: none; border-color: var(--accent); }
 `;
 
+const DeleteBtn = styled.button`
+  background: transparent;
+  border: none;
+  color: #e53935;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  &:hover {
+    background: rgba(229, 57, 53, 0.1);
+  }
+`;
+
 type UserData = {
   id: string;
   email: string;
@@ -293,6 +309,20 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
       loadData();
     } catch (err) {
       toast.error('No se pudo actualizar el plan');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar al usuario ${userName}? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+    
+    try {
+      await api.delete(`/users/${userId}`);
+      toast.success('Usuario eliminado correctamente');
+      loadData();
+    } catch (err) {
+      toast.error('No se pudo eliminar el usuario');
     }
   };
 
@@ -357,6 +387,7 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
               <th>Rol</th>
               <th>Registro</th>
               <th>Plan</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -372,8 +403,14 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
                     onChange={(e) => handlePlanChange(user.id, e.target.value)}
                   >
                     <option value="FREE">Free</option>
+                    <option value="FREE_TRIAL">Free Trial</option>
                     <option value="FULL_ACCESS">Full Access</option>
                   </SelectPlan>
+                </td>
+                <td>
+                  <DeleteBtn onClick={() => handleDeleteUser(user.id, user.name)} title="Eliminar usuario">
+                    <Trash2 size={16} />
+                  </DeleteBtn>
                 </td>
               </tr>
             ))}
@@ -409,8 +446,15 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
                     onChange={(e) => handlePlanChange(user.id, e.target.value)}
                   >
                     <option value="FREE">Free</option>
+                    <option value="FREE_TRIAL">Free Trial</option>
                     <option value="FULL_ACCESS">Full Access</option>
                   </SelectPlan>
+                </div>
+                <div className="detail-row">
+                  <span className="label">Acciones</span>
+                  <DeleteBtn onClick={() => handleDeleteUser(user.id, user.name)}>
+                    <Trash2 size={16} /> <span style={{ marginLeft: '4px', fontSize: '12px' }}>Eliminar</span>
+                  </DeleteBtn>
                 </div>
               </div>
             </UserMobileCard>
