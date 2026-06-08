@@ -867,7 +867,7 @@ function InnerApp() {
         <DrawerHead>
           <div className="brand">
             <img src={Logo} alt="Logo" />
-            <span>{doctorProfile.clinicTitle}</span>
+            <span>{doctorProfile.clinicTitle || `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim() || 'Consultorio'}</span>
           </div>
           <DrawerCloseBtn onClick={() => setDrawerOpen(false)}>
             <X size={14} />

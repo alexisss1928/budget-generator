@@ -53,6 +53,13 @@ const WelcomeCard = styled.div<{ $customColor?: string }>`
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+  }
 
   &::after {
     content: '';
@@ -174,6 +181,50 @@ const ShareButtonsRow = styled.div`
 
     &:active {
       transform: translateY(2px);
+    }
+  }
+`;
+
+const MissingProfileBanner = styled.div`
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-left: 4px solid #eab308;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  .text-content {
+    flex: 1;
+    h4 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      color: var(--text);
+    }
+    p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+  }
+
+  button {
+    background: #eab308;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #ca8a04;
     }
   }
 `;
@@ -855,7 +906,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
 
       <Wrapper>
       {/* Welcome Banner */}
-      <WelcomeCard $customColor={doctorProfile.color}>
+      <WelcomeCard $customColor={doctorProfile.color} onClick={() => onNavigate('Datos del doctor')}>
         <BgLogo src={doctorProfile.logoDataUrl || Logo} alt="" />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative', zIndex: 1 }}>
@@ -865,11 +916,26 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
             <WelcomeLogo src={Logo} alt="Logo" style={{ width: 60, height: 60, marginBottom: 0 }} />
           )}
           <div>
-            <WelcomeName>{`${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim() || professionalData.name}</WelcomeName>
-            <WelcomeSpecialty style={{ display: 'block' }}>{doctorProfile.especialidad || professionalData.especiality}</WelcomeSpecialty>
+            <WelcomeName>
+              {doctorProfile.nombre ? `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim() : '¡Bienvenido!'}
+            </WelcomeName>
+            <WelcomeSpecialty style={{ display: 'block' }}>
+              {doctorProfile.especialidad || 'Configura tu perfil para empezar'}
+            </WelcomeSpecialty>
           </div>
         </div>
       </WelcomeCard>
+
+      {/* Missing Profile Warning */}
+      {!doctorProfile.nombre && (
+        <MissingProfileBanner>
+          <div className="text-content">
+            <h4>Completa tu perfil</h4>
+            <p>Tus documentos y presupuestos saldrán con tus datos e imagen profesional.</p>
+          </div>
+          <button onClick={() => onNavigate('Datos del doctor')}>Configurar</button>
+        </MissingProfileBanner>
+      )}
 
 
 

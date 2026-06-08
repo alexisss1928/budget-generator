@@ -85,7 +85,7 @@ const PrintContentLayout = ({
               fontSize: '14px',
             }}
           >
-            {professionalData.clinicTitle}
+            {professionalData.clinicTitle || `${professionalData.prefix} ${professionalData.nombre} ${professionalData.apellido}`.trim()}
           </h1>
           {professionalData.lema && (
             <p style={{ margin: '1px 0', fontSize: '9px', color: '#868686', fontStyle: 'italic' }}>

@@ -115,7 +115,7 @@ const BudgetReportPrint = ({
                 fontSize: '24px',
               }}
             >
-              {doctorProfile.clinicTitle}
+              {doctorProfile.clinicTitle || `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim()}
             </h1>
             {doctorProfile.lema && (
               <p style={{ margin: '2px 0', fontSize: '11px', color: '#868686', fontStyle: 'italic' }}>
