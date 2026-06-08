@@ -6,7 +6,7 @@ import LogoJarabito from '../../assets/leafAssets/logo-jarabito.png';
 import {
   FileText, ClipboardList, Pill,
   ChevronDown, ChevronRight, Edit2,
-  Share2, Download, Trash2, AlertTriangle, Clock,
+  Share2, Download, Trash2, AlertTriangle,
 } from 'lucide-react';
 import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods } from '../../db/clinicDB';
 import WhatsAppModal from '../WhatsAppModal';
@@ -130,61 +130,6 @@ const SectionLabel = styled.p`
   padding-left: 2px;
 `;
 
-// ─── Trial Banner ──────────────────────────────────────────────────────────────
-
-const TrialBanner = styled.div`
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.05) 100%);
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  animation: ${popIn} 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-
-  .trial-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: rgba(234, 179, 8, 0.15);
-    color: #eab308;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .trial-content {
-    flex: 1;
-    h3 {
-      margin: 0 0 2px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #eab308;
-    }
-    p {
-      margin: 0;
-      font-size: 11px;
-      color: var(--text-secondary);
-      line-height: 1.4;
-    }
-  }
-
-  button {
-    padding: 8px 12px;
-    background: #eab308;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: transform 0.1s, opacity 0.2s;
-    &:hover { opacity: 0.9; }
-    &:active { transform: scale(0.95); }
-  }
-`;
 
 // ─── Action cards (Neumorphic Layout) ────────────────────────────────────────
 
@@ -823,7 +768,7 @@ interface HomeScreenProps {
 }
 
 const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord, onSharePdf, isFullAccess, onProRequired }: HomeScreenProps) => {
-  const { user, isTrial } = useAuth();
+  const { isTrial } = useAuth();
   const [recent,         setRecent]         = useState<HistoryRecord[]>([]);
   const [openId,         setOpenId]         = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<{ id: number; name: string } | null>(null);
