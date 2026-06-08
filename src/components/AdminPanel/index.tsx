@@ -1,13 +1,47 @@
 import { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import api from '../../services/api';
-import { ChevronLeft, ChevronDown, Search, Trash2, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Search, Trash2, AlertTriangle, Settings } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Container = styled.div`
   max-width: 800px;
   margin: 0 auto;
   padding: 20px 16px 100px;
+`;
+
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
+
+const LoaderWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  gap: 16px;
+  color: var(--accent);
+  
+  svg {
+    animation: ${spin} 3s linear infinite;
+    filter: drop-shadow(0 4px 12px rgba(16, 185, 129, 0.3));
+  }
+  
+  p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.5px;
+    animation: pulse 2s infinite ease-in-out;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
 `;
 
 const Header = styled.div`
@@ -467,7 +501,14 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
     return matchesSearch && matchesPlan;
   });
 
-  if (loading) return <Container>Cargando panel...</Container>;
+  if (loading) return (
+    <Container>
+      <LoaderWrapper>
+        <Settings size={48} strokeWidth={1.5} />
+        <p>Cargando Panel de Administración...</p>
+      </LoaderWrapper>
+    </Container>
+  );
 
   return (
     <>

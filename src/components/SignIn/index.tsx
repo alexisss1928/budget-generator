@@ -1,10 +1,10 @@
-
+import { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../../assets/leafAssets/logo.png';
 import LogoLeafWeb from '../../assets/leafAssets/logo_horz.png';
 import professionalData from '../../commons/professionalData';
-
+import TermsAndConditionsScreen from '../TermsAndConditionsScreen';
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -132,8 +132,42 @@ const FooterText = styled.div`
   }
 `;
 
+const TermsText = styled.p`
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 16px;
+  margin-bottom: 0;
+  line-height: 1.5;
+
+  button {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+    text-decoration: underline;
+
+    &:hover {
+      color: #10b981;
+    }
+  }
+`;
+
 const SignIn = () => {
   const { signInWithGoogle } = useAuth();
+  const [showTerms, setShowTerms] = useState(false);
+
+  if (showTerms) {
+    return (
+      <div style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg)' }}>
+        <TermsAndConditionsScreen onBack={() => setShowTerms(false)} />
+      </div>
+    );
+  }
 
   return (
     <Container>
@@ -150,6 +184,11 @@ const SignIn = () => {
           <GoogleLogoSVG />
           Continuar con Google
         </GoogleButton>
+
+        <TermsText>
+          Al continuar, aceptas nuestros{' '}
+          <button type="button" onClick={() => setShowTerms(true)}>Términos y Condiciones</button>
+        </TermsText>
 
         <FooterText>
           Diseñado por
