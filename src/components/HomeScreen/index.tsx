@@ -836,8 +836,6 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
     type: 'doctor'
   });
   
-  const { user } = useAuth();
-  
   let trialDaysLeft = 0;
   if (user?.plan === 'FREE_TRIAL' && user.createdAt) {
     const diff = (new Date().getTime() - new Date(user.createdAt).getTime()) / (1000 * 3600 * 24);
