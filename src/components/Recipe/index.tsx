@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { PlusCircle, Pill, Plus, X } from 'lucide-react';
 import ItemRecipeComponent from '../ItemRecipe';
@@ -9,7 +9,7 @@ const FormCard = styled.div`
   background: var(--surface);
   border-radius: 16px;
   margin-bottom: 20px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: var(--shadow-card);
 `;
 
@@ -138,7 +138,7 @@ const ModalContent = styled.div`
   max-width: 420px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.18);
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: visible;
   position: relative;
   
   /* Overrides for FormCard inside modal */
@@ -217,9 +217,47 @@ const Recipe = ({
 }: RecipeProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Custom Dropdown State
+  const [isManual, setIsManual] = useState(false);
+  const [searchMedicine, setSearchMedicine] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredMedicines = medicinesList
+    .map((m, index) => ({ ...m, originalIndex: index }))
+    .filter(m => m.nombre.toLowerCase().includes(searchMedicine.toLowerCase()))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  const selectMedicine = (index: number, name: string) => {
+    setIsManual(false);
+    setSearchMedicine(name);
+    setShowDropdown(false);
+    handleCurrentRecipe({ target: { name: 'treatment', value: index.toString() } } as any);
+  };
+
+  const selectManual = () => {
+    setIsManual(true);
+    setSearchMedicine('Medicamento manual');
+    setShowDropdown(false);
+    handleCurrentRecipe({ target: { name: 'nombre', value: '' } } as any);
+    handleCurrentRecipe({ target: { name: 'indicaciones', value: '' } } as any);
+  };
+
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     AddMedicine(e as any);
     setIsModalOpen(false);
+    setIsManual(false);
+    setSearchMedicine('');
   };
 
   return (
@@ -234,53 +272,88 @@ const Recipe = ({
                 <span>Agregar medicamento</span>
               </CardTitle>
               <form onSubmit={handleFormSubmit}>
-                <FieldRow>
+                <FieldRow style={{ position: 'relative' }}>
                   <label>Elegir guardado</label>
-                  <select
-                    name="treatment"
-                    onChange={handleCurrentRecipe}
-                    defaultValue=""
-                    required
-                  >
-                    <option value="" disabled>
-                      {medicinesList.length !== 0
-                        ? 'Selecciona un medicamento predefinido...'
-                        : 'Sin medicamentos guardados'}
-                    </option>
-                    {medicinesList
-                      ?.sort((a, b) => a.nombre.localeCompare(b.nombre))
-                      .map((medicamento, index) => (
-                        <option value={index} key={index}>
-                          {medicamento.nombre}
-                        </option>
-                      ))}
-                  </select>
+                  <div style={{ flex: 1, position: 'relative' }} ref={dropdownRef}>
+                    <input
+                      type="text"
+                      placeholder="Buscar o seleccionar..."
+                      value={searchMedicine}
+                      onChange={(e) => {
+                        setSearchMedicine(e.target.value);
+                        setShowDropdown(true);
+                      }}
+                      onFocus={(e) => {
+                        setShowDropdown(true);
+                        e.target.select();
+                      }}
+                      required={!isManual}
+                      autoComplete="off"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                    {showDropdown && (
+                      <div style={{
+                        position: 'absolute', top: '100%', left: 0, right: 0,
+                        background: 'var(--surface)', border: '1px solid var(--border)',
+                        borderRadius: '8px', marginTop: '4px', zIndex: 10,
+                        maxHeight: '200px', overflowY: 'auto', boxShadow: 'var(--shadow-card)'
+                      }}>
+                        <div 
+                          style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--accent)', fontSize: '12px' }}
+                          onClick={selectManual}
+                        >
+                          <Plus size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                          Escribir medicamento manualmente
+                        </div>
+                        {filteredMedicines.map((m) => (
+                          <div
+                            key={m.originalIndex}
+                            style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: '13px', color: 'var(--text)' }}
+                            onClick={() => selectMedicine(m.originalIndex, m.nombre)}
+                          >
+                            {m.nombre}
+                          </div>
+                        ))}
+                        {filteredMedicines.length === 0 && (
+                          <div style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12 }}>
+                            No se encontraron medicamentos
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </FieldRow>
                 
-                <FieldRow>
-                  <label>Medicamento</label>
-                  <input
-                    type="text"
-                    name="nombre"
-                    onChange={handleCurrentRecipe}
-                    placeholder="Nombre y presentación (Ej: Ibuprofeno 400mg)"
-                    value={currentMedicineSelected.nombre}
-                    required
-                    autoComplete="off"
-                  />
-                </FieldRow>
+                {isManual && (
+                  <>
+                    <FieldRow>
+                      <label>Medicamento</label>
+                      <input
+                        type="text"
+                        name="nombre"
+                        onChange={handleCurrentRecipe}
+                        placeholder="Nombre y presentación (Ej: Ibuprofeno 400mg)"
+                        value={currentMedicineSelected.nombre}
+                        required
+                        autoComplete="off"
+                        style={{ width: '100%', flex: 1 }}
+                      />
+                    </FieldRow>
 
-                <FieldRow>
-                  <label>Posología</label>
-                  <input
-                    type="text"
-                    name="indicaciones"
-                    onChange={handleCurrentRecipe}
-                    placeholder="Ej: Tomar 1 tableta cada 8 horas por 3 días"
-                    value={currentMedicineSelected.indicaciones}
-                    autoComplete="off"
-                  />
-                </FieldRow>
+                    <FieldRow>
+                      <label>Posología</label>
+                      <input
+                        type="text"
+                        name="indicaciones"
+                        onChange={handleCurrentRecipe}
+                        placeholder="Ej: Tomar 1 tableta cada 8 horas por 3 días"
+                        value={currentMedicineSelected.indicaciones}
+                        autoComplete="off"
+                        style={{ width: '100%', flex: 1 }}
+                      />
+                    </FieldRow>
+                  </>
+                )}
 
                 <AddBtn type="submit">
                   <Plus size={16} /> Agregar al recipe

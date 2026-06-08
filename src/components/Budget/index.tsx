@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { PlusCircle, ClipboardList, Plus, X } from 'lucide-react';
 import ItemPresupuesto from '../ItemPresupuesto';
@@ -9,7 +9,7 @@ const FormCard = styled.div`
   background: var(--surface);
   border-radius: 16px;
   margin-bottom: 20px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: var(--shadow-card);
 `;
 
@@ -179,7 +179,7 @@ const ModalContent = styled.div`
   max-width: 420px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.18);
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: visible;
   position: relative;
   
   /* Overrides for FormCard inside modal */
@@ -268,6 +268,40 @@ const Budget = ({
   const [activeQuantity, setActiveQuantity] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Custom Dropdown State
+  const [isManual, setIsManual] = useState(false);
+  const [searchTreatment, setSearchTreatment] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredTreatments = myTreatments
+    .map((t, index) => ({ ...t, originalIndex: index }))
+    .filter(t => t.nombre.toLowerCase().includes(searchTreatment.toLowerCase()))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  const selectTreatment = (index: number, name: string) => {
+    setIsManual(false);
+    setSearchTreatment(name);
+    setShowDropdown(false);
+    handleCurrentBudget({ target: { name: 'treatment', value: index.toString() } } as any);
+  };
+
+  const selectManual = () => {
+    setIsManual(true);
+    setSearchTreatment('Tratamiento manual');
+    setShowDropdown(false);
+  };
+
   const setQuantity = (q: number) => {
     setActiveQuantity(q);
     if (quantityInputRef.current) {
@@ -285,6 +319,8 @@ const Budget = ({
     AddTreatment(e as any);
     setActiveQuantity(null);
     setIsModalOpen(false);
+    setIsManual(false);
+    setSearchTreatment('');
   };
 
   return (
@@ -299,28 +335,85 @@ const Budget = ({
                 <span>Agregar procedimiento</span>
               </CardTitle>
               <form onSubmit={handleFormSubmit}>
-                <FieldRow>
+                <FieldRow style={{ position: 'relative' }}>
                   <label>Tratamiento</label>
-                  <select
-                    name="treatment"
-                    onChange={handleCurrentBudget}
-                    defaultValue=""
-                    required
-                  >
-                    <option value="" disabled>
-                      {myTreatments.length !== 0
-                        ? 'Selecciona un procedimiento'
-                        : 'Sin procedimientos guardados'}
-                    </option>
-                    {myTreatments
-                      ?.sort((a, b) => a.nombre.localeCompare(b.nombre))
-                      .map((procedimiento, index) => (
-                        <option value={index} key={index}>
-                          {procedimiento.nombre} • ${procedimiento.precio}
-                        </option>
-                      ))}
-                  </select>
+                  <div style={{ flex: 1, position: 'relative' }} ref={dropdownRef}>
+                    <input
+                      type="text"
+                      placeholder="Buscar o seleccionar..."
+                      value={searchTreatment}
+                      onChange={(e) => {
+                        setSearchTreatment(e.target.value);
+                        setShowDropdown(true);
+                      }}
+                      onFocus={(e) => {
+                        setShowDropdown(true);
+                        e.target.select();
+                      }}
+                      required={!isManual}
+                      autoComplete="off"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                    {showDropdown && (
+                      <div style={{
+                        position: 'absolute', top: '100%', left: 0, right: 0,
+                        background: 'var(--surface)', border: '1px solid var(--border)',
+                        borderRadius: '8px', marginTop: '4px', zIndex: 10,
+                        maxHeight: '200px', overflowY: 'auto', boxShadow: 'var(--shadow-card)'
+                      }}>
+                        <div 
+                          style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--accent)', fontSize: '12px' }}
+                          onClick={selectManual}
+                        >
+                          <Plus size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                          Escribir tratamiento y precio
+                        </div>
+                        {filteredTreatments.map((t) => (
+                          <div
+                            key={t.originalIndex}
+                            style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: '13px', color: 'var(--text)' }}
+                            onClick={() => selectTreatment(t.originalIndex, t.nombre)}
+                          >
+                            {t.nombre} • ${t.precio}
+                          </div>
+                        ))}
+                        {filteredTreatments.length === 0 && (
+                          <div style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12 }}>
+                            No se encontraron tratamientos
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </FieldRow>
+
+                {isManual && (
+                  <>
+                    <FieldRow>
+                      <label>Nombre</label>
+                      <input
+                        type="text"
+                        name="nombre"
+                        placeholder="Nombre del tratamiento"
+                        onChange={handleCurrentBudget}
+                        required
+                        autoComplete="off"
+                      />
+                    </FieldRow>
+                    <FieldRow>
+                      <label>Precio</label>
+                      <input
+                        type="number"
+                        name="precio"
+                        placeholder="0"
+                        onChange={handleCurrentBudget}
+                        required
+                        autoComplete="off"
+                        style={{ width: '100%', flex: 1 }}
+                      />
+                    </FieldRow>
+                  </>
+                )}
 
                 <FieldRow>
                   <label>Cantidad</label>

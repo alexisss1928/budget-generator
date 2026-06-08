@@ -485,6 +485,7 @@ function InnerApp() {
   };
 
   const [documentDate, setDocumentDate] = useState<string>(getLocalDateString());
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
 
   const checkFreeLimits = async (type: 'presupuesto' | 'recipe' | 'informe') => {
     if (isFullAccess) return true;
@@ -1000,52 +1001,26 @@ function InnerApp() {
                 </NewDocBtn>
               </SectionHeader>
               <PatientCard>
-                <h3>Datos del paciente</h3>
-                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ margin: 0 }}>Fecha:</h3>
+                    <span style={{ fontSize: '14px', color: 'var(--text)', fontWeight: 500 }}>{documentDate}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsDateModalOpen(true)}
+                    style={{
+                      background: 'transparent', border: 'none', color: 'var(--accent)', padding: 0,
+                      fontSize: '13px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline'
+                    }}
+                  >
+                    Modificar
+                  </button>
+                </div>
               </PatientCard>
               <PatientCard>
-                <h3>Fecha del documento</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                    Selecciona la fecha que aparecerá en el documento
-                  </label>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <input
-                      type="date"
-                      value={documentDate}
-                      onChange={(e) => setDocumentDate(e.target.value)}
-                      style={{
-                        flex: 1,
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border)',
-                        background: 'var(--input-bg)',
-                        color: 'var(--text)',
-                        fontFamily: 'inherit',
-                        outline: 'none'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setDocumentDate(getLocalDateString())}
-                      style={{
-                        padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--accent)',
-                        background: 'var(--accent-bg)',
-                        color: 'var(--accent)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        fontSize: '13px'
-                      }}
-                      onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
-                      onMouseOut={(e) => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.color = 'var(--accent)'; }}
-                    >
-                      Hoy
-                    </button>
-                  </div>
-                </div>
+                <h3>Datos del paciente</h3>
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
               </PatientCard>
               <Budget AddTreatment={AddTreatment} handleCurrentBudget={handleCurrentBudget}
                 myTreatments={myTreatments} treatmentsList={treatmentsList}
@@ -1063,52 +1038,26 @@ function InnerApp() {
                 </BackBtn>
               </SectionHeader>
               <PatientCard>
-                <h3>Datos del paciente</h3>
-                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ margin: 0 }}>Fecha:</h3>
+                    <span style={{ fontSize: '14px', color: 'var(--text)', fontWeight: 500 }}>{documentDate}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsDateModalOpen(true)}
+                    style={{
+                      background: 'transparent', border: 'none', color: 'var(--accent)', padding: 0,
+                      fontSize: '13px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline'
+                    }}
+                  >
+                    Modificar
+                  </button>
+                </div>
               </PatientCard>
               <PatientCard>
-                <h3>Fecha del documento</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                    Selecciona la fecha que aparecerá en el documento
-                  </label>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <input
-                      type="date"
-                      value={documentDate}
-                      onChange={(e) => setDocumentDate(e.target.value)}
-                      style={{
-                        flex: 1,
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border)',
-                        background: 'var(--input-bg)',
-                        color: 'var(--text)',
-                        fontFamily: 'inherit',
-                        outline: 'none'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setDocumentDate(getLocalDateString())}
-                      style={{
-                        padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--accent)',
-                        background: 'var(--accent-bg)',
-                        color: 'var(--accent)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        fontSize: '13px'
-                      }}
-                      onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
-                      onMouseOut={(e) => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.color = 'var(--accent)'; }}
-                    >
-                      Hoy
-                    </button>
-                  </div>
-                </div>
+                <h3>Datos del paciente</h3>
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
               </PatientCard>
               <Report report={report} setReport={setReport} handleReportData={handleReportData} />
             </SectionInner>
@@ -1127,52 +1076,26 @@ function InnerApp() {
                 </NewDocBtn>
               </SectionHeader>
               <PatientCard>
-                <h3>Datos del paciente</h3>
-                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ margin: 0 }}>Fecha:</h3>
+                    <span style={{ fontSize: '14px', color: 'var(--text)', fontWeight: 500 }}>{documentDate}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsDateModalOpen(true)}
+                    style={{
+                      background: 'transparent', border: 'none', color: 'var(--accent)', padding: 0,
+                      fontSize: '13px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline'
+                    }}
+                  >
+                    Modificar
+                  </button>
+                </div>
               </PatientCard>
               <PatientCard>
-                <h3>Fecha del documento</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                    Selecciona la fecha que aparecerá en el documento
-                  </label>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <input
-                      type="date"
-                      value={documentDate}
-                      onChange={(e) => setDocumentDate(e.target.value)}
-                      style={{
-                        flex: 1,
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border)',
-                        background: 'var(--input-bg)',
-                        color: 'var(--text)',
-                        fontFamily: 'inherit',
-                        outline: 'none'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setDocumentDate(getLocalDateString())}
-                      style={{
-                        padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--accent)',
-                        background: 'var(--accent-bg)',
-                        color: 'var(--accent)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        fontSize: '13px'
-                      }}
-                      onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
-                      onMouseOut={(e) => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.color = 'var(--accent)'; }}
-                    >
-                      Hoy
-                    </button>
-                  </div>
-                </div>
+                <h3>Datos del paciente</h3>
+                <PacientData personalData={personalData} handlePersonalData={handlePersonalData} setPersonalData={setPersonalData} showContactFields />
               </PatientCard>
               <Recipe AddMedicine={AddMedicine} handleCurrentRecipe={handleCurrentRecipe}
                 medicinesList={medicinesList} currentRecipe={currentRecipe}
@@ -1295,6 +1218,61 @@ function InnerApp() {
             <Download size={22} />
           </SaveFAB>
         </FABGroup>
+      )}
+
+      {isDateModalOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(2px)', padding: '20px'
+        }} onClick={() => setIsDateModalOpen(false)}>
+          <div style={{
+            background: 'var(--surface)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '340px', boxShadow: 'var(--shadow-card)'
+          }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', color: 'var(--text)' }}>Modificar Fecha</h3>
+            <input
+              type="date"
+              value={documentDate}
+              onChange={(e) => setDocumentDate(e.target.value)}
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px',
+                border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)',
+                fontFamily: 'inherit', outline: 'none', marginBottom: '16px'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setIsDateModalOpen(false)}
+                style={{
+                  padding: '8px 16px', borderRadius: '8px', background: 'transparent', border: 'none',
+                  color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: '13px'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => setDocumentDate(getLocalDateString())}
+                style={{
+                  padding: '8px 16px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--accent)',
+                  color: 'var(--accent)', fontWeight: 600, cursor: 'pointer', fontSize: '13px'
+                }}
+              >
+                Hoy
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDateModalOpen(false)}
+                style={{
+                  padding: '8px 16px', borderRadius: '8px', background: 'var(--accent)', border: 'none',
+                  color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '13px'
+                }}
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Hidden print canvas */}
