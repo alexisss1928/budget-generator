@@ -8,6 +8,7 @@ import {
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { exportDB, importDB, clearAllData, getDoctorProfile } from '../../db/clinicDB';
+import { useAuth } from '../../context/AuthContext';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { CLIENT_ID, BACKUP_FILE_NAME } from '../../services/googleDrive';
 
@@ -471,6 +472,7 @@ interface BackupScreenProps {
 }
 
 const BackupScreen = ({ isFullAccess, onProRequired }: BackupScreenProps) => {
+  const { isTrial } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [restoreMode, setRestoreMode] = useState<'replace' | 'merge'>('replace');
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
@@ -677,7 +679,7 @@ const BackupScreen = ({ isFullAccess, onProRequired }: BackupScreenProps) => {
             ? <NotConfiguredBadge>Sin configurar</NotConfiguredBadge>
             : drive.isConnected
               ? <ConnectedBadge>Conectado</ConnectedBadge>
-              : !isFullAccess ? <span className="badge" style={{ background: '#eab308', color: '#fff' }}>PRO</span> : null
+              : (!isFullAccess || isTrial) ? <span className="badge" style={{ background: isTrial ? '#3b82f6' : '#eab308', color: '#fff' }}>{isTrial ? 'TRIAL' : 'PRO'}</span> : null
           }
         </DriveCardTitle>
 

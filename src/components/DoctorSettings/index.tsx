@@ -5,6 +5,7 @@ import {
   IdCard, Save, ImagePlus, Info,
 } from 'lucide-react';
 
+import { useAuth } from '../../context/AuthContext';
 import { getDoctorProfile, saveDoctorProfile, DoctorProfile, DEFAULT_DOCTOR_PROFILE } from '../../db/clinicDB';
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -241,6 +242,7 @@ interface DoctorSettingsProps {
 }
 
 const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorSettingsProps) => {
+  const { isTrial } = useAuth();
   const [profile, setProfile] = useState<DoctorProfile>({ ...DEFAULT_DOCTOR_PROFILE });
   const [loaded, setLoaded] = useState(false);
 
@@ -361,7 +363,7 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
         >
           <label style={{ width: 'auto', flexShrink: 0, marginRight: '12px' }}>
             Color
-            {!isFullAccess && <span style={{ background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontSize: '9px', fontWeight: 700, marginLeft: '6px', letterSpacing: '0.5px' }}>PRO</span>}
+            {(!isFullAccess || isTrial) && <span style={{ background: isTrial ? '#3b82f6' : '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontSize: '9px', fontWeight: 700, marginLeft: '6px', letterSpacing: '0.5px' }}>{isTrial ? 'TRIAL' : 'PRO'}</span>}
           </label>
           <div style={{ flex: 1 }}>
             <input

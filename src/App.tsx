@@ -450,7 +450,7 @@ const sectionTitle: Record<string, string> = {
 // ─── Inner App ────────────────────────────────────────────────────────────────
 
 function InnerApp() {
-  const { signOut, user, isFullAccess } = useAuth();
+  const { signOut, user, isFullAccess, isTrial } = useAuth();
   const pwa = usePWA();
   const { theme, toggleTheme } = useTheme();
   const [section, setSection] = useState('Inicio');
@@ -881,7 +881,7 @@ function InnerApp() {
                     <div className="item-content">
                       {item.icon}{item.label}
                     </div>
-                    {item.proOnly && !isFullAccess && <span style={{ fontSize: '9px', background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>PRO</span>}
+                    {item.proOnly && (!isFullAccess || isTrial) && <span style={{ fontSize: '9px', background: isTrial ? '#3b82f6' : '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>{isTrial ? 'TRIAL' : 'PRO'}</span>}
                   </DrawerItem>
                 );
               })}
@@ -902,7 +902,7 @@ function InnerApp() {
                     <div className="item-content">
                       {item.icon}{item.label}
                     </div>
-                    {item.proOnly && !isFullAccess && <span style={{ fontSize: '9px', background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>PRO</span>}
+                    {item.proOnly && (!isFullAccess || isTrial) && <span style={{ fontSize: '9px', background: isTrial ? '#3b82f6' : '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontWeight: 700 }}>{isTrial ? 'TRIAL' : 'PRO'}</span>}
                   </DrawerItem>
                 );
               })}

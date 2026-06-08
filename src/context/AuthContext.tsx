@@ -29,6 +29,7 @@ interface AuthContextValue {
   isLoading: boolean;
   plan: UserPlan | null;
   isFullAccess: boolean;
+  isTrial: boolean;
   signInWithGoogle: () => void;
   signOut: () => void;
   refreshUser: () => Promise<void>;
@@ -140,6 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoading,
     plan: user?.plan ?? null,
     isFullAccess: user?.plan === 'FULL_ACCESS' || user?.plan === 'FREE_TRIAL' || user?.role === 'ADMIN',
+    isTrial: user?.plan === 'FREE_TRIAL',
     signInWithGoogle,
     signOut,
     refreshUser,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { X, Share2, RefreshCw } from 'lucide-react';
 import { DoctorProfile, PaymentMethodRecord } from '../../db/clinicDB';
+import { useAuth } from '../../context/AuthContext';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -268,6 +269,7 @@ interface ShareModalProps {
 }
 
 export default function ShareModal({ isOpen, onClose, type, doctorProfile, paymentMethods, isFullAccess, onProRequired }: ShareModalProps) {
+  const { isTrial } = useAuth();
   const [items, setItems] = useState<SelectableItem[]>([]);
   const [includeAmount, setIncludeAmount] = useState(false);
   const [amount, setAmount] = useState('');
@@ -471,7 +473,7 @@ export default function ShareModal({ isOpen, onClose, type, doctorProfile, payme
                 <div className="info">
                   <strong>
                     Enviar métodos con monto a pagar 
-                    {!isFullAccess && <span style={{ background: '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontSize: '9px', fontWeight: 700, marginLeft: '6px', letterSpacing: '0.5px' }}>PRO</span>}
+                    {(!isFullAccess || isTrial) && <span style={{ background: isTrial ? '#3b82f6' : '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontSize: '9px', fontWeight: 700, marginLeft: '6px', letterSpacing: '0.5px' }}>{isTrial ? 'TRIAL' : 'PRO'}</span>}
                   </strong>
                   <span>Añade el monto específico al mensaje.</span>
                 </div>

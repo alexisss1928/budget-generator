@@ -823,6 +823,7 @@ interface HomeScreenProps {
 }
 
 const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord, onSharePdf, isFullAccess, onProRequired }: HomeScreenProps) => {
+  const { user, isTrial } = useAuth();
   const [recent,         setRecent]         = useState<HistoryRecord[]>([]);
   const [openId,         setOpenId]         = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<{ id: number; name: string } | null>(null);
@@ -968,7 +969,8 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
               style={{ animationDelay: `${i * 0.07}s` }}
             >
               {locked && <ActionCountDot $color="#fff" style={{ background: '#eab308', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>PRO</ActionCountDot>}
-              {!locked && counts[a.type] !== undefined && (
+              {!locked && isTrial && a.proOnly && <ActionCountDot $color="#fff" style={{ background: '#3b82f6', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>TRIAL</ActionCountDot>}
+              {!locked && !(isTrial && a.proOnly) && counts[a.type] !== undefined && (
                 <ActionCountDot $color={a.color}>
                   {counts[a.type]}
                 </ActionCountDot>
