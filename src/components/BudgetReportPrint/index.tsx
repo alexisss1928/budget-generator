@@ -4,6 +4,10 @@ import LogoLeafWeb from '../../assets/leafAssets/logo_horz.png';
 type PersonalDataType = {
   name: string;
   identification: string;
+  isMinor?: boolean;
+  guardianName?: string;
+  guardianId?: string;
+  guardianRelationship?: string;
 };
 
 type CurrentTreatmentListItem = {
@@ -156,22 +160,42 @@ const BudgetReportPrint = ({
         <div
           style={{
             display: 'flex',
+            flexDirection: 'column',
             width: '100%',
-            justifyContent: 'space-between',
             backgroundColor: doctorProfile.primaryColor,
             color: doctorProfile.accentColor,
             padding: '10px 20px',
             borderRadius: '5px',
+            gap: '6px',
           }}
         >
-          <p style={{ ...Bold, color: doctorProfile.accentColor, fontSize: '14px' }}>
-            Paciente:
-            <span style={{ color: '#fff' }}> {personalData.name}</span>
-          </p>
-          <p style={{ ...Bold, color: doctorProfile.accentColor, fontSize: '14px' }}>
-            R.I.F./C.I.:{' '}
-            <span style={{ color: '#fff' }}>{personalData.identification}</span>{' '}
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ ...Bold, color: doctorProfile.accentColor, fontSize: '14px', margin: 0 }}>
+              Paciente:
+              <span style={{ color: '#fff' }}> {personalData.name}</span>
+              {personalData.isMinor && (
+                <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '10px', marginLeft: '8px' }}>(Menor de edad)</span>
+              )}
+            </p>
+            <p style={{ ...Bold, color: doctorProfile.accentColor, fontSize: '14px', margin: 0 }}>
+              R.I.F./C.I.:{' '}
+              <span style={{ color: '#fff' }}>{personalData.identification}</span>{' '}
+            </p>
+          </div>
+          {personalData.isMinor && personalData.guardianName && (
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.25)', paddingTop: '5px', fontSize: '11px' }}>
+              <p style={{ margin: 0, fontWeight: 700, color: doctorProfile.accentColor }}>
+                Representante:{' '}
+                <span style={{ color: '#fff', fontWeight: 700 }}>{personalData.guardianName}</span>
+                {personalData.guardianId && (
+                  <span style={{ color: 'rgba(255,255,255,0.75)', marginLeft: '10px', fontSize: '10px' }}>C.I. {personalData.guardianId}</span>
+                )}
+                {personalData.guardianRelationship && (
+                  <span style={{ color: 'rgba(255,255,255,0.75)', marginLeft: '12px', fontSize: '10px' }}>({personalData.guardianRelationship})</span>
+                )}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Presupuesto table */}

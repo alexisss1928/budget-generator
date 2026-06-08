@@ -4,6 +4,10 @@ import { DoctorProfile } from '../../db/clinicDB';
 type PersonalDataType = {
   name: string;
   identification: string;
+  isMinor?: boolean;
+  guardianName?: string;
+  guardianId?: string;
+  guardianRelationship?: string;
 };
 
 type Medicine = {

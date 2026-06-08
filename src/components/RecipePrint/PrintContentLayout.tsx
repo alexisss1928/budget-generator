@@ -3,7 +3,7 @@ import LogoLeafWeb from '../../assets/leafAssets/logo_horz.png';
 
 interface PrintContentLayoutProps {
   professionalData?: DoctorProfile;
-  personalData: { name: string; identification: string };
+  personalData: { name: string; identification: string; isMinor?: boolean; guardianName?: string; guardianId?: string; guardianRelationship?: string };
   currentRecipe?: any[];
   isFullAccess?: boolean;
   documentDate?: string;
@@ -122,22 +122,42 @@ const PrintContentLayout = ({
         <div
           style={{
             display: 'flex',
+            flexDirection: 'column',
             width: '100%',
-            justifyContent: 'space-between',
             backgroundColor: professionalData.primaryColor,
             color: professionalData.accentColor,
-            padding: '10px 20px',
+            padding: '8px 20px',
             borderRadius: '5px',
+            gap: '4px',
           }}
         >
-          <p style={{ ...Bold, color: professionalData.accentColor }}>
-            Paciente:
-            <span style={{ color: '#fff' }}> {personalData.name}</span>
-          </p>
-          <p style={{ ...Bold, color: professionalData.accentColor }}>
-            R.I.F./C.I.:{' '}
-            <span style={{ color: '#fff' }}>{personalData.identification}</span>{' '}
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ ...Bold, color: professionalData.accentColor, margin: 0 }}>
+              Paciente:
+              <span style={{ color: '#fff' }}> {personalData.name}</span>
+              {personalData.isMinor && (
+                <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '7px', marginLeft: '6px' }}>(Menor de edad)</span>
+              )}
+            </p>
+            <p style={{ ...Bold, color: professionalData.accentColor, margin: 0 }}>
+              R.I.F./C.I.:{' '}
+              <span style={{ color: '#fff' }}>{personalData.identification}</span>{' '}
+            </p>
+          </div>
+          {personalData.isMinor && personalData.guardianName && (
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.25)', paddingTop: '4px', fontSize: '8px' }}>
+              <p style={{ margin: 0, fontWeight: 700, color: professionalData.accentColor }}>
+                Representante:{' '}
+                <span style={{ color: '#fff', fontWeight: 700 }}>{personalData.guardianName}</span>
+                {personalData.guardianId && (
+                  <span style={{ color: 'rgba(255,255,255,0.75)', marginLeft: '8px', fontSize: '7px' }}>C.I. {personalData.guardianId}</span>
+                )}
+                {personalData.guardianRelationship && (
+                  <span style={{ color: 'rgba(255,255,255,0.75)', marginLeft: '10px', fontSize: '7px' }}>({personalData.guardianRelationship})</span>
+                )}
+              </p>
+            </div>
+          )}
         </div>
         <p style={{ textAlign: 'right' }}>
           <span style={Bold}>Fecha:</span> {date.toLocaleDateString()}

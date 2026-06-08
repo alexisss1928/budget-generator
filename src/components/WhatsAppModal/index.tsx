@@ -431,14 +431,41 @@ export default function WhatsAppModal({ message, onClose, defaultPhone, onShareP
             <WAIconBadge>
               <MessageCircle size={16} />
             </WAIconBadge>
-            <ModalTitle>Compartir por WhatsApp</ModalTitle>
+            <ModalTitle>{message ? 'Compartir por WhatsApp' : 'Compartir documento'}</ModalTitle>
           </HeaderLeft>
           <CloseBtn onClick={onClose} aria-label="Cerrar">
             <X size={14} />
           </CloseBtn>
         </ModalHeader>
 
-        {step === 'format' ? (
+        {!message && onSharePdf ? (
+          <ModalBody style={{ textAlign: 'center', padding: '30px 24px' }}>
+            <OptionDescription style={{ marginBottom: '24px', fontSize: '14px', color: 'var(--text)' }}>
+              Genera el PDF y abre el menú de compartir del sistema.
+            </OptionDescription>
+            <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
+              <SendBtn
+                id="wa-format-pdf-only"
+                style={{ width: '100%', justifyContent: 'center' }}
+                onClick={async () => {
+                  setIsGeneratingPdf(true);
+                  await onSharePdf();
+                  setIsGeneratingPdf(false);
+                  onClose();
+                }}
+                disabled={isGeneratingPdf}
+              >
+                {isGeneratingPdf ? (
+                  <SpinnerIcon size={16} />
+                ) : (
+                  <FileText size={16} />
+                )}
+                {isGeneratingPdf ? 'Generando PDF...' : 'Compartir como PDF'}
+              </SendBtn>
+              <CancelBtn style={{ width: '100%', justifyContent: 'center' }} onClick={onClose}>Cancelar</CancelBtn>
+            </div>
+          </ModalBody>
+        ) : step === 'format' ? (
           <ModalBody style={{ textAlign: 'center', padding: '30px 24px' }}>
             <OptionDescription style={{ marginBottom: '24px', fontSize: '14px', color: 'var(--text)' }}>
               ¿En qué formato deseas compartir este documento?
@@ -488,96 +515,96 @@ export default function WhatsAppModal({ message, onClose, defaultPhone, onShareP
               </Tab>
             </TabRow>
 
-        {/* ── Body ── */}
-        <ModalBody>
-          {mode === 'contact' ? (
-            <>
-              <OptionDescription>
-                Se abrirá WhatsApp para que elijas el contacto desde tu lista de conversaciones.
-              </OptionDescription>
-              <ButtonRow>
-                <CancelBtn onClick={onClose}>Cancelar</CancelBtn>
-                <SendBtn id="wa-send-contact" onClick={handleContactShare}>
-                  <MessageCircle size={15} />
-                  Abrir WhatsApp
-                </SendBtn>
-              </ButtonRow>
-            </>
-          ) : (
-            <>
-              <Field>
-                <LabelRow>
-                  <label htmlFor="wa-phone-input">Número de teléfono</label>
-                  {wasAutofilled && (
-                    <AutofilledTag>
-                      <CheckCircle2 size={10} />
-                      Autocompletado
-                    </AutofilledTag>
+            {/* ── Body ── */}
+            <ModalBody>
+              {mode === 'contact' ? (
+                <>
+                  <OptionDescription>
+                    Se abrirá WhatsApp para que elijas el contacto desde tu lista de conversaciones.
+                  </OptionDescription>
+                  <ButtonRow>
+                    <CancelBtn onClick={onClose}>Cancelar</CancelBtn>
+                    <SendBtn id="wa-send-contact" onClick={handleContactShare}>
+                      <MessageCircle size={15} />
+                      Abrir WhatsApp
+                    </SendBtn>
+                  </ButtonRow>
+                </>
+              ) : (
+                <>
+                  <Field>
+                    <LabelRow>
+                      <label htmlFor="wa-phone-input">Número de teléfono</label>
+                      {wasAutofilled && (
+                        <AutofilledTag>
+                          <CheckCircle2 size={10} />
+                          Autocompletado
+                        </AutofilledTag>
+                      )}
+                    </LabelRow>
+                    <input
+                      id="wa-phone-input"
+                      ref={inputRef}
+                      type="tel"
+                      placeholder="Ej: 04141234567 o 584141234567"
+                      value={phone}
+                      onChange={handlePhoneChange}
+                      onBlur={() => setTouched(true)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleNumberShare(); }}
+                      autoComplete="tel"
+                      style={hasError ? { boxShadow: '0 0 0 2px #e5393544' } : undefined}
+                    />
+                  </Field>
+
+                  {/* Preview de normalización */}
+                  {showNormalizedPreview && (
+                    <InfoBanner $variant="success">
+                      <span className="icon">✅</span>
+                      <p>
+                        <strong>Número formateado: </strong>
+                        Se enviará como <strong>+{normalized}</strong>
+                      </p>
+                    </InfoBanner>
                   )}
-                </LabelRow>
-                <input
-                  id="wa-phone-input"
-                  ref={inputRef}
-                  type="tel"
-                  placeholder="Ej: 04141234567 o 584141234567"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                  onBlur={() => setTouched(true)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleNumberShare(); }}
-                  autoComplete="tel"
-                  style={hasError ? { boxShadow: '0 0 0 2px #e5393544' } : undefined}
-                />
-              </Field>
 
-              {/* Preview de normalización */}
-              {showNormalizedPreview && (
-                <InfoBanner $variant="success">
-                  <span className="icon">✅</span>
-                  <p>
-                    <strong>Número formateado: </strong>
-                    Se enviará como <strong>+{normalized}</strong>
-                  </p>
-                </InfoBanner>
+                  {/* Aviso de formato */}
+                  {!showNormalizedPreview && !hasError && (
+                    <InfoBanner $variant="info">
+                      <span className="icon">ℹ️</span>
+                      <p>
+                        <strong>Formato aceptado: </strong>
+                        con o sin código de país. Ej: <strong>04141234567</strong> o <strong>584141234567</strong>.
+                        Si el número no tiene código de país se usará Venezuela (58).
+                      </p>
+                    </InfoBanner>
+                  )}
+
+                  {hasError && (
+                    <InfoBanner $variant="error">
+                      <span className="icon">⚠️</span>
+                      <p>
+                        <strong>Número inválido. </strong>
+                        Verifica que sea un número de teléfono válido (7–15 dígitos).
+                      </p>
+                    </InfoBanner>
+                  )}
+
+                  <ButtonRow>
+                    <CancelBtn onClick={onClose}>Cancelar</CancelBtn>
+                    <SendBtn
+                      id="wa-send-number"
+                      onClick={handleNumberShare}
+                      disabled={isEmpty}
+                    >
+                      <MessageCircle size={15} />
+                      Enviar
+                    </SendBtn>
+                  </ButtonRow>
+                </>
               )}
-
-              {/* Aviso de formato */}
-              {!showNormalizedPreview && !hasError && (
-                <InfoBanner $variant="info">
-                  <span className="icon">ℹ️</span>
-                  <p>
-                    <strong>Formato aceptado: </strong>
-                    con o sin código de país. Ej: <strong>04141234567</strong> o <strong>584141234567</strong>.
-                    Si el número no tiene código de país se usará Venezuela (58).
-                  </p>
-                </InfoBanner>
-              )}
-
-              {hasError && (
-                <InfoBanner $variant="error">
-                  <span className="icon">⚠️</span>
-                  <p>
-                    <strong>Número inválido. </strong>
-                    Verifica que sea un número de teléfono válido (7–15 dígitos).
-                  </p>
-                </InfoBanner>
-              )}
-
-              <ButtonRow>
-                <CancelBtn onClick={onClose}>Cancelar</CancelBtn>
-                <SendBtn
-                  id="wa-send-number"
-                  onClick={handleNumberShare}
-                  disabled={isEmpty}
-                >
-                  <MessageCircle size={15} />
-                  Enviar
-                </SendBtn>
-              </ButtonRow>
-            </>
-          )}
-        </ModalBody>
-      </>
-    )}
+            </ModalBody>
+          </>
+        )}
       </ModalContent>
     </ModalOverlay>
   );

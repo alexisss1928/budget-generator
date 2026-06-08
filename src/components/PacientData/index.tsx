@@ -11,15 +11,6 @@ const FieldRow = styled.div`
   border-bottom: 1px solid var(--border);
   align-items: center;
 
-  &:first-child {
-    padding-top: 0;
-  }
-
-  &:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-
   label {
     font-size: 12px;
     font-weight: 600;
@@ -28,7 +19,9 @@ const FieldRow = styled.div`
     flex-shrink: 0;
   }
 
-  input {
+  input[type='text'],
+  input[type='tel'],
+  input[type='email'] {
     flex: 1;
     min-width: 0;
     box-sizing: border-box;
@@ -49,6 +42,102 @@ const FieldRow = styled.div`
     &::placeholder {
       color: var(--text-muted);
     }
+  }
+
+  select {
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    background: var(--input-bg) !important;
+    color: var(--text) !important;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    outline: none;
+    transition: box-shadow 0.15s;
+    font-family: inherit;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+
+    &:focus {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+  }
+`;
+
+const CheckboxRow = styled.div<{ $open?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: ${p => p.$open ? 'none' : '1px solid var(--border)'};
+  cursor: pointer;
+  user-select: none;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex: 1;
+  }
+`;
+
+const StyledCheckbox = styled.div<{ $checked: boolean }>`
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid ${p => p.$checked ? 'var(--accent)' : 'var(--border)'};
+  background: ${p => p.$checked ? 'var(--accent)' : 'var(--input-bg)'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+
+  &::after {
+    content: '';
+    display: ${p => p.$checked ? 'block' : 'none'};
+    width: 5px;
+    height: 9px;
+    border: 2px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+  }
+`;
+
+const GuardianSection = styled.div`
+  margin: 2px 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px 4px;
+  background: var(--surface-alt, rgba(0,0,0,0.03));
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  animation: fadeSlideIn 0.2s ease;
+
+  input[type='text'],
+  select {
+    background: #fff !important;
+    color: #222 !important;
+  }
+
+  .guardian-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 `;
 
@@ -118,6 +207,10 @@ type PersonalDataType = {
   identification: string;
   phone?: string;
   email?: string;
+  isMinor?: boolean;
+  guardianName?: string;
+  guardianId?: string;
+  guardianRelationship?: string;
 };
 
 type PacientDataProps = {
@@ -127,6 +220,18 @@ type PacientDataProps = {
   /** Muestra los campos de teléfono y correo (para Presupuesto) */
   showContactFields?: boolean;
 };
+
+const RELATIONSHIP_OPTIONS = [
+  'Padre',
+  'Madre',
+  'Abuelo',
+  'Abuela',
+  'Padrastro',
+  'Madrastra',
+  'Tío',
+  'Tía',
+  'Otro',
+];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -171,6 +276,26 @@ const PacientData = ({
     }
     setShowDropdown(false);
   };
+
+  const toggleMinor = () => {
+    if (setPersonalData) {
+      setPersonalData((prev: any) => ({
+        ...prev,
+        isMinor: !prev.isMinor,
+        guardianName: !prev.isMinor ? prev.guardianName : '',
+        guardianId: !prev.isMinor ? prev.guardianId : '',
+        guardianRelationship: !prev.isMinor ? prev.guardianRelationship : '',
+      }));
+    }
+  };
+
+  const handleGuardianField = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (setPersonalData) {
+      setPersonalData((prev: any) => ({ ...prev, [name]: value }));
+    }
+  };
+
   return (
     <>
       <FieldRow>
@@ -201,6 +326,58 @@ const PacientData = ({
           )}
         </AutocompleteWrapper>
       </FieldRow>
+
+      {/* Menor de edad */}
+      <CheckboxRow $open={!!personalData.isMinor} onClick={toggleMinor}>
+        <StyledCheckbox $checked={!!personalData.isMinor} />
+        <label>Paciente menor de edad</label>
+      </CheckboxRow>
+
+      {personalData.isMinor && (
+        <GuardianSection>
+          <span className="guardian-title">Datos del representante</span>
+          <FieldRow>
+            <label htmlFor="guardianName">Nombre</label>
+            <input
+              id="guardianName"
+              type="text"
+              name="guardianName"
+              value={personalData.guardianName ?? ''}
+              onChange={handleGuardianField}
+              autoComplete="off"
+              placeholder="Nombre del representante"
+            />
+          </FieldRow>
+
+          <FieldRow>
+            <label htmlFor="guardianId">Cédula</label>
+            <input
+              id="guardianId"
+              type="text"
+              name="guardianId"
+              value={personalData.guardianId ?? ''}
+              onChange={handleGuardianField}
+              autoComplete="off"
+              placeholder="Cédula del representante"
+            />
+          </FieldRow>
+
+          <FieldRow style={{ borderBottom: 'none', paddingBottom: 0 }}>
+            <label htmlFor="guardianRelationship">Parentesco</label>
+            <select
+              id="guardianRelationship"
+              name="guardianRelationship"
+              value={personalData.guardianRelationship ?? ''}
+              onChange={handleGuardianField}
+            >
+              <option value="">Seleccionar...</option>
+              {RELATIONSHIP_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </FieldRow>
+        </GuardianSection>
+      )}
 
       <FieldRow>
         <label htmlFor="name">Nombre</label>

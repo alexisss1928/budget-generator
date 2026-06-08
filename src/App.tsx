@@ -513,7 +513,7 @@ function InnerApp() {
     const allowed = await checkFreeLimits('presupuesto');
     if (!allowed) return;
     setTreatmentsList([]);
-    setPersonalData({ name: '', identification: '', phone: '', email: '' });
+    setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
     setDocumentDate(getLocalDateString());
   };
 
@@ -532,7 +532,7 @@ function InnerApp() {
   };
 
   // ── Patient ────────────────────────────────────────────────────────────────
-  const [personalData, setPersonalData] = useState({ name: '', identification: '', phone: '', email: '' });
+  const [personalData, setPersonalData] = useState({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
 
   const handlePersonalData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -545,6 +545,10 @@ function InnerApp() {
       identification: record.patientId,
       phone: '',
       email: '',
+      isMinor: false,
+      guardianName: '',
+      guardianId: '',
+      guardianRelationship: '',
     });
 
     if (record.type === 'recipe') {
@@ -593,7 +597,7 @@ function InnerApp() {
     const allowed = await checkFreeLimits('recipe');
     if (!allowed) return;
     setCurrentRecipe([]);
-    setPersonalData({ name: '', identification: '', phone: '', email: '' });
+    setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
     setDocumentDate(getLocalDateString());
   };
 
@@ -725,6 +729,16 @@ function InnerApp() {
     setWaConfig({ message: msg, defaultPhone: personalData.phone || undefined });
   }, [treatmentsList, personalData, doctorProfile]);
 
+  const handleShareRecipe = useCallback(() => {
+    if (currentRecipe.length === 0) return;
+    setWaConfig({ message: '', defaultPhone: personalData.phone || undefined });
+  }, [currentRecipe, personalData]);
+
+  const handleShareInforme = useCallback(() => {
+    if (!report.trim()) return;
+    setWaConfig({ message: '', defaultPhone: personalData.phone || undefined });
+  }, [report, personalData]);
+
   const handleSharePdfDirectly = useCallback(async () => {
     if (!componentToPrintRef.current) return;
 
@@ -808,7 +822,7 @@ function InnerApp() {
     setSection(s);
     setDrawerOpen(false);
     if (s === 'Inicio') {
-      setPersonalData({ name: '', identification: '', phone: '', email: '' });
+      setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
       setTreatmentsList([]);
       setCurrentBudget({ nombre: '', precio: '', insuranceCoverage: '', quantity: '', observations: '' });
       setCurrentRecipe([]);
@@ -1287,6 +1301,16 @@ function InnerApp() {
         <FABGroup>
           {section === 'Presupuesto' && treatmentsList.length > 0 && (
             <WhatsAppFAB onClick={handleWhatsApp} aria-label="Compartir" title="Compartir">
+              <Share2 size={22} />
+            </WhatsAppFAB>
+          )}
+          {section === 'Recipes' && currentRecipe.length > 0 && (
+            <WhatsAppFAB onClick={handleShareRecipe} aria-label="Compartir PDF" title="Compartir PDF">
+              <Share2 size={22} />
+            </WhatsAppFAB>
+          )}
+          {section === 'Informe' && report.trim().length > 0 && (
+            <WhatsAppFAB onClick={handleShareInforme} aria-label="Compartir PDF" title="Compartir PDF">
               <Share2 size={22} />
             </WhatsAppFAB>
           )}
