@@ -836,11 +836,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
     type: 'doctor'
   });
   
-  let trialDaysLeft = 0;
-  if (user?.plan === 'FREE_TRIAL' && user.createdAt) {
-    const diff = (new Date().getTime() - new Date(user.createdAt).getTime()) / (1000 * 3600 * 24);
-    trialDaysLeft = Math.max(0, 14 - Math.floor(diff));
-  }
+
 
   const refreshRecent = () => getAllHistory().then((all) => {
     setRecent(all.slice(0, 5));
@@ -930,18 +926,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         </div>
       </WelcomeCard>
 
-      {user?.plan === 'FREE_TRIAL' && (
-        <TrialBanner>
-          <div className="trial-icon">
-            <Clock size={20} strokeWidth={2.5} />
-          </div>
-          <div className="trial-content">
-            <h3>Periodo de Prueba</h3>
-            <p>Te quedan {trialDaysLeft} días de prueba gratuita. Disfruta de todas las funciones PRO.</p>
-          </div>
-          <button onClick={onProRequired}>Ser PRO</button>
-        </TrialBanner>
-      )}
+
 
       {/* Share Buttons */}
       <ShareButtonsRow>

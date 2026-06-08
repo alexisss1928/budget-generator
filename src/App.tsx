@@ -5,7 +5,7 @@ import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
   Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck
 } from 'lucide-react';
 
 // Context
@@ -793,7 +793,6 @@ function InnerApp() {
     { label: 'Administrar medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
     { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
     { label: 'Términos y condiciones', section: 'Términos y condiciones', icon: <FileText size={13} /> },
-    ...(user?.role === 'ADMIN' ? [{ label: 'Panel Admin', section: 'AdminPanel', icon: <Users size={13} /> }] : []),
   ];
 
   const navigate = async (s: string) => {
@@ -818,6 +817,12 @@ function InnerApp() {
       setDocumentDate(getLocalDateString());
     }
   };
+
+  let trialDaysLeft = 0;
+  if (isTrial && user?.createdAt) {
+    const diff = (new Date().getTime() - new Date(user.createdAt).getTime()) / (1000 * 3600 * 24);
+    trialDaysLeft = Math.max(0, 14 - Math.floor(diff));
+  }
 
   const currentTitle = sectionTitle[section] ?? section;
 
@@ -854,6 +859,35 @@ function InnerApp() {
             <X size={14} />
           </DrawerCloseBtn>
         </DrawerHead>
+
+        {user?.role === 'ADMIN' && (
+          <div style={{ padding: '20px 14px 0px' }}>
+            <div
+              onClick={() => navigate('AdminPanel')}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                background: section === 'AdminPanel' ? '#bdbdbd' : '#d5d5d5',
+                border: `1px solid ${section === 'AdminPanel' ? '#b0b0b0' : '#c0c0c0'}`,
+                color: 'var(--text)',
+                fontSize: '13px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '7px',
+                cursor: 'pointer',
+                transition: 'background 0.18s, border-color 0.18s',
+                boxSizing: 'border-box',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#bdbdbd')}
+              onMouseLeave={e => (e.currentTarget.style.background = section === 'AdminPanel' ? '#bdbdbd' : '#d5d5d5')}
+            >
+              <Users size={14} /> Panel de Administración
+            </div>
+          </div>
+        )}
 
         <SidebarTabsContainer $activeTab={sidebarTab}>
           <SidebarTabBtn $active={sidebarTab === 'main'} onClick={() => setSidebarTab('main')}>
@@ -928,11 +962,53 @@ function InnerApp() {
           </div>
         </DrawerNav>
 
-        {!isFullAccess ? (
+        {user?.role === 'ADMIN' ? (
+          <div style={{ padding: '0 18px 14px' }}>
+            <div style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              background: 'rgba(139, 92, 246, 0.12)',
+              border: '1px solid rgba(139, 92, 246, 0.35)',
+              color: '#a78bfa',
+              fontSize: '12px',
+              fontWeight: 600,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '13px' }}>
+                <ShieldCheck size={15} strokeWidth={2.5} /> Administrador
+              </div>
+              <span style={{ fontSize: '11px', color: '#cfdcee', opacity: 0.8 }}>Acceso completo al sistema.</span>
+            </div>
+          </div>
+        ) : !isFullAccess ? (
           <div style={{ padding: '0 18px 14px' }}>
             <ProUpgradeSidebarBtn onClick={() => setProModal({ isOpen: true, message: 'Obtén acceso ilimitado y funciones exclusivas.' })}>
               <Crown size={15} /> Cambiar a PRO
             </ProUpgradeSidebarBtn>
+          </div>
+        ) : isTrial ? (
+          <div style={{ padding: '0 18px 14px' }}>
+            <div style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              color: '#3b82f6',
+              fontSize: '12px',
+              fontWeight: 600,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                <Clock size={15} strokeWidth={2.5} /> Periodo de Prueba
+              </div>
+              <span style={{ fontSize: '11px', color: '#cfdcee' }}>Te quedan {trialDaysLeft} días gratuitos.</span>
+            </div>
           </div>
         ) : (
           <div style={{ padding: '0 18px 14px' }}>
