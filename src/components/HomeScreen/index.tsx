@@ -188,7 +188,6 @@ const ShareButtonsRow = styled.div`
 const MissingProfileBanner = styled.div`
   background: rgba(234, 179, 8, 0.1);
   border: 1px solid rgba(234, 179, 8, 0.3);
-  border-left: 4px solid #eab308;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 24px;

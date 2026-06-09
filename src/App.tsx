@@ -459,6 +459,39 @@ function InnerApp() {
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
   const [proModal, setProModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
+  // ── History / Navigation trap ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!window.history.state?.appMounted) {
+      window.history.replaceState({ appMounted: true }, '', '/');
+      window.history.pushState({ section: 'Inicio' }, '', '/');
+    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && e.state.section) {
+        setSection(e.state.section);
+        setDrawerOpen(false);
+      } else if (e.state && e.state.appMounted) {
+        // At the root, try to exit
+        if (window.confirm("¿Seguro que deseas salir de la aplicación?")) {
+          window.history.go(-1);
+        } else {
+          // Push back current section to trap them
+          window.history.pushState({ section: section }, '', '/');
+        }
+      } else {
+        // Fallback for unexpected states
+        if (window.confirm("¿Seguro que deseas salir?")) {
+          window.history.go(-1);
+        } else {
+          window.history.pushState({ section: section }, '', '/');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [section]);
+
   // ── WhatsApp modal ─────────────────────────────────────────────────────────
   const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
 
@@ -554,12 +587,15 @@ function InnerApp() {
     if (record.type === 'recipe') {
       setCurrentRecipe(record.data.medicines || []);
       setSection('Recipes');
+      window.history.pushState({ section: 'Recipes' }, '', '/');
     } else if (record.type === 'presupuesto') {
       setTreatmentsList(record.data.treatments || []);
       setSection('Presupuesto');
+      window.history.pushState({ section: 'Presupuesto' }, '', '/');
     } else if (record.type === 'informe') {
       setReport(record.data.report || '');
       setSection('Informe');
+      window.history.pushState({ section: 'Informe' }, '', '/');
     }
   }, []);
 
@@ -821,6 +857,7 @@ function InnerApp() {
 
     setSection(s);
     setDrawerOpen(false);
+    window.history.pushState({ section: s }, '', '/');
     if (s === 'Inicio') {
       setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
       setTreatmentsList([]);

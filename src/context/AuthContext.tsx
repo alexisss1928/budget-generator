@@ -72,7 +72,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      // Validate token with backend
+      // Intentar decodificar el payload del JWT
+      const payloadPart = accessToken.split('.')[1];
+      if (payloadPart) {
+        const decoded = JSON.parse(atob(payloadPart));
+        const isExpired = decoded.exp * 1000 < Date.now();
+        const plan = decoded.plan;
+
+        if (!isExpired && plan === 'FULL_ACCESS') {
+          // Fast Path para PRO: Entrar inmediatamente usando caché local
+          setUser(JSON.parse(storedUser));
+          setIsLoading(false);
+
+          // Actualizar la sesión en segundo plano silenciosamente
+          api.get<AuthUser>('/auth/me').then(({ data }) => {
+            setUser(data);
+            localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data));
+          }).catch(() => {
+            // Si el token es revocado, eventualmente se cerrará la sesión en otra llamada,
+            // por ahora no bloqueamos.
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      // Falla la decodificación, seguimos con el flujo normal
+    }
+
+    try {
+      // Validate token with backend (Slow Path para Free o usuarios sin token largo)
       const { data } = await api.get<AuthUser>('/auth/me');
       setUser(data);
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data));
