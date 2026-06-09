@@ -3,9 +3,10 @@ import { defineConfig } from 'vite';
 
 const manifestForPlugin: Partial<VitePWAOptions> = {
   registerType: 'prompt',
-  injectRegister: false,
+  injectRegister: 'auto',
   devOptions: {
     enabled: true,
+    type: 'module',
   },
   workbox: {
     globPatterns: ['**/*.{js,css,html,ico,png,svg}'],

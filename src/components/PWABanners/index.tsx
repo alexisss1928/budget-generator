@@ -1,5 +1,5 @@
 import styled, { keyframes } from 'styled-components';
-import { Download, RefreshCw, X } from 'lucide-react';
+import { Download, RefreshCw, X, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { PWAState } from '../../hooks/usePWA';
 
@@ -10,17 +10,27 @@ const slideDown = keyframes`
   to   { transform: translateY(0);     opacity: 1; }
 `;
 
-// ─── Styled Components ────────────────────────────────────────────────────────
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to   { opacity: 1; }
+`;
 
-const Banner = styled.div<{ $variant: 'install' | 'update' }>`
+const popIn = keyframes`
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+`;
+
+// ─── Install Banner (top bar) ─────────────────────────────────────────────────
+
+const InstallBanner = styled.div`
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 2000;
   animation: ${slideDown} 0.35s ease;
-  background: ${(p) => p.$variant === 'update' ? 'var(--accent)' : 'var(--surface)'};
-  border-bottom: 2px solid ${(p) => p.$variant === 'update' ? 'rgba(0,0,0,0.1)' : 'var(--border)'};
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
   padding: 12px 16px;
   display: flex;
   align-items: center;
@@ -28,44 +38,39 @@ const Banner = styled.div<{ $variant: 'install' | 'update' }>`
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
 `;
 
-const BannerIcon = styled.div<{ $variant: 'install' | 'update' }>`
+const InstallIcon = styled.div`
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: ${(p) => p.$variant === 'update' ? 'rgba(255,255,255,0.2)' : 'var(--accent-bg)'};
+  background: var(--accent-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-
-  svg {
-    color: ${(p) => p.$variant === 'update' ? '#fff' : 'var(--accent)'};
-  }
+  svg { color: var(--accent); }
 `;
 
-const BannerText = styled.div<{ $variant: 'install' | 'update' }>`
+const InstallText = styled.div`
   flex: 1;
   min-width: 0;
-
   strong {
     display: block;
     font-size: 13px;
     font-weight: 700;
-    color: ${(p) => p.$variant === 'update' ? '#fff' : 'var(--text)'};
+    color: var(--text);
     line-height: 1.3;
   }
-
   span {
     display: block;
     font-size: 11px;
-    color: ${(p) => p.$variant === 'update' ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)'};
+    color: var(--text-secondary);
     margin-top: 2px;
   }
 `;
 
-const BannerBtn = styled.button<{ $variant: 'install' | 'update' }>`
-  background: ${(p) => p.$variant === 'update' ? 'rgba(255,255,255,0.2)' : 'var(--accent)'};
-  color: ${(p) => p.$variant === 'update' ? '#fff' : '#fff'};
+const InstallBtn = styled.button`
+  background: var(--accent);
+  color: #fff;
   border: none;
   border-radius: 8px;
   padding: 7px 14px;
@@ -75,32 +80,136 @@ const BannerBtn = styled.button<{ $variant: 'install' | 'update' }>`
   transition: opacity 0.15s;
   white-space: nowrap;
   flex-shrink: 0;
-
   &:hover { opacity: 0.85; }
 `;
 
-const DismissBtn = styled.button<{ $variant: 'install' | 'update' }>`
+const DismissBtn = styled.button`
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 4px;
-  color: ${(p) => p.$variant === 'update' ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'};
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  &:hover { color: var(--text); }
+`;
 
+// ─── Update Modal ─────────────────────────────────────────────────────────────
+
+const Overlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 3000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 24px;
+  animation: ${fadeIn} 0.2s ease;
+
+  @media (min-width: 480px) {
+    align-items: center;
+    padding: 24px;
+  }
+`;
+
+const ModalCard = styled.div`
+  background: var(--surface);
+  border-radius: 24px 24px 16px 16px;
+  padding: 28px 24px 24px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: ${popIn} 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  @media (min-width: 480px) {
+    border-radius: 24px;
+  }
+`;
+
+const UpdateIconWrap = styled.div`
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+`;
+
+const ModalSubtitle = styled.p`
+  margin: 4px 0 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.55;
+`;
+
+const UpdateNowBtn = styled.button`
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+  }
+  &:active { transform: scale(0.98); }
+  &:disabled { opacity: 0.7; cursor: not-allowed; }
+`;
+
+const PostponeBtn = styled.button`
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
   &:hover {
-    color: ${(p) => p.$variant === 'update' ? '#fff' : 'var(--text)'};
+    background: var(--bg);
+    color: var(--text);
   }
 `;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type PWABannersProps = Pick<PWAState, 'isInstallable' | 'isInstalled' | 'triggerInstall' | 'hasUpdate' | 'applyUpdate'>;
+type PWABannersProps = Pick<PWAState, 'isInstallable' | 'isInstalled' | 'triggerInstall' | 'hasUpdate' | 'applyUpdate' | 'dismissUpdate'>;
 
-const PWABanners = ({ isInstallable, isInstalled, triggerInstall, hasUpdate, applyUpdate }: PWABannersProps) => {
+const PWABanners = ({ isInstallable, isInstalled, triggerInstall, hasUpdate, applyUpdate, dismissUpdate }: PWABannersProps) => {
   const [installDismissed, setInstallDismissed] = useState(false);
-  const [updateDismissed, setUpdateDismissed] = useState(false);
   const [updating, setUpdating] = useState(false);
 
   const handleUpdate = () => {
@@ -108,45 +217,50 @@ const PWABanners = ({ isInstallable, isInstalled, triggerInstall, hasUpdate, app
     applyUpdate();
   };
 
-  // Show update banner first (higher priority)
-  if (hasUpdate && !updateDismissed) {
+  // Update modal has highest priority
+  if (hasUpdate) {
     return (
-      <Banner $variant="update">
-        <BannerIcon $variant="update">
-          <RefreshCw size={18} />
-        </BannerIcon>
-        <BannerText $variant="update">
-          <strong>Actualización disponible</strong>
-          <span>Hay una nueva versión de Doctor Companion lista.</span>
-        </BannerText>
-        <BannerBtn $variant="update" onClick={handleUpdate} disabled={updating}>
-          {updating ? 'Actualizando...' : 'Actualizar'}
-        </BannerBtn>
-        <DismissBtn $variant="update" onClick={() => setUpdateDismissed(true)} aria-label="Posponer actualización">
-          <X size={16} />
-        </DismissBtn>
-      </Banner>
+      <Overlay>
+        <ModalCard onClick={e => e.stopPropagation()}>
+          <UpdateIconWrap>
+            <Zap size={28} color="#fff" strokeWidth={2.5} />
+          </UpdateIconWrap>
+
+          <ModalTitle>Nueva versión disponible</ModalTitle>
+          <ModalSubtitle>
+            Hay una actualización lista para Doctor Companion. Actualiza ahora para obtener las últimas mejoras.
+          </ModalSubtitle>
+
+          <UpdateNowBtn onClick={handleUpdate} disabled={updating}>
+            <RefreshCw size={17} style={updating ? { animation: 'spin 1s linear infinite' } : undefined} />
+            {updating ? 'Actualizando...' : 'Actualizar ahora'}
+          </UpdateNowBtn>
+
+          <PostponeBtn onClick={dismissUpdate}>
+            Posponer
+          </PostponeBtn>
+        </ModalCard>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </Overlay>
     );
   }
 
-  // Show install banner only if not already installed and not dismissed
+  // Install banner (lower priority, top bar)
   if (isInstallable && !isInstalled && !installDismissed) {
     return (
-      <Banner $variant="install">
-        <BannerIcon $variant="install">
+      <InstallBanner>
+        <InstallIcon>
           <Download size={18} />
-        </BannerIcon>
-        <BannerText $variant="install">
+        </InstallIcon>
+        <InstallText>
           <strong>Instalar Doctor Companion</strong>
           <span>Accede desde tu pantalla de inicio sin internet.</span>
-        </BannerText>
-        <BannerBtn $variant="install" onClick={triggerInstall}>
-          Instalar
-        </BannerBtn>
-        <DismissBtn $variant="install" onClick={() => setInstallDismissed(true)} aria-label="Cerrar">
+        </InstallText>
+        <InstallBtn onClick={triggerInstall}>Instalar</InstallBtn>
+        <DismissBtn onClick={() => setInstallDismissed(true)} aria-label="Cerrar">
           <X size={16} />
         </DismissBtn>
-      </Banner>
+      </InstallBanner>
     );
   }
 

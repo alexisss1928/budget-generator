@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -14,28 +14,38 @@ export interface PWAState {
   // Update
   hasUpdate: boolean;
   applyUpdate: () => void;
+  dismissUpdate: () => void;
 }
 
 export function usePWA(): PWAState {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
 
   const {
-    needRefresh: [hasUpdate],
+    needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
-      console.log('SW Registered:', r);
-      // Poll for updates every 60 seconds so the banner appears for long sessions
+      console.log('[PWA] Service Worker registrado:', r);
+      // Poll for updates every 60 s in long sessions
       if (r) {
         setInterval(() => {
+          console.log('[PWA] Buscando actualizaciones...');
           r.update();
         }, 60 * 1000);
       }
     },
+    onNeedRefresh() {
+      console.log('[PWA] Nueva versión disponible — activando banner');
+      setNeedRefresh(true);
+    },
+    onOfflineReady() {
+      console.log('[PWA] App lista para uso offline');
+    },
     onRegisterError(error) {
-      console.error('SW registration error', error);
+      console.error('[PWA] Error al registrar SW:', error);
     },
   });
 
@@ -70,9 +80,16 @@ export function usePWA(): PWAState {
     }
   };
 
-  const applyUpdate = () => {
+  const applyUpdate = useCallback(() => {
     updateServiceWorker(true);
-  };
+  }, [updateServiceWorker]);
 
-  return { isInstallable, isInstalled, triggerInstall, hasUpdate, applyUpdate };
+  const dismissUpdate = useCallback(() => {
+    setUpdateDismissed(true);
+  }, []);
+
+  // hasUpdate is true when needRefresh fires AND user hasn't dismissed
+  const hasUpdate = needRefresh && !updateDismissed;
+
+  return { isInstallable, isInstalled, triggerInstall, hasUpdate, applyUpdate, dismissUpdate };
 }

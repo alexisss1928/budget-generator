@@ -455,6 +455,7 @@ function InnerApp() {
   const { theme, toggleTheme } = useTheme();
   const [section, setSection] = useState('Inicio');
   const sectionRef = useRef('Inicio'); // always reflects the latest section without stale closures
+  const historyDepthRef = useRef(0); // tracks how many pushState calls we've made
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'main' | 'config'>('main');
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
@@ -471,17 +472,20 @@ function InnerApp() {
     // Seed two history entries so the app always has a "back wall" to catch
     window.history.replaceState({ appRoot: true }, '', '/');
     window.history.pushState({ section: 'Inicio' }, '', '/');
+    historyDepthRef.current = 1; // one pushState done
 
     const handlePopState = (e: PopStateEvent) => {
       if (e.state?.section) {
         // Normal in-app navigation backwards
+        historyDepthRef.current = Math.max(0, historyDepthRef.current - 1);
         setSection(e.state.section);
         setDrawerOpen(false);
       } else {
         // Reached the root wall — show exit modal instead of leaving the app
         setExitModalOpen(true);
-        // Re-push current section so the stack stays intact
+        // Re-push current section so the stack stays intact while modal is open
         window.history.pushState({ section: sectionRef.current }, '', '/');
+        historyDepthRef.current++;
       }
     };
 
@@ -587,16 +591,19 @@ function InnerApp() {
       setSection('Recipes');
       sectionRef.current = 'Recipes';
       window.history.pushState({ section: 'Recipes' }, '', '/');
+      historyDepthRef.current++;
     } else if (record.type === 'presupuesto') {
       setTreatmentsList(record.data.treatments || []);
       setSection('Presupuesto');
       sectionRef.current = 'Presupuesto';
       window.history.pushState({ section: 'Presupuesto' }, '', '/');
+      historyDepthRef.current++;
     } else if (record.type === 'informe') {
       setReport(record.data.report || '');
       setSection('Informe');
       sectionRef.current = 'Informe';
       window.history.pushState({ section: 'Informe' }, '', '/');
+      historyDepthRef.current++;
     }
   }, []);
 
@@ -860,6 +867,7 @@ function InnerApp() {
     sectionRef.current = s;
     setDrawerOpen(false);
     window.history.pushState({ section: s }, '', '/');
+    historyDepthRef.current++;
     if (s === 'Inicio') {
       setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
       setTreatmentsList([]);
@@ -1502,7 +1510,7 @@ function InnerApp() {
               ¿Salir de la aplicación?
             </h3>
             <p style={{ margin: '4px 0 16px', fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.5 }}>
-              Tus datos no guardados se perderán.
+              ¿Estás seguro de que deseas salir?
             </p>
             <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
               <button
@@ -1521,10 +1529,9 @@ function InnerApp() {
                 type="button"
                 onClick={() => {
                   setExitModalOpen(false);
-                  // Navigate to home to avoid losing state, letting the OS/browser handle real exit
-                  if (section !== 'Inicio') {
-                    navigate('Inicio');
-                  }
+                  // Unwind all our pushState entries + 1 to go past the appRoot wall
+                  // This lets the browser/OS handle the real exit naturally
+                  window.history.go(-(historyDepthRef.current + 1));
                 }}
                 style={{
                   flex: 1, padding: '11px', borderRadius: '12px',
