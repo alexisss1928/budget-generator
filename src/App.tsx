@@ -33,6 +33,7 @@ import AdminPanel from './components/AdminPanel';
 import TermsAndConditionsScreen from './components/TermsAndConditionsScreen';
 import FeedbackScreen from './components/FeedbackScreen';
 import ProUpgradeModal from './components/ProUpgradeModal';
+import ShareModal from './components/ShareModal';
 import AnalysisLoader from './components/AnalysisLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { usePWA } from './hooks/usePWA';
@@ -108,22 +109,96 @@ const DrawerContainer = styled.aside<{ $open: boolean }>`
   box-shadow: 4px 0 30px rgba(0,0,0,0.25);
 `;
 
-const DrawerHead = styled.div`
-  padding: 22px 18px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+const DrawerHead = styled.div<{ $customColor?: string }>`
+  position: relative;
+  padding: 34px 18px 24px;
+  background: ${(p) => p.$customColor ? `linear-gradient(135deg, ${p.$customColor} 0%, rgba(0,0,0,0.4) 100%)` : `linear-gradient(135deg, ${professionalData.primaryColor} 0%, ${professionalData.secondaryColor} 100%)`};
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  .brand {
+  text-align: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+
+  .profile-logo-wrap {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    min-height: 56px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    border-radius: 50%;
+    background: #868686;
+    padding: 2px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    img { width: 30px; filter: brightness(0) invert(1); }
-    span { font-size: 15px; font-weight: 700; color: #fff; }
+    justify-content: center;
+    margin-bottom: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+
+    img {
+      width: 80%;
+      height: 80%;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+  }
+
+  .profile-name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+    letter-spacing: -0.2px;
+  }
+
+  .profile-email {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 8px;
+    font-weight: 400;
+  }
+
+  .credentials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+    margin-bottom: 8px;
+    
+    span {
+      background: rgba(255,255,255,0.12);
+      padding: 3px 8px;
+      border-radius: 12px;
+    }
+  }
+
+  .share-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.85);
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+
+    &:hover {
+      color: #fff;
+      transform: scale(1.1);
+    }
   }
 `;
-
-
 
 const ToggleTrack = styled.div<{ $isOn: boolean }>`
   width: 36px;
@@ -185,13 +260,9 @@ const SidebarTabBtn = styled.button<{ $active: boolean }>`
   border: none;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 600;
   cursor: pointer;
-  transition: color 0.3s;
-  gap: 6px;
-  position: relative;
-  z-index: 2;
-  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
   outline: none;
 
   &:hover {
@@ -448,6 +519,7 @@ function InnerApp() {
   const isExitingRef = useRef(false);  // true while Salir is unwinding — suppresses modal re-trigger
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'main' | 'config' | 'support'>('main');
+  const [sidebarShareModalOpen, setSidebarShareModalOpen] = useState(false);
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
   const [proModal, setProModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
@@ -501,7 +573,7 @@ function InnerApp() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // register once only
 
   // ── WhatsApp modal ─────────────────────────────────────────────────────────
@@ -916,15 +988,39 @@ function InnerApp() {
         }}
         message={proModal.message}
       />
+      <ShareModal
+        isOpen={sidebarShareModalOpen}
+        onClose={() => setSidebarShareModalOpen(false)}
+        type="doctor"
+        doctorProfile={doctorProfile}
+        isFullAccess={isFullAccess}
+        onProRequired={() => setProModal({ isOpen: true, message: 'Esta función es exclusiva del plan PRO.' })}
+      />
       {drawerOpen && <Backdrop onClick={() => setDrawerOpen(false)} />}
 
       {/* Drawer */}
       <DrawerContainer $open={drawerOpen}>
-        <DrawerHead>
-          <div className="brand">
-            <img src={Logo} alt="Logo" />
-            <span>{doctorProfile.clinicTitle || `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim() || 'Consultorio'}</span>
+        <DrawerHead $customColor={doctorProfile.color}>
+          <button className="share-btn" onClick={() => setSidebarShareModalOpen(true)} title="Compartir Perfil">
+            <Share2 size={15} strokeWidth={2.5} />
+          </button>
+
+          <div className="profile-logo-wrap">
+            <img src={(isFullAccess && doctorProfile.logoDataUrl) ? doctorProfile.logoDataUrl : Logo} alt="Logo" />
           </div>
+
+          <h3 className="profile-name">
+            {doctorProfile.nombre ? `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim() : (user?.role === 'ADMIN' ? 'Administrador' : 'Doctor')}
+          </h3>
+
+          <span className="profile-email">{user?.email}</span>
+
+          {(doctorProfile.mpps || doctorProfile.cov) && (
+            <div className="credentials">
+              {doctorProfile.mpps && <span>MPPS: {doctorProfile.mpps}</span>}
+              {doctorProfile.cov && <span>COV: {doctorProfile.cov}</span>}
+            </div>
+          )}
         </DrawerHead>
 
         {user?.role === 'ADMIN' && (
