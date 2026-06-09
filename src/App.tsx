@@ -454,43 +454,41 @@ function InnerApp() {
   const pwa = usePWA();
   const { theme, toggleTheme } = useTheme();
   const [section, setSection] = useState('Inicio');
+  const sectionRef = useRef('Inicio'); // always reflects the latest section without stale closures
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'main' | 'config'>('main');
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
   const [proModal, setProModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+  const [exitModalOpen, setExitModalOpen] = useState(false);
 
   // ── History / Navigation trap ──────────────────────────────────────────────
+  // Keep ref in sync so the popstate handler never reads a stale section value
   useEffect(() => {
-    if (!window.history.state?.appMounted) {
-      window.history.replaceState({ appMounted: true }, '', '/');
-      window.history.pushState({ section: 'Inicio' }, '', '/');
-    }
+    sectionRef.current = section;
+  }, [section]);
+
+  useEffect(() => {
+    // Seed two history entries so the app always has a "back wall" to catch
+    window.history.replaceState({ appRoot: true }, '', '/');
+    window.history.pushState({ section: 'Inicio' }, '', '/');
 
     const handlePopState = (e: PopStateEvent) => {
-      if (e.state && e.state.section) {
+      if (e.state?.section) {
+        // Normal in-app navigation backwards
         setSection(e.state.section);
         setDrawerOpen(false);
-      } else if (e.state && e.state.appMounted) {
-        // At the root, try to exit
-        if (window.confirm("¿Seguro que deseas salir de la aplicación?")) {
-          window.history.go(-1);
-        } else {
-          // Push back current section to trap them
-          window.history.pushState({ section: section }, '', '/');
-        }
       } else {
-        // Fallback for unexpected states
-        if (window.confirm("¿Seguro que deseas salir?")) {
-          window.history.go(-1);
-        } else {
-          window.history.pushState({ section: section }, '', '/');
-        }
+        // Reached the root wall — show exit modal instead of leaving the app
+        setExitModalOpen(true);
+        // Re-push current section so the stack stays intact
+        window.history.pushState({ section: sectionRef.current }, '', '/');
       }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [section]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // register once only
 
   // ── WhatsApp modal ─────────────────────────────────────────────────────────
   const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
@@ -587,14 +585,17 @@ function InnerApp() {
     if (record.type === 'recipe') {
       setCurrentRecipe(record.data.medicines || []);
       setSection('Recipes');
+      sectionRef.current = 'Recipes';
       window.history.pushState({ section: 'Recipes' }, '', '/');
     } else if (record.type === 'presupuesto') {
       setTreatmentsList(record.data.treatments || []);
       setSection('Presupuesto');
+      sectionRef.current = 'Presupuesto';
       window.history.pushState({ section: 'Presupuesto' }, '', '/');
     } else if (record.type === 'informe') {
       setReport(record.data.report || '');
       setSection('Informe');
+      sectionRef.current = 'Informe';
       window.history.pushState({ section: 'Informe' }, '', '/');
     }
   }, []);
@@ -856,6 +857,7 @@ function InnerApp() {
     }
 
     setSection(s);
+    sectionRef.current = s;
     setDrawerOpen(false);
     window.history.pushState({ section: s }, '', '/');
     if (s === 'Inicio') {
@@ -1456,6 +1458,88 @@ function InnerApp() {
         </div>
       </PrintPage>
 
+      {/* Exit confirmation modal */}
+      {exitModalOpen && (
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 2000,
+            backdropFilter: 'blur(4px)',
+            padding: '24px',
+            animation: 'fadeInModal 0.18s ease',
+          }}
+          onClick={() => setExitModalOpen(false)}
+        >
+          <style>{`@keyframes fadeInModal{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}`}</style>
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: '20px',
+              padding: '28px 24px 20px',
+              width: '100%',
+              maxWidth: '320px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px',
+              animation: 'fadeInModal 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{
+              width: '52px', height: '52px',
+              borderRadius: '14px',
+              background: 'rgba(239,68,68,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: '4px',
+            }}>
+              <LogOut size={24} style={{ color: '#ef4444' }} />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text)', textAlign: 'center' }}>
+              ¿Salir de la aplicación?
+            </h3>
+            <p style={{ margin: '4px 0 16px', fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.5 }}>
+              Tus datos no guardados se perderán.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+              <button
+                type="button"
+                onClick={() => setExitModalOpen(false)}
+                style={{
+                  flex: 1, padding: '11px', borderRadius: '12px',
+                  background: 'var(--bg)', border: '1px solid var(--border)',
+                  color: 'var(--text)', fontWeight: 600, fontSize: '14px',
+                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setExitModalOpen(false);
+                  // Navigate to home to avoid losing state, letting the OS/browser handle real exit
+                  if (section !== 'Inicio') {
+                    navigate('Inicio');
+                  }
+                }}
+                style={{
+                  flex: 1, padding: '11px', borderRadius: '12px',
+                  background: '#ef4444', border: 'none',
+                  color: '#fff', fontWeight: 700, fontSize: '14px',
+                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.3)',
+                }}
+              >
+                Salir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const isExpired = decoded.exp * 1000 < Date.now();
         const plan = decoded.plan;
 
-        if (!isExpired && plan === 'FULL_ACCESS') {
+        if (!isExpired && (plan === 'FULL_ACCESS' || plan === 'FREE_TRIAL')) {
           // Fast Path para PRO: Entrar inmediatamente usando caché local
           setUser(JSON.parse(storedUser));
           setIsLoading(false);
