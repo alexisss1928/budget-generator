@@ -1,5 +1,6 @@
 import { DoctorProfile, DEFAULT_DOCTOR_PROFILE } from '../../db/clinicDB';
 import LogoLeafWeb from '../../assets/leafAssets/logo_horz.png';
+import LogoApp from '../../assets/leafAssets/logo.png';
 
 interface PrintContentLayoutProps {
   professionalData?: DoctorProfile;
@@ -24,9 +25,9 @@ const PrintContentLayout = ({
     color: '#21213c',
   };
 
-  const logoSrc = professionalData.logoDataUrl;
-  const selloSrc = professionalData.selloDataUrl;
-  const firmaSrc = professionalData.firmaDataUrl;
+  const logoSrc = (isFullAccess && professionalData.logoDataUrl) ? professionalData.logoDataUrl : LogoApp;
+  const selloSrc = isFullAccess ? professionalData.selloDataUrl : undefined;
+  const firmaSrc = isFullAccess ? professionalData.firmaDataUrl : undefined;
   const doctorName = `${professionalData.prefix} ${professionalData.nombre} ${professionalData.apellido}`;
 
   return (

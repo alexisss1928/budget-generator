@@ -75,8 +75,8 @@ h3 { font-size: 14px; font-weight: 600; }
 input:not([type='submit']):not([type='checkbox']):not([type='file']):not([type='radio']),
 select,
 textarea {
-  background-color: var(--input-bg) !important;
-  color: var(--text) !important;
+  background-color: var(--input-bg);
+  color: var(--text);
   border: none;
   border-radius: var(--radius-sm);
   transition: background-color 0.2s;

@@ -1,21 +1,43 @@
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ThumbsUp, Plus, CheckCircle2 } from 'lucide-react';
+import { Heart, Plus, CheckCircle2, Info } from 'lucide-react';
 import api from '../../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Wrapper = styled.div`
-  height: 100%;
-  overflow-y: auto;
-  background: var(--bg);
-  padding: 0 0 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const HeaderBox = styled.div`
+  background: var(--accent-bg);
+  border-left: 3px solid var(--accent);
+  padding: 14px 18px;
+  margin-bottom: 8px;
+  border-radius: 0 8px 8px 0;
+
+  h2 {
+    margin: 0 0 6px 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
 `;
 
 
 
 const ContentContainer = styled.div`
-  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -77,7 +99,7 @@ const LikeButton = styled.button<{ $liked: boolean }>`
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  align-self: flex-start;
+  align-self: flex-end;
   transition: all 0.2s;
 
   &:hover {
@@ -265,6 +287,13 @@ export default function FeedbackScreen() {
 
   return (
     <Wrapper>
+      <HeaderBox>
+        <h2><Info size={16} /> Sugerencias y Errores</h2>
+        <p>
+          Ayúdanos a mejorar votando por las ideas de otros usuarios o enviando tus propios reportes y sugerencias. ¡Tu opinión hace la diferencia!
+        </p>
+      </HeaderBox>
+
       <ContentContainer>
         {publicSuggestions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
@@ -280,7 +309,7 @@ export default function FeedbackScreen() {
               </CardHeader>
               <Description>{f.publicDesc || f.description}</Description>
               <LikeButton $liked={!!f.hasLiked} onClick={() => handleLike(f.id)}>
-                <ThumbsUp size={14} /> {f.likeCount || 0}
+                <Heart size={14} fill={f.hasLiked ? "currentColor" : "none"} />
               </LikeButton>
             </Card>
           ))

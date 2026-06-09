@@ -75,63 +75,43 @@ const Title = styled.h2`
   width: 100%;
 `;
 
-const StatsGrid = styled.div`
+const MainStatCard = styled.div`
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 20px;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 16px;
-  margin-bottom: 32px;
 `;
 
-const StatCard = styled.div<{ $color?: string; $bg?: string; $fullWidth?: boolean }>`
-  flex: ${props => props.$fullWidth ? '1 1 100%' : '1 1 calc(33.33% - 11px)'};
-  min-width: ${props => props.$fullWidth ? '100%' : '80px'};
-  background: ${props => props.$bg || 'var(--surface)'};
-  padding: 20px;
-  border-radius: 20px;
+const MainStatHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  
+  h3 { margin: 0; font-size: 14px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
+  p { margin: 0; font-size: 24px; font-weight: 700; color: var(--accent); }
+`;
+
+const SubStatsRow = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+`;
+
+const SubStat = styled.div<{ $color?: string }>`
+  flex: 1;
   text-align: center;
-  cursor: pointer;
-  
-  /* Neumorphic shadow */
-  box-shadow: 
-    6px 6px 12px rgba(0, 0, 0, 0.04), 
-    -6px -6px 12px rgba(255, 255, 255, 0.6);
-  
-  [data-theme='dark'] & {
-    box-shadow: 
-      6px 6px 12px rgba(0, 0, 0, 0.4), 
-      -6px -6px 12px rgba(255, 255, 255, 0.04);
-  }
-  
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: var(--surface-alt);
+  border-radius: 8px;
+  padding: 8px 4px;
 
-  &:hover {
-    box-shadow: 
-      3px 3px 8px rgba(0, 0, 0, 0.03), 
-      -3px -3px 8px rgba(255, 255, 255, 0.5);
-    transform: translateY(2px);
-
-    [data-theme='dark'] & {
-      box-shadow: 
-        3px 3px 8px rgba(0, 0, 0, 0.4), 
-        -3px -3px 8px rgba(255, 255, 255, 0.03);
-    }
-  }
-
-  &:active {
-    box-shadow: 
-      inset 4px 4px 10px rgba(0, 0, 0, 0.03), 
-      inset -4px -4px 10px rgba(255, 255, 255, 0.5);
-    transform: translateY(4px);
-
-    [data-theme='dark'] & {
-      box-shadow: 
-        inset 4px 4px 10px rgba(0, 0, 0, 0.4), 
-        inset -4px -4px 10px rgba(255, 255, 255, 0.03);
-    }
-  }
-  
-  h3 { margin: 0 0 8px; font-size: 11px; color: ${props => props.$color || 'var(--text-secondary)'}; text-transform: uppercase; letter-spacing: 1px; }
-  p { margin: 0; font-size: 26px; font-weight: 700; color: var(--text); }
+  h4 { margin: 0 0 2px; font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  span { font-size: 15px; font-weight: 700; color: ${props => props.$color || 'var(--text)'}; }
 `;
 
 const TableContainer = styled.div`
@@ -195,18 +175,18 @@ const FilterBar = styled.div`
     min-width: 200px;
     display: flex;
     align-items: center;
-    background: var(--surface) !important;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 0 12px;
     
     && input {
       border: none;
-      background-color: transparent !important;
+      background-color: var(--surface);
       padding: 10px 0;
       width: 100%;
       margin-left: 8px;
-      color: var(--text) !important;
+      color: var(--text);
       &:focus { outline: none; }
     }
     &:focus-within { border-color: var(--accent); }
@@ -216,7 +196,7 @@ const FilterBar = styled.div`
     padding: 10px 14px;
     border-radius: 8px;
     border: 1px solid var(--border);
-    background: var(--surface) !important;
+    background: var(--surface);
     color: var(--text);
     &:focus { outline: none; border-color: var(--accent); }
   }
@@ -438,6 +418,7 @@ type StatsData = {
 
 const TabsBar = styled.div`
   display: flex;
+  justify-content: space-evenly;
   gap: 12px;
   margin-bottom: 24px;
   border-bottom: 1px solid var(--border);
@@ -476,7 +457,7 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'feedback'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'suggestions' | 'errors'>('users');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPlan, setFilterPlan] = useState('ALL');
@@ -574,36 +555,40 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
           <Title>Panel de Administración</Title>
         </Header>
 
-        {stats && (
-          <StatsGrid>
-            <StatCard $fullWidth $color="var(--accent)">
-              <h3>Usuarios</h3>
-              <p>{stats.total}</p>
-            </StatCard>
-            <StatCard $color="var(--text-secondary)">
-              <h3>FREE</h3>
-              <p>{stats.free}</p>
-            </StatCard>
-            <StatCard $color="#f59e0b">
-              <h3>Free Trial</h3>
-              <p>{stats.freeTrial}</p>
-            </StatCard>
-            <StatCard $color="var(--accent-2)">
-              <h3>PRO</h3>
-              <p>{stats.fullAccess}</p>
-            </StatCard>
-          </StatsGrid>
-        )}
-
         <TabsBar>
           <TabBtn $active={activeTab === 'users'} onClick={() => setActiveTab('users')}>Usuarios</TabBtn>
-          <TabBtn $active={activeTab === 'feedback'} onClick={() => setActiveTab('feedback')}>Sugerencias y Errores</TabBtn>
+          <TabBtn $active={activeTab === 'suggestions'} onClick={() => setActiveTab('suggestions')}>Sugerencias</TabBtn>
+          <TabBtn $active={activeTab === 'errors'} onClick={() => setActiveTab('errors')}>Errores</TabBtn>
         </TabsBar>
 
-        {activeTab === 'feedback' && <FeedbackAdminTab />}
+        {activeTab === 'suggestions' && <FeedbackAdminTab type="SUGGESTION" />}
+        {activeTab === 'errors' && <FeedbackAdminTab type="ERROR" />}
 
         {activeTab === 'users' && (
           <>
+            {stats && (
+              <MainStatCard>
+                <MainStatHeader>
+                  <h3>Usuarios Totales</h3>
+                  <p>{stats.total}</p>
+                </MainStatHeader>
+                <SubStatsRow>
+                  <SubStat $color="var(--text-secondary)">
+                    <h4>FREE</h4>
+                    <span>{stats.free}</span>
+                  </SubStat>
+                  <SubStat $color="#f59e0b">
+                    <h4>TRIAL</h4>
+                    <span>{stats.freeTrial}</span>
+                  </SubStat>
+                  <SubStat $color="var(--accent-2)">
+                    <h4>PRO</h4>
+                    <span>{stats.fullAccess}</span>
+                  </SubStat>
+                </SubStatsRow>
+              </MainStatCard>
+            )}
+
             <FilterBar>
               <div className="search-input">
                 <Search size={16} color="var(--text-muted)" />

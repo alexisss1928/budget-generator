@@ -1,5 +1,6 @@
 import { DoctorProfile, DEFAULT_DOCTOR_PROFILE } from '../../db/clinicDB';
 import LogoLeafWeb from '../../assets/leafAssets/logo_horz.png';
+import LogoApp from '../../assets/leafAssets/logo.png';
 
 type PersonalDataType = {
   name: string;
@@ -50,9 +51,9 @@ const BudgetReportPrint = ({
     color: '#58c36b',
   };
 
-  const logoSrc = doctorProfile.logoDataUrl;
-  const selloSrc = doctorProfile.selloDataUrl;
-  const firmaSrc = doctorProfile.firmaDataUrl;
+  const logoSrc = (isFullAccess && doctorProfile.logoDataUrl) ? doctorProfile.logoDataUrl : LogoApp;
+  const selloSrc = isFullAccess ? doctorProfile.selloDataUrl : undefined;
+  const firmaSrc = isFullAccess ? doctorProfile.firmaDataUrl : undefined;
   const doctorName = `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`;
 
   return (

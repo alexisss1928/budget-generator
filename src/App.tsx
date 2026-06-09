@@ -5,7 +5,7 @@ import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
   Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle
 } from 'lucide-react';
 
 // Context
@@ -109,7 +109,7 @@ const DrawerContainer = styled.aside<{ $open: boolean }>`
 `;
 
 const DrawerHead = styled.div`
-  padding: 52px 18px 16px;
+  padding: 22px 18px 16px;
   border-bottom: 1px solid rgba(255,255,255,0.1);
   display: flex;
   align-items: center;
@@ -164,7 +164,7 @@ const DrawerNav = styled.nav`
   padding: 10px 0;
 `;
 
-const SidebarTabsContainer = styled.div<{ $activeTab: 'main' | 'config' }>`
+const SidebarTabsContainer = styled.div<{ $activeTab: 'main' | 'config' | 'support' }>`
   display: flex;
   margin: 16px 18px 4px;
   background: rgba(0, 0, 0, 0.2);
@@ -177,8 +177,8 @@ const SidebarTabsContainer = styled.div<{ $activeTab: 'main' | 'config' }>`
     position: absolute;
     top: 4px;
     bottom: 4px;
-    left: ${(p) => p.$activeTab === 'main' ? '4px' : 'calc(50% + 2px)'};
-    width: calc(50% - 6px);
+    left: ${(p) => p.$activeTab === 'main' ? '4px' : p.$activeTab === 'config' ? 'calc(4px + (100% - 8px) / 3)' : 'calc(4px + (100% - 8px) / 3 * 2)'};
+    width: calc((100% - 8px) / 3);
     background: rgba(255, 255, 255, 0.15);
     border-radius: 6px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -459,7 +459,7 @@ function InnerApp() {
   const historyDepthRef = useRef(0);   // tracks pushState calls (section entries only)
   const isExitingRef = useRef(false);  // true while Salir is unwinding — suppresses modal re-trigger
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'main' | 'config'>('main');
+  const [sidebarTab, setSidebarTab] = useState<'main' | 'config' | 'support'>('main');
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
   const [proModal, setProModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
@@ -872,8 +872,6 @@ function InnerApp() {
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
     { label: 'Administrar medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
     { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
-    { label: 'Sugerencias y Errores', section: 'Feedback', icon: <MessageSquare size={13} /> },
-    { label: 'Términos y condiciones', section: 'Términos y condiciones', icon: <FileText size={13} /> },
   ];
 
   const navigate = async (s: string) => {
@@ -939,9 +937,6 @@ function InnerApp() {
             <img src={Logo} alt="Logo" />
             <span>{doctorProfile.clinicTitle || `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim() || 'Consultorio'}</span>
           </div>
-          <DrawerCloseBtn onClick={() => setDrawerOpen(false)}>
-            <X size={14} />
-          </DrawerCloseBtn>
         </DrawerHead>
 
         {user?.role === 'ADMIN' && (
@@ -975,10 +970,13 @@ function InnerApp() {
 
         <SidebarTabsContainer $activeTab={sidebarTab}>
           <SidebarTabBtn $active={sidebarTab === 'main'} onClick={() => setSidebarTab('main')}>
-            <Home size={14} /> Principal
+            <Home size={20} />
           </SidebarTabBtn>
           <SidebarTabBtn $active={sidebarTab === 'config'} onClick={() => setSidebarTab('config')}>
-            <Settings size={14} /> Configuración
+            <Settings size={20} />
+          </SidebarTabBtn>
+          <SidebarTabBtn $active={sidebarTab === 'support'} onClick={() => setSidebarTab('support')}>
+            <HelpCircle size={20} />
           </SidebarTabBtn>
         </SidebarTabsContainer>
 
@@ -1004,7 +1002,7 @@ function InnerApp() {
                 );
               })}
             </>
-          ) : (
+          ) : sidebarTab === 'config' ? (
             <>
               {configItems.map((item) => {
                 const locked = item.proOnly && !isFullAccess;
@@ -1024,6 +1022,19 @@ function InnerApp() {
                   </DrawerItem>
                 );
               })}
+            </>
+          ) : (
+            <>
+              <DrawerItem $active={section === 'Feedback'} onClick={() => { navigate('Feedback'); }}>
+                <div className="item-content">
+                  <MessageSquare size={15} /> Sugerencias y Errores
+                </div>
+              </DrawerItem>
+              <DrawerItem $active={section === 'Términos y condiciones'} onClick={() => { navigate('Términos y condiciones'); }}>
+                <div className="item-content">
+                  <FileText size={15} /> Términos y condiciones
+                </div>
+              </DrawerItem>
             </>
           )}
 

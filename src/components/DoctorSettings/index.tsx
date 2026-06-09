@@ -498,15 +498,26 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
 
         <ImageSection>
           {/* Logo */}
-          <ImageUploadCard style={{ minWidth: '80px' }}>
-            <ImageLabel>Logo</ImageLabel>
+          <ImageUploadCard style={{ minWidth: '80px', opacity: !isFullAccess ? 0.6 : 1, cursor: !isFullAccess ? 'pointer' : 'default' }}
+            onClickCapture={(e) => {
+              if (!isFullAccess && onProRequired) {
+                e.preventDefault();
+                e.stopPropagation();
+                onProRequired();
+              }
+            }}
+          >
+            <ImageLabel>
+              Logo
+              {(!isFullAccess || isTrial) && <span style={{ background: isTrial ? '#3b82f6' : '#eab308', padding: '2px 6px', borderRadius: '4px', color: '#fff', fontSize: '9px', fontWeight: 700, marginLeft: '6px', letterSpacing: '0.5px' }}>{isTrial ? 'TRIAL' : 'PRO'}</span>}
+            </ImageLabel>
             <ImagePreview
               $shape="circle"
-              $hasImage={!!profile.logoDataUrl}
-              onClick={() => logoInputRef.current?.click()}
-              title="Subir logo"
+              $hasImage={!!(isFullAccess && profile.logoDataUrl)}
+              onClick={() => { if (isFullAccess) logoInputRef.current?.click() }}
+              title={isFullAccess ? "Subir logo" : "Exclusivo plan PRO"}
             >
-              {profile.logoDataUrl ? (
+              {(isFullAccess && profile.logoDataUrl) ? (
                 <img src={profile.logoDataUrl} alt="Logo" />
               ) : (
                 <ImagePlus size={22} />
@@ -518,7 +529,7 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
               accept="image/*"
               style={{ display: 'none' }}
               onChange={(e) => {
-                if (e.target.files?.[0]) handleImageUpload('logoDataUrl', e.target.files[0]);
+                if (e.target.files?.[0] && isFullAccess) handleImageUpload('logoDataUrl', e.target.files[0]);
               }}
             />
           </ImageUploadCard>

@@ -906,10 +906,10 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
       <Wrapper>
       {/* Welcome Banner */}
       <WelcomeCard $customColor={doctorProfile.color} onClick={() => onNavigate('Datos del doctor')}>
-        <BgLogo src={doctorProfile.logoDataUrl || Logo} alt="" />
+        <BgLogo src={(isFullAccess && doctorProfile.logoDataUrl) ? doctorProfile.logoDataUrl : Logo} alt="" />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative', zIndex: 1 }}>
-          {doctorProfile.logoDataUrl ? (
+          {(isFullAccess && doctorProfile.logoDataUrl) ? (
             <WelcomeLogo src={doctorProfile.logoDataUrl} alt="Logo" style={{ filter: 'none', objectFit: 'contain', width: 60, height: 60, borderRadius: '50%', background: '#fff', padding: 2, marginBottom: 0 }} />
           ) : (
             <WelcomeLogo src={Logo} alt="Logo" style={{ width: 60, height: 60, marginBottom: 0 }} />
