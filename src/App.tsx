@@ -455,7 +455,8 @@ function InnerApp() {
   const { theme, toggleTheme } = useTheme();
   const [section, setSection] = useState('Inicio');
   const sectionRef = useRef('Inicio'); // always reflects the latest section without stale closures
-  const historyDepthRef = useRef(0); // tracks how many pushState calls we've made
+  const historyDepthRef = useRef(0);   // tracks pushState calls (section entries only)
+  const isExitingRef = useRef(false);  // true while Salir is unwinding — suppresses modal re-trigger
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'main' | 'config'>('main');
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
@@ -469,19 +470,43 @@ function InnerApp() {
   }, [section]);
 
   useEffect(() => {
-    // Seed two history entries so the app always has a "back wall" to catch
-    window.history.replaceState({ appRoot: true }, '', '/');
-    window.history.pushState({ section: 'Inicio' }, '', '/');
-    historyDepthRef.current = 1; // one pushState done
+    // If AuthContext already planted floor entries (post-OAuth flow),
+    // reuse them. Otherwise plant two fresh floors so the back-button
+    // never reaches any Google OAuth pages that might be in history.
+    const alreadyHasFloor = window.history.state?.appFloor === true;
+
+    if (alreadyHasFloor) {
+      // Floors exist — just push the initial section on top
+      window.history.pushState({ section: 'Inicio' }, '', '/');
+    } else {
+      // Fresh session (already-logged-in path): plant two floors
+      window.history.replaceState({ appFloor: true }, '', '/');
+      window.history.pushState({ appFloor: true }, '', '/');
+      window.history.pushState({ section: 'Inicio' }, '', '/');
+    }
+    historyDepthRef.current = 1;
 
     const handlePopState = (e: PopStateEvent) => {
+      // isExiting: Salir button triggered history.go(-N). Let it unwind
+      // silently without re-showing the modal or pushing new entries.
+      if (isExitingRef.current) {
+        if (e.state?.section || e.state?.appFloor) {
+          // Still within our app entries — keep unwinding
+          return;
+        }
+        // Reached something before our floors: reset flag and let the
+        // browser/OS handle the actual app close naturally.
+        isExitingRef.current = false;
+        return;
+      }
+
       if (e.state?.section) {
-        // Normal in-app navigation backwards
+        // Normal in-app back navigation
         historyDepthRef.current = Math.max(0, historyDepthRef.current - 1);
         setSection(e.state.section);
         setDrawerOpen(false);
       } else {
-        // Reached the root wall — show exit modal instead of leaving the app
+        // Hit a floor (appFloor) or unknown state — show exit confirmation
         setExitModalOpen(true);
         // Re-push current section so the stack stays intact while modal is open
         window.history.pushState({ section: sectionRef.current }, '', '/');
@@ -1529,9 +1554,19 @@ function InnerApp() {
                 type="button"
                 onClick={() => {
                   setExitModalOpen(false);
-                  // Unwind all our pushState entries + 1 to go past the appRoot wall
-                  // This lets the browser/OS handle the real exit naturally
-                  window.history.go(-(historyDepthRef.current + 1));
+                  // Mark as exiting so the popstate handler won't re-show the modal
+                  isExitingRef.current = true;
+                  // Go back only as far as our section entries — landing on the floor.
+                  // We do NOT go past the floor so we never reach Google OAuth pages.
+                  // The floor entry is same-origin; Android PWA will offer to close
+                  // the app on the next hardware-back press from there.
+                  window.history.go(-historyDepthRef.current);
+                  // Best-effort: try window.close() for contexts where it's allowed
+                  setTimeout(() => {
+                    try { window.close(); } catch { /* ignore */ }
+                    // Safety: reset flag after 2s in case the app is still open
+                    setTimeout(() => { isExitingRef.current = false; }, 2000);
+                  }, 100);
                 }}
                 style={{
                   flex: 1, padding: '11px', borderRadius: '12px',

@@ -127,8 +127,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem(STORAGE_KEYS.REFRESH, refreshToken);
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(parsedUser));
         setUser(parsedUser);
-        // Clean up URL
-        window.history.replaceState({}, '', '/');
+        // Plant floor entries BEFORE cleaning the URL so Google OAuth pages
+        // are buried deep. Three entries ensure pressing back always hits our
+        // floor first, never Google directly.
+        window.history.replaceState({ appFloor: true }, '', '/');
+        window.history.pushState({ appFloor: true }, '', '/');
+        window.history.pushState({ appFloor: true }, '', '/');
+        // (InnerApp will detect these and not plant its own, just push the section)
       } catch (e) {
         console.error('Failed to parse auth callback params', e);
       }
