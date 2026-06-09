@@ -3,6 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import api from '../../services/api';
 import { ChevronLeft, ChevronDown, Search, Trash2, AlertTriangle, Settings } from 'lucide-react';
 import { toast } from 'react-toastify';
+import FeedbackAdminTab from './FeedbackAdminTab';
 
 const Container = styled.div`
   max-width: 800px;
@@ -435,6 +436,38 @@ type StatsData = {
   admins: number;
 };
 
+const TabsBar = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+`;
+
+const TabBtn = styled.button<{ $active: boolean }>`
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: ${p => p.$active ? 'var(--accent)' : 'var(--text-secondary)'};
+  padding: 8px 16px;
+  cursor: pointer;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -9px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 3px 3px 0 0;
+    opacity: ${p => p.$active ? 1 : 0};
+    transition: opacity 0.2s;
+  }
+`;
+
 interface AdminPanelProps {
   onBack: () => void;
 }
@@ -443,6 +476,7 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'users' | 'feedback'>('users');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPlan, setFilterPlan] = useState('ALL');
@@ -561,23 +595,32 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
           </StatsGrid>
         )}
 
-        <FilterBar>
-          <div className="search-input">
-            <Search size={16} color="var(--text-muted)" />
-            <input
-              type="text"
-              placeholder="Buscar por nombre o correo..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <select value={filterPlan} onChange={(e) => setFilterPlan(e.target.value)}>
-            <option value="ALL">Todos los planes</option>
-            <option value="FREE">Free</option>
-            <option value="FREE_TRIAL">Free Trial</option>
-            <option value="FULL_ACCESS">Full Access</option>
-          </select>
-        </FilterBar>
+        <TabsBar>
+          <TabBtn $active={activeTab === 'users'} onClick={() => setActiveTab('users')}>Usuarios</TabBtn>
+          <TabBtn $active={activeTab === 'feedback'} onClick={() => setActiveTab('feedback')}>Sugerencias y Errores</TabBtn>
+        </TabsBar>
+
+        {activeTab === 'feedback' && <FeedbackAdminTab />}
+
+        {activeTab === 'users' && (
+          <>
+            <FilterBar>
+              <div className="search-input">
+                <Search size={16} color="var(--text-muted)" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre o correo..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <select value={filterPlan} onChange={(e) => setFilterPlan(e.target.value)}>
+                <option value="ALL">Todos los planes</option>
+                <option value="FREE">Free</option>
+                <option value="FREE_TRIAL">Free Trial</option>
+                <option value="FULL_ACCESS">Full Access</option>
+              </select>
+            </FilterBar>
 
         <TableContainer>
           <DesktopTable>
@@ -661,7 +704,9 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
               </UserMobileCard>
             ))}
           </MobileView>
-        </TableContainer>
+          </TableContainer>
+          </>
+        )}
       </Container>
     </>
   );

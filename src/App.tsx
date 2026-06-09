@@ -5,7 +5,7 @@ import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
   Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare
 } from 'lucide-react';
 
 // Context
@@ -27,10 +27,12 @@ import DoctorSettings from './components/DoctorSettings';
 import BackupScreen from './components/BackupScreen';
 import PWABanners from './components/PWABanners';
 import PaymentMethods from './components/PaymentMethods';
+import ShareModal from './components/ShareModal';
 import WhatsAppModal from './components/WhatsAppModal';
 import SignIn from './components/SignIn';
 import AdminPanel from './components/AdminPanel';
 import TermsAndConditionsScreen from './components/TermsAndConditionsScreen';
+import FeedbackScreen from './components/FeedbackScreen';
 import ProUpgradeModal from './components/ProUpgradeModal';
 import AnalysisLoader from './components/AnalysisLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -461,7 +463,6 @@ function InnerApp() {
   const [sidebarTab, setSidebarTab] = useState<'main' | 'config'>('main');
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
   const [proModal, setProModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
-  const [exitModalOpen, setExitModalOpen] = useState(false);
 
   // ── History / Navigation trap ──────────────────────────────────────────────
   // Keep ref in sync so the popstate handler never reads a stale section value
@@ -487,15 +488,10 @@ function InnerApp() {
     historyDepthRef.current = 1;
 
     const handlePopState = (e: PopStateEvent) => {
-      // isExiting: Salir button triggered history.go(-N). Let it unwind
-      // silently without re-showing the modal or pushing new entries.
+      // isExiting: previously used for the Salir button unwind. 
+      // Keeping it just in case any other manual history unwinding is added.
       if (isExitingRef.current) {
-        if (e.state?.section || e.state?.appFloor) {
-          // Still within our app entries — keep unwinding
-          return;
-        }
-        // Reached something before our floors: reset flag and let the
-        // browser/OS handle the actual app close naturally.
+        if (e.state?.section || e.state?.appFloor) return;
         isExitingRef.current = false;
         return;
       }
@@ -506,9 +502,11 @@ function InnerApp() {
         setSection(e.state.section);
         setDrawerOpen(false);
       } else {
-        // Hit a floor (appFloor) or unknown state — show exit confirmation
-        setExitModalOpen(true);
-        // Re-push current section so the stack stays intact while modal is open
+        // Hit a floor (appFloor) or unknown state — user tried to go back past the app root.
+        // Try to close the PWA natively (back button is a user gesture so this often works).
+        try { window.close(); } catch { /* ignore */ }
+
+        // Silently trap them so they don't fall back into Google OAuth pages.
         window.history.pushState({ section: sectionRef.current }, '', '/');
         historyDepthRef.current++;
       }
@@ -875,6 +873,7 @@ function InnerApp() {
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
     { label: 'Administrar medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
     { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
+    { label: 'Sugerencias y Errores', section: 'Feedback', icon: <MessageSquare size={13} /> },
     { label: 'Términos y condiciones', section: 'Términos y condiciones', icon: <FileText size={13} /> },
   ];
 
@@ -1355,6 +1354,19 @@ function InnerApp() {
           </SectionView>
         )}
 
+        {section === 'Feedback' && (
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+              </SectionHeader>
+              <FeedbackScreen />
+            </SectionInner>
+          </SectionView>
+        )}
+
         {section === 'AdminPanel' && user?.role === 'ADMIN' && (
           <SectionView>
             <AdminPanel onBack={() => navigate('Inicio')} />
@@ -1490,96 +1502,6 @@ function InnerApp() {
           )}
         </div>
       </PrintPage>
-
-      {/* Exit confirmation modal */}
-      {exitModalOpen && (
-        <div
-          style={{
-            position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.55)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 2000,
-            backdropFilter: 'blur(4px)',
-            padding: '24px',
-            animation: 'fadeInModal 0.18s ease',
-          }}
-          onClick={() => setExitModalOpen(false)}
-        >
-          <style>{`@keyframes fadeInModal{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}`}</style>
-          <div
-            style={{
-              background: 'var(--surface)',
-              borderRadius: '20px',
-              padding: '28px 24px 20px',
-              width: '100%',
-              maxWidth: '320px',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '8px',
-              animation: 'fadeInModal 0.2s cubic-bezier(0.34,1.56,0.64,1)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{
-              width: '52px', height: '52px',
-              borderRadius: '14px',
-              background: 'rgba(239,68,68,0.1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '4px',
-            }}>
-              <LogOut size={24} style={{ color: '#ef4444' }} />
-            </div>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text)', textAlign: 'center' }}>
-              ¿Salir de la aplicación?
-            </h3>
-            <p style={{ margin: '4px 0 16px', fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.5 }}>
-              ¿Estás seguro de que deseas salir?
-            </p>
-            <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
-              <button
-                type="button"
-                onClick={() => setExitModalOpen(false)}
-                style={{
-                  flex: 1, padding: '11px', borderRadius: '12px',
-                  background: 'var(--bg)', border: '1px solid var(--border)',
-                  color: 'var(--text)', fontWeight: 600, fontSize: '14px',
-                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setExitModalOpen(false);
-                  isExitingRef.current = true;
-                  
-                  // 1. Synchronous best-effort close. Must be outside setTimeout 
-                  // to keep the "user gesture" context, otherwise it's blocked.
-                  try { window.close(); } catch { /* ignore */ }
-                  
-                  // 2. Unwind history to the floor synchronously.
-                  window.history.go(-historyDepthRef.current);
-                  
-                  // 3. Reset the exiting flag after a short delay in case close failed
-                  setTimeout(() => { isExitingRef.current = false; }, 1000);
-                }}
-                style={{
-                  flex: 1, padding: '11px', borderRadius: '12px',
-                  background: '#ef4444', border: 'none',
-                  color: '#fff', fontWeight: 700, fontSize: '14px',
-                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                  boxShadow: '0 4px 14px rgba(239,68,68,0.3)',
-                }}
-              >
-                Salir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </AppShell>
   );
 }
