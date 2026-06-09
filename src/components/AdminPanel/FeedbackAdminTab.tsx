@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { CheckCircle2, AlertCircle, Lightbulb, Trash2, Edit2, Check } from 'lucide-react';
+import { AlertCircle, Lightbulb, Edit2 } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
 

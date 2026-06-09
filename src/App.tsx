@@ -27,7 +27,6 @@ import DoctorSettings from './components/DoctorSettings';
 import BackupScreen from './components/BackupScreen';
 import PWABanners from './components/PWABanners';
 import PaymentMethods from './components/PaymentMethods';
-import ShareModal from './components/ShareModal';
 import WhatsAppModal from './components/WhatsAppModal';
 import SignIn from './components/SignIn';
 import AdminPanel from './components/AdminPanel';

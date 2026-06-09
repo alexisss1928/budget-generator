@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ThumbsUp, AlertCircle, Lightbulb, Plus, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { ThumbsUp, Plus, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -206,7 +205,6 @@ type Feedback = {
 };
 
 export default function FeedbackScreen() {
-  const { user } = useAuth();
   const [publicSuggestions, setPublicSuggestions] = useState<Feedback[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newFeedback, setNewFeedback] = useState({ type: 'SUGGESTION', title: '', description: '' });
@@ -263,11 +261,7 @@ export default function FeedbackScreen() {
     }
   };
 
-  const getStatusText = (status: string) => {
-    if (status === 'RESOLVED') return 'Resuelto';
-    if (status === 'IN_PROGRESS') return 'En Progreso';
-    return 'En Revisión';
-  };
+
 
   return (
     <Wrapper>
