@@ -1554,19 +1554,17 @@ function InnerApp() {
                 type="button"
                 onClick={() => {
                   setExitModalOpen(false);
-                  // Mark as exiting so the popstate handler won't re-show the modal
                   isExitingRef.current = true;
-                  // Go back only as far as our section entries — landing on the floor.
-                  // We do NOT go past the floor so we never reach Google OAuth pages.
-                  // The floor entry is same-origin; Android PWA will offer to close
-                  // the app on the next hardware-back press from there.
+                  
+                  // 1. Synchronous best-effort close. Must be outside setTimeout 
+                  // to keep the "user gesture" context, otherwise it's blocked.
+                  try { window.close(); } catch { /* ignore */ }
+                  
+                  // 2. Unwind history to the floor synchronously.
                   window.history.go(-historyDepthRef.current);
-                  // Best-effort: try window.close() for contexts where it's allowed
-                  setTimeout(() => {
-                    try { window.close(); } catch { /* ignore */ }
-                    // Safety: reset flag after 2s in case the app is still open
-                    setTimeout(() => { isExitingRef.current = false; }, 2000);
-                  }, 100);
+                  
+                  // 3. Reset the exiting flag after a short delay in case close failed
+                  setTimeout(() => { isExitingRef.current = false; }, 1000);
                 }}
                 style={{
                   flex: 1, padding: '11px', borderRadius: '12px',
