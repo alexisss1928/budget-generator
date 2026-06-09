@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
-  Menu, X, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
+  Menu, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
   Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle
 } from 'lucide-react';
 
@@ -123,19 +123,7 @@ const DrawerHead = styled.div`
   }
 `;
 
-const DrawerCloseBtn = styled.button`
-  width: 30px; height: 30px;
-  border: none;
-  background: rgba(255,255,255,0.12);
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(255,255,255,0.8);
-  transition: background 0.15s;
-  &:hover {
-    background: rgba(255,255,255,0.05);
-  }
-`;
+
 
 const ToggleTrack = styled.div<{ $isOn: boolean }>`
   width: 36px;
