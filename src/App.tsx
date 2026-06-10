@@ -529,7 +529,6 @@ function InnerApp() {
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
   const [proModal, setProModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [sidebarShareModalOpen, setSidebarShareModalOpen] = useState(false);
-  const [recipeShareModalOpen, setRecipeShareModalOpen] = useState(false);
 
   // ── History / Navigation trap ──────────────────────────────────────────────
   // Keep ref in sync so the popstate handler never reads a stale section value
@@ -937,11 +936,6 @@ function InnerApp() {
       alert('Hubo un error al intentar compartir el PDF.');
     }
   }, [componentToPrintRef, section, personalData, doctorProfile]);
-
-  const handleShareRecipePdf = useCallback(() => {
-    setRecipeShareModalOpen(false);
-    handleSharePdfDirectly();
-  }, [handleSharePdfDirectly]);
 
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
