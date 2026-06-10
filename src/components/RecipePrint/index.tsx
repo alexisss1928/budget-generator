@@ -13,6 +13,7 @@ type PersonalDataType = {
 type Medicine = {
   nombre: string;
   indicaciones: string;
+  presentacion?: string;
 };
 
 type RecipePrintType = {
@@ -49,7 +50,7 @@ const RecipePrint = ({ personalData, currentRecipe, doctorProfile, isFullAccess,
             <h2 style={{ textDecoration: 'underline' }}>RP.:</h2>
             {currentRecipe.map((medicine, i) => (
               <p key={i} style={{ fontSize: '13px', fontWeight: '700' }}>
-                {medicine.nombre}
+                {medicine.nombre} {medicine.presentacion && <span style={{ fontSize: '11px', fontWeight: '500', color: '#666' }}>({medicine.presentacion})</span>}
               </p>
             ))}
           </PrintContentLayout>
@@ -75,7 +76,7 @@ const RecipePrint = ({ personalData, currentRecipe, doctorProfile, isFullAccess,
             <h2 style={{ textDecoration: 'underline' }}>Indicaciones:</h2>
             {currentRecipe.map((medicine, i) => (
               <p key={i} style={{ fontSize: '13px', fontWeight: '700' }}>
-                {medicine.nombre}
+                {medicine.nombre} {medicine.presentacion && <span style={{ fontSize: '11px', fontWeight: '500', color: '#666' }}>({medicine.presentacion})</span>}
                 <br />
                 <span style={{ fontSize: '13px', fontWeight: '300' }}>
                   {'* '}

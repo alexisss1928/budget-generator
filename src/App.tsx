@@ -702,7 +702,7 @@ function InnerApp() {
 
   // ── Recipe ─────────────────────────────────────────────────────────────────
   const [medicinesList, setMedicinesList] = useState<MedicineRecord[]>([]);
-  const [currentMedicineSelected, setCurrentMedicineSelected] = useState<any>({ nombre: '', indicaciones: '' });
+  const [currentMedicineSelected, setCurrentMedicineSelected] = useState<any>({ nombre: '', indicaciones: '', presentacion: '' });
   const [currentRecipe, setCurrentRecipe] = useState<MedicinesInState[]>([]);
 
   const loadMedicinesFromDB = useCallback(async () => {
@@ -713,16 +713,16 @@ function InnerApp() {
     const { name, value } = e.target;
     if (name === 'nombre') { setCurrentMedicineSelected({ ...currentMedicineSelected, nombre: value }); return; }
     if (name === 'indicaciones') { setCurrentMedicineSelected({ ...currentMedicineSelected, indicaciones: value }); return; }
-    setCurrentMedicineSelected({ nombre: medicinesList[value].nombre, indicaciones: medicinesList[value].indicaciones });
+    setCurrentMedicineSelected({ nombre: medicinesList[value as any].nombre, indicaciones: medicinesList[value as any].indicaciones, presentacion: medicinesList[value as any].presentacion });
   };
 
   const AddMedicine = (e: React.ChangeEvent<HTMLFormElement>) => {
     e.preventDefault();
     const arr = [...currentRecipe]; arr.unshift(currentMedicineSelected); setCurrentRecipe(arr);
-    setCurrentMedicineSelected({ nombre: '', indicaciones: '' });
+    setCurrentMedicineSelected({ nombre: '', indicaciones: '', presentacion: '' });
   };
 
-  const AddMedicineDirect = (med: { nombre: string; indicaciones: string }) => {
+  const AddMedicineDirect = (med: { nombre: string; indicaciones: string; presentacion?: string }) => {
     setCurrentRecipe(prev => [med, ...prev]);
   };
 
@@ -872,7 +872,7 @@ function InnerApp() {
     const doctor = `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim();
     const patient = personalData.name ? `Paciente: ${personalData.name}` : '';
     const items = currentRecipe
-      .map(m => `• *${m.nombre}*\n  ${m.indicaciones}`)
+      .map(m => `• *${m.nombre}*${m.presentacion ? ` (${m.presentacion})` : ''}\n  ${m.indicaciones}`)
       .join('\n\n');
     const msg = [
       `💊 *Recipe Médico*`,
@@ -966,7 +966,7 @@ function InnerApp() {
     { label: 'Datos del doctor', section: 'Datos del doctor', icon: <Stethoscope size={13} /> },
     { label: 'Métodos de pago', section: 'Métodos de pago', icon: <CreditCard size={13} /> },
     { label: 'Tratamientos', section: 'Administrar tratamientos', icon: <Settings size={13} /> },
-    { label: 'Administrar medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
+    { label: 'Medicamentos', section: 'Administrar medicamentos', icon: <Pill size={13} /> },
     { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
   ];
 
@@ -990,7 +990,7 @@ function InnerApp() {
       setTreatmentsList([]);
       setCurrentBudget({ nombre: '', precio: '', insuranceCoverage: '', quantity: '', observations: '' });
       setCurrentRecipe([]);
-      setCurrentMedicineSelected({ nombre: '', indicaciones: '' });
+      setCurrentMedicineSelected({ nombre: '', indicaciones: '', presentacion: '' });
       setReport('');
       setDocumentDate(getLocalDateString());
     }

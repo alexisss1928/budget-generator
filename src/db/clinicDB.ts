@@ -24,6 +24,7 @@ export type MedicineRecord = {
   concentracionMl?: number;   // ml por unidad (ej: 5ml)
   dosisPorKg?: number;        // mg/kg/día
   dosisAlDia?: number;        // número de tomas al día
+  presentacion?: string;      // tipo de presentación
 };
 
 

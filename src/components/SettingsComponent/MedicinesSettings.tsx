@@ -220,7 +220,7 @@ const SecondaryBtn = styled.button`
   }
 `;
 
-const PrimaryBtn = styled(SecondaryBtn)<{ $disabled?: boolean }>`
+const PrimaryBtn = styled(SecondaryBtn) <{ $disabled?: boolean }>`
   background: ${(p) => p.$disabled ? 'var(--border)' : 'var(--accent)'};
   color: ${(p) => p.$disabled ? 'var(--text-muted)' : '#fff'};
   border: none;
@@ -399,6 +399,7 @@ type NewMedicineState = {
   concentracionMl: string;
   dosisPorKg: string;
   dosisAlDia: string;
+  presentacion: string;
 };
 
 const DEFAULT_NEW_MEDICINE: NewMedicineState = {
@@ -409,6 +410,7 @@ const DEFAULT_NEW_MEDICINE: NewMedicineState = {
   concentracionMl: '',
   dosisPorKg: '',
   dosisAlDia: '',
+  presentacion: '',
 };
 
 const ConfigMedicines = ({ onMedicinesChange, isFullAccess, onProRequired }: ConfigType) => {
@@ -492,6 +494,7 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
     const record: MedicineRecord = {
       nombre: newMedicine.nombre.trim(),
       indicaciones: newMedicine.indicaciones.trim(),
+      presentacion: newMedicine.presentacion,
     };
 
     if (newMedicine.isPediatric) {
@@ -548,7 +551,7 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
               <ListItem key={medicine.id}>
                 <div>
                   <div className="info">
-                    {medicine.nombre}
+                    {medicine.nombre} {medicine.presentacion && <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 500 }}>({medicine.presentacion})</span>}
                     {medicine.isPediatric && <PediatricBadge>NIÑOS</PediatricBadge>}
                   </div>
                   <div className="subinfo">
@@ -574,7 +577,7 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
           <Download size={15} />
           <span>Importar / Exportar CSV</span>
         </CardTitle>
-        
+
         <ActionRow>
           <p>Cargar medicamentos desde un archivo CSV</p>
           <FileLabel>
@@ -589,8 +592,8 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
 
         <ActionRow>
           <p>Exportar la lista actual de medicamentos</p>
-          <PrimaryBtn 
-            onClick={DownloadMyMedicines} 
+          <PrimaryBtn
+            onClick={DownloadMyMedicines}
             $disabled={myMedicines.length === 0}
           >
             <Download size={14} /> Exportar mis medicamentos
@@ -649,6 +652,44 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
               />
             </div>
 
+            {/* Campo Presentación */}
+            <div className="field">
+              <label>Presentación</label>
+              <select name="presentacion" value={newMedicine.presentacion} onChange={handleNewMedicine}>
+                <option value="">Seleccione una presentación...</option>
+                <optgroup label="Sólidos">
+                  <option value="Comprimidos">Comprimidos</option>
+                  <option value="Cápsulas">Cápsulas</option>
+                  <option value="Tabletas">Tabletas</option>
+                  <option value="Grageas">Grageas</option>
+                  <option value="Polvos">Polvos</option>
+                  <option value="Granulados">Granulados</option>
+                </optgroup>
+                <optgroup label="Líquidos">
+                  <option value="Jarabe">Jarabe</option>
+                  <option value="Solución / Gotas">Solución / Gotas</option>
+                  <option value="Suspensión ">Suspensión</option>
+                  <option value="Ampollas / Viales">Ampollas / Viales</option>
+                  <option value="Elixir">Elixir</option>
+                </optgroup>
+                <optgroup label="Semisólidos">
+                  <option value="Crema">Crema</option>
+                  <option value="Pomada">Pomada</option>
+                  <option value="Ungüento">Ungüento</option>
+                  <option value="Gel">Gel</option>
+                  <option value="Pasta">Pasta</option>
+                </optgroup>
+                <optgroup label="Otras">
+                  <option value="Inhalador">Inhalador</option>
+                  <option value="Aerosol">Aerosol</option>
+                  <option value="Parche transdérmico">Parche transdérmico</option>
+                  <option value="Supositorio">Supositorio</option>
+                  <option value="Óvulo">Óvulo</option>
+                  <option value="Loción">Loción</option>
+                </optgroup>
+              </select>
+            </div>
+
             {/* Modo Adultos */}
             {!newMedicine.isPediatric && (
               <div className="field">
@@ -700,7 +741,7 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
 
                 <div className="field-row">
                   <div>
-                    <label>Dosis por kg (mg/kg/día)</label>
+                    <label>Dosis por kg al día </label>
                     <input
                       type="number"
                       name="dosisPorKg"

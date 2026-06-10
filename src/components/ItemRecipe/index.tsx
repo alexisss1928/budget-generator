@@ -62,6 +62,7 @@ const ListItem = styled.div`
 type CurrentTreatmentListItem = {
   nombre: string;
   indicaciones: string;
+  presentacion?: string;
 };
 
 type ItemPresupuestoType = {
@@ -78,7 +79,7 @@ export default function ItemRecipeComponent({
   return (
     <ListItem>
       <div className="data">
-        <p className="title">{item.nombre}</p>
+        <p className="title">{item.nombre} {item.presentacion && <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 500 }}>({item.presentacion})</span>}</p>
         {item.indicaciones && <p className="description">{item.indicaciones}</p>}
       </div>
       

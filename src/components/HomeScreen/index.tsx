@@ -11,6 +11,7 @@ import {
 import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods } from '../../db/clinicDB';
 import WhatsAppModal from '../WhatsAppModal';
 import ShareModal from '../ShareModal';
+import ContactQRModal from '../ContactQRModal';
 import { useAuth } from '../../context/AuthContext';
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -797,6 +798,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
   const [waRecord,       setWaRecord]       = useState<HistoryRecord | null>(null);
   const [counts,         setCounts]         = useState<Record<string, number>>({});
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRecord[]>([]);
+  const [isContactQRModalOpen, setIsContactQRModalOpen] = useState(false);
   const [shareModal, setShareModal] = useState<{ isOpen: boolean; type: 'doctor' | 'payment' }>({
     isOpen: false,
     type: 'doctor'
@@ -875,9 +877,15 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         onNavigateToPayment={() => onNavigate('Métodos de pago')}
       />
 
+      <ContactQRModal
+        isOpen={isContactQRModalOpen}
+        onClose={() => setIsContactQRModalOpen(false)}
+        doctorProfile={doctorProfile}
+      />
+
       <Wrapper>
       {/* Welcome Banner */}
-      <WelcomeCard $customColor={doctorProfile.color} onClick={() => onNavigate('Datos del doctor')}>
+      <WelcomeCard $customColor={doctorProfile.color} onClick={() => setIsContactQRModalOpen(true)}>
         <BgLogo src={(isFullAccess && doctorProfile.logoDataUrl) ? doctorProfile.logoDataUrl : Logo} alt="" />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative', zIndex: 1 }}>
@@ -1101,25 +1109,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         Ver historial completo
       </ViewAllBtn>
 
-      {/* External tools */}
-      <SectionLabel>Otras herramientas</SectionLabel>
-      <ConfigList>
-        <ExtLink
-          href="https://jarabito-build.netlify.app/"
-          target="_blank"
-          rel="noreferrer"
-          id="home-link-jarabito"
-        >
-          <span className="cfg-icon">
-            <img src={LogoJarabito} alt="Jarabito" style={{ width: 24, height: 24, objectFit: 'contain' }} />
-          </span>
-          <span className="cfg-text">
-            <strong>Jarabito</strong>
-            <span>Calculadora pediátrica</span>
-          </span>
-          <span className="cfg-arrow">›</span>
-        </ExtLink>
-      </ConfigList>
+
     </Wrapper>
 
       {/* Confirm delete modal */}
