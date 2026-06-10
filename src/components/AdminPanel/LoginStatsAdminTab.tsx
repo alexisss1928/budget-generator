@@ -1,17 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import api from '../../services/api';
+
+const RContainer = ResponsiveContainer as any;
+const RBarChart = BarChart as any;
+const RCartesianGrid = CartesianGrid as any;
+const RXAxis = XAxis as any;
+const RYAxis = YAxis as any;
+const RTooltip = Tooltip as any;
+const RBar = Bar as any;
 
 const TabContainer = styled.div`
   display: flex;
@@ -137,18 +143,18 @@ export default function LoginStatsAdminTab() {
       <ChartCard>
         <ChartTitle>Visitas de usuarios (Últimos 7 días)</ChartTitle>
         <div style={{ width: '100%', height: 300 }}>
-          <ResponsiveContainer>
-            <BarChart data={data.chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-              <Tooltip
+          <RContainer>
+            <RBarChart data={data.chartData}>
+              <RCartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <RXAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+              <RYAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+              <RTooltip
                 contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}
                 itemStyle={{ color: 'var(--accent)', fontWeight: 600 }}
               />
-              <Bar dataKey="visitas" name="Visitas" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+              <RBar dataKey="visitas" name="Visitas" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+            </RBarChart>
+          </RContainer>
         </div>
       </ChartCard>
 
