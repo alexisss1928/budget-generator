@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { X, Calculator, Plus, Share2 } from 'lucide-react';
 import { MedicineRecord, getAllMedicines } from '../../db/clinicDB';
