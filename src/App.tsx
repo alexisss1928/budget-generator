@@ -129,7 +129,7 @@ const DrawerHead = styled.div<{ $customColor?: string }>`
     flex-shrink: 0;
     box-sizing: border-box;
     border-radius: 50%;
-    background: #868686;
+    background: #fff;
     padding: 2px;
     display: flex;
     align-items: center;
@@ -1456,10 +1456,10 @@ function InnerApp() {
                   <ChevronLeft size={15} /> Inicio
                 </BackBtn>
               </SectionHeader>
-              <ConfigMedicines 
+              <ConfigMedicines
                 onMedicinesChange={loadMedicinesFromDB}
                 isFullAccess={isFullAccess}
-                onProRequired={() => setProModal({ isOpen: true, message: 'Guardar medicamentos pediátricos es exclusivo del plan PRO.' })} 
+                onProRequired={() => setProModal({ isOpen: true, message: 'Guardar medicamentos pediátricos es exclusivo del plan PRO.' })}
               />
             </SectionInner>
           </SectionView>

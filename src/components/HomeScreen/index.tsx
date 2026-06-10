@@ -5,12 +5,13 @@ import Logo from '../../assets/leafAssets/logo.png';
 import {
   FileText, ClipboardList, Pill,
   ChevronDown, ChevronRight, Edit2,
-  Share2, Download, Trash2, AlertTriangle,
+  Share2, Download, Trash2, AlertTriangle, Calculator
 } from 'lucide-react';
 import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods } from '../../db/clinicDB';
 import WhatsAppModal from '../WhatsAppModal';
 import ShareModal from '../ShareModal';
 import ContactQRModal from '../ContactQRModal';
+import DoseCalculatorModal from '../DoseCalculatorModal';
 import { useAuth } from '../../context/AuthContext';
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -54,12 +55,6 @@ const WelcomeCard = styled.div<{ $customColor?: string }>`
   position: relative;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
-  }
 
   &::after {
     content: '';
@@ -206,13 +201,13 @@ const ActionCard = styled.div<{ $locked?: boolean }>`
   
   /* Neumorphic shadow */
   box-shadow: 
-    6px 6px 12px rgba(0, 0, 0, 0.04), 
-    -6px -6px 12px rgba(255, 255, 255, 0.6);
+    8px 8px 16px rgba(0, 0, 0, 0.06), 
+    -8px -8px 16px rgba(255, 255, 255, 0.8);
   
   [data-theme='dark'] & {
     box-shadow: 
-      6px 6px 12px rgba(0, 0, 0, 0.4), 
-      -6px -6px 12px rgba(255, 255, 255, 0.04);
+      8px 8px 16px rgba(0, 0, 0, 0.5), 
+      -8px -8px 16px rgba(255, 255, 255, 0.05);
   }
   
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -220,27 +215,27 @@ const ActionCard = styled.div<{ $locked?: boolean }>`
 
   &:hover {
     box-shadow: 
-      3px 3px 8px rgba(0, 0, 0, 0.03), 
-      -3px -3px 8px rgba(255, 255, 255, 0.5);
+      4px 4px 10px rgba(0, 0, 0, 0.05), 
+      -4px -4px 10px rgba(255, 255, 255, 0.6);
     transform: translateY(2px);
 
     [data-theme='dark'] & {
       box-shadow: 
-        3px 3px 8px rgba(0, 0, 0, 0.4), 
-        -3px -3px 8px rgba(255, 255, 255, 0.03);
+        4px 4px 10px rgba(0, 0, 0, 0.45), 
+        -4px -4px 10px rgba(255, 255, 255, 0.04);
     }
   }
 
   &:active {
     box-shadow: 
-      inset 4px 4px 10px rgba(0, 0, 0, 0.03), 
-      inset -4px -4px 10px rgba(255, 255, 255, 0.5);
+      inset 6px 6px 12px rgba(0, 0, 0, 0.05), 
+      inset -6px -6px 12px rgba(255, 255, 255, 0.6);
     transform: translateY(4px);
 
     [data-theme='dark'] & {
       box-shadow: 
-        inset 4px 4px 10px rgba(0, 0, 0, 0.5), 
-        inset -4px -4px 10px rgba(255, 255, 255, 0.03);
+        inset 6px 6px 12px rgba(0, 0, 0, 0.5), 
+        inset -6px -6px 12px rgba(255, 255, 255, 0.04);
     }
   }
 `;
@@ -701,6 +696,15 @@ const actions = [
     color: '#f39c12',
     icon: <Share2 size={20} strokeWidth={2.5} />,
   },
+  {
+    section: 'calc_dosis',
+    type: 'calc_dosis',
+    label: 'Dosis',
+    desc: 'Calculadora pediátrica',
+    color: '#e84393',
+    icon: <Calculator size={20} strokeWidth={2.5} />,
+    proOnly: true,
+  },
 ];
 
 // ─── Type helpers ─────────────────────────────────────────────────────────────
@@ -733,6 +737,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
   const [counts,         setCounts]         = useState<Record<string, number>>({});
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRecord[]>([]);
   const [isContactQRModalOpen, setIsContactQRModalOpen] = useState(false);
+  const [isDoseCalcModalOpen, setIsDoseCalcModalOpen] = useState(false);
   const [shareModal, setShareModal] = useState<{ isOpen: boolean; type: 'doctor' | 'payment' }>({
     isOpen: false,
     type: 'doctor'
@@ -817,6 +822,10 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         doctorProfile={doctorProfile}
       />
 
+      {isDoseCalcModalOpen && (
+        <DoseCalculatorModal onClose={() => setIsDoseCalcModalOpen(false)} />
+      )}
+
       <Wrapper>
       {/* Welcome Banner */}
       <WelcomeCard $customColor={doctorProfile.color} onClick={() => setIsContactQRModalOpen(true)}>
@@ -863,7 +872,9 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
               $locked={locked}
               onClick={() => {
                 if (locked) return onProRequired();
-                if (a.type === 'share_payment') {
+                if (a.type === 'calc_dosis') {
+                  setIsDoseCalcModalOpen(true);
+                } else if (a.type === 'share_payment') {
                   setShareModal({ isOpen: true, type: 'payment' });
                 } else {
                   onNavigate(a.section);
@@ -1043,9 +1054,6 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         Ver historial completo
       </ViewAllBtn>
 
-
-    </Wrapper>
-
       {/* Confirm delete modal */}
       {pendingDeleteId !== null && (
         <ConfirmOverlay onClick={() => setPendingDeleteId(null)}>
@@ -1065,6 +1073,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
           </ConfirmBox>
         </ConfirmOverlay>
       )}
+      </Wrapper>
     </>
   );
 };

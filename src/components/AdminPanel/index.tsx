@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import api from '../../services/api';
-import { ChevronLeft, ChevronDown, Search, Trash2, AlertTriangle, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Search, Trash2, AlertTriangle, Settings, BarChart2, MessageSquare } from 'lucide-react';
 import { toast } from 'react-toastify';
 import FeedbackAdminTab from './FeedbackAdminTab';
+import LoginStatsAdminTab from './LoginStatsAdminTab';
 
 const Container = styled.div`
   max-width: 800px;
@@ -418,11 +419,20 @@ type StatsData = {
 
 const TabsBar = styled.div`
   display: flex;
-  justify-content: space-evenly;
+  justify-content: flex-start;
   gap: 12px;
   margin-bottom: 24px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+
+  /* Ocultar barra de scroll pero mantener funcionalidad */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 `;
 
 const TabBtn = styled.button<{ $active: boolean }>`
@@ -434,6 +444,10 @@ const TabBtn = styled.button<{ $active: boolean }>`
   padding: 8px 16px;
   cursor: pointer;
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
   
   &::after {
     content: '';
@@ -457,7 +471,7 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'suggestions' | 'errors'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'suggestions' | 'errors' | 'stats'>('users');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPlan, setFilterPlan] = useState('ALL');
@@ -557,12 +571,20 @@ const AdminPanel = ({ onBack }: AdminPanelProps) => {
 
         <TabsBar>
           <TabBtn $active={activeTab === 'users'} onClick={() => setActiveTab('users')}>Usuarios</TabBtn>
-          <TabBtn $active={activeTab === 'suggestions'} onClick={() => setActiveTab('suggestions')}>Sugerencias</TabBtn>
-          <TabBtn $active={activeTab === 'errors'} onClick={() => setActiveTab('errors')}>Errores</TabBtn>
+          <TabBtn $active={activeTab === 'suggestions'} onClick={() => setActiveTab('suggestions')}>
+            <MessageSquare size={15} /> Sugerencias
+          </TabBtn>
+          <TabBtn $active={activeTab === 'errors'} onClick={() => setActiveTab('errors')}>
+            <AlertTriangle size={15} /> Errores
+          </TabBtn>
+          <TabBtn $active={activeTab === 'stats'} onClick={() => setActiveTab('stats')}>
+            <BarChart2 size={15} /> Stats
+          </TabBtn>
         </TabsBar>
 
         {activeTab === 'suggestions' && <FeedbackAdminTab type="SUGGESTION" />}
         {activeTab === 'errors' && <FeedbackAdminTab type="ERROR" />}
+        {activeTab === 'stats' && <LoginStatsAdminTab />}
 
         {activeTab === 'users' && (
           <>

@@ -437,19 +437,26 @@ const ConfigMedicines = ({ onMedicinesChange, isFullAccess, onProRequired }: Con
       Papa.parse(event.target.files[0], {
         header: true,
         complete: async function (results) {
-          if (
-            results.meta.fields?.includes('nombre') &&
-            results.meta.fields?.includes('indicaciones')
-          ) {
-            await saveAllMedicines(
-              (results.data as MedicineRecord[]).filter((r) => r.nombre)
-            );
+          if (results.meta.fields?.includes('nombre')) {
+            const parsedMedicines = (results.data as any[])
+              .filter((r) => r.nombre)
+              .map(r => ({
+                nombre: r.nombre,
+                indicaciones: r.indicaciones || '',
+                presentacion: r.presentacion || '',
+                isPediatric: r.isPediatric === 'true' || r.isPediatric === 'TRUE' || r.isPediatric === '1' || r.isPediatric === true,
+                concentracionMg: parseFloat(r.concentracionMg) || undefined,
+                concentracionMl: parseFloat(r.concentracionMl) || undefined,
+                dosisPorKg: parseFloat(r.dosisPorKg) || undefined,
+                dosisAlDia: parseFloat(r.dosisAlDia) || undefined,
+              }));
+            await saveAllMedicines(parsedMedicines);
             await loadMedicines();
             onMedicinesChange();
             toast.success('Medicamentos cargados exitosamente');
           } else {
             toast.error(
-              'El archivo debe tener las columnas "nombre" e "indicaciones"'
+              'El archivo debe tener al menos la columna "nombre"'
             );
           }
         },
@@ -458,14 +465,9 @@ const ConfigMedicines = ({ onMedicinesChange, isFullAccess, onProRequired }: Con
   };
 
   const handleDownload = () => {
-    const data = `nombre,indicaciones
-Ibuprofeno - 400 mg,"400 mg cada 6 horas, 600 mg cada 8 horas por 3 dias si hay dolor"
-Acetaminofen - 500 mg,500 mg cada 6 horas
-Ketoprofeno - 100 mg,100 mg cada 4 a 6 horas
-Amoxicilina - 500 mg,500 mg cada 8 horas por 7 dias
-Amoxicilina + Ac. Clavulanico - 500 mg/125 mg,1 tab cada 8 horas por 5 a 10 dias.
-Clindamicina - 300 mg,300 mg cada 6 horas por 7 dias
-Azitromicina - 500 mg,500 mg diarios por 3 dias`;
+    const data = `nombre,indicaciones,presentacion,isPediatric,concentracionMg,concentracionMl,dosisPorKg,dosisAlDia
+Ibuprofeno - 400 mg,"400 mg cada 6 horas, 600 mg cada 8 horas por 3 dias si hay dolor",Comprimidos,false,,,,
+Amoxicilina (Pediátrico),,Suspensión,true,250,5,50,3`;
     const blob = new Blob([data], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -477,7 +479,16 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
   const DownloadMyMedicines = () => {
     if (myMedicines.length > 0) {
       const data = Papa.unparse(
-        myMedicines.map(({ nombre, indicaciones }) => ({ nombre, indicaciones }))
+        myMedicines.map((m) => ({
+          nombre: m.nombre,
+          indicaciones: m.indicaciones || '',
+          presentacion: m.presentacion || '',
+          isPediatric: m.isPediatric ? 'true' : 'false',
+          concentracionMg: m.concentracionMg || '',
+          concentracionMl: m.concentracionMl || '',
+          dosisPorKg: m.dosisPorKg || '',
+          dosisAlDia: m.dosisAlDia || '',
+        }))
       );
       const blob = new Blob([data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
