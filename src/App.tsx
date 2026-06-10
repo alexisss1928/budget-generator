@@ -1400,7 +1400,9 @@ function InnerApp() {
                 medicinesList={medicinesList} currentRecipe={currentRecipe}
                 DeleteMedicine={DeleteMedicine} currentMedicineSelected={currentMedicineSelected}
                 setCurrentMedicineSelected={setCurrentMedicineSelected}
-                onAddDirect={AddMedicineDirect} />
+                onAddDirect={AddMedicineDirect}
+                isFullAccess={isFullAccess}
+                onProRequired={() => setProModal({ isOpen: true, message: 'La posología pediátrica es exclusiva del plan PRO.' })} />
             </SectionInner>
           </SectionView>
         )}
@@ -1459,7 +1461,11 @@ function InnerApp() {
                   <ChevronLeft size={15} /> Inicio
                 </BackBtn>
               </SectionHeader>
-              <ConfigMedicines onMedicinesChange={loadMedicinesFromDB} />
+              <ConfigMedicines 
+                onMedicinesChange={loadMedicinesFromDB}
+                isFullAccess={isFullAccess}
+                onProRequired={() => setProModal({ isOpen: true, message: 'Guardar medicamentos pediátricos es exclusivo del plan PRO.' })} 
+              />
             </SectionInner>
           </SectionView>
         )}

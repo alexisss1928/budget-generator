@@ -387,6 +387,8 @@ const PediatricBadge = styled.span`
 
 type ConfigType = {
   onMedicinesChange: () => void;
+  isFullAccess?: boolean;
+  onProRequired?: () => void;
 };
 
 type NewMedicineState = {
@@ -409,7 +411,7 @@ const DEFAULT_NEW_MEDICINE: NewMedicineState = {
   dosisAlDia: '',
 };
 
-const ConfigMedicines = ({ onMedicinesChange }: ConfigType) => {
+const ConfigMedicines = ({ onMedicinesChange, isFullAccess, onProRequired }: ConfigType) => {
   const [myMedicines, setMyMedicines] = useState<MedicineRecord[]>([]);
   const [newMedicine, setNewMedicine] = useState<NewMedicineState>(DEFAULT_NEW_MEDICINE);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -620,7 +622,13 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
               </ToggleBtn>
               <ToggleBtn
                 $active={newMedicine.isPediatric}
-                onClick={() => setNewMedicine({ ...newMedicine, isPediatric: true })}
+                onClick={() => {
+                  if (!isFullAccess) {
+                    if (onProRequired) onProRequired();
+                    return;
+                  }
+                  setNewMedicine({ ...newMedicine, isPediatric: true });
+                }}
                 type="button"
               >
                 Niños

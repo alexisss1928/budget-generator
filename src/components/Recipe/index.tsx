@@ -269,6 +269,8 @@ type RecipeProps = {
   currentMedicineSelected: MedicinesInLocalStorage;
   setCurrentMedicineSelected: (index: number) => void;
   onAddDirect: (med: { nombre: string; indicaciones: string }) => void;
+  isFullAccess?: boolean;
+  onProRequired?: () => void;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -305,6 +307,8 @@ const Recipe = ({
   DeleteMedicine,
   currentMedicineSelected,
   onAddDirect,
+  isFullAccess,
+  onProRequired,
 }: RecipeProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [patientMode, setPatientMode] = useState<'adult' | 'pediatric'>('adult');
@@ -449,7 +453,13 @@ const Recipe = ({
                 </ToggleBtn>
                 <ToggleBtn
                   $active={patientMode === 'pediatric'}
-                  onClick={() => setPatientMode('pediatric')}
+                  onClick={() => {
+                    if (!isFullAccess) {
+                      if (onProRequired) onProRequired();
+                      return;
+                    }
+                    setPatientMode('pediatric');
+                  }}
                   type="button"
                 >
                   Niños
