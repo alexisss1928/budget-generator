@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import professionalData from '../../commons/professionalData';
 import Logo from '../../assets/leafAssets/logo.png';
-import LogoJarabito from '../../assets/leafAssets/logo-jarabito.png';
 import {
   FileText, ClipboardList, Pill,
   ChevronDown, ChevronRight, Edit2,
@@ -317,13 +316,7 @@ const ActionCountDot = styled.span<{ $color: string }>`
   z-index: 1;
 `;
 
-const ConfigList = styled.div`
-  background: var(--surface);
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-  margin-bottom: 12px;
-`;
+
 
 // ─── Recent Activity (estilo History) ────────────────────────────────────────
 
@@ -671,65 +664,6 @@ const ConfirmDeleteBtn = styled.button`
   }
 `; */
 
-const ExtLink = styled.a`
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 15px 18px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.15s;
-  text-decoration: none;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &:hover {
-    background: var(--accent-bg);
-  }
-
-  .cfg-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
-    background: var(--surface-alt);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-
-    img {
-      width: 24px;
-      height: 24px;
-      object-fit: contain;
-    }
-  }
-
-  .cfg-text {
-    flex: 1;
-
-    strong {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    span {
-      font-size: 11px;
-      color: var(--text-secondary);
-    }
-  }
-
-  .cfg-arrow {
-    font-size: 13px;
-    color: var(--text-muted);
-  }
-`;
 
 // ─── Action card data ─────────────────────────────────────────────────────────
 

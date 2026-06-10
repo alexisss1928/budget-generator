@@ -69,6 +69,7 @@ type CurrentTreatmentListItem = {
 type MedicinesInState = {
   nombre: string;
   indicaciones: string;
+  presentacion?: string;
 };
 
 // ─── Styled Components ────────────────────────────────────────────────────────
