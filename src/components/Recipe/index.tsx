@@ -234,18 +234,6 @@ const DoseResult = styled.div`
   }
 `;
 
-const PediatricBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  background: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  margin-left: 4px;
-`;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
