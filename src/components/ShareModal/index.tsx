@@ -266,9 +266,10 @@ interface ShareModalProps {
   paymentMethods?: PaymentMethodRecord[];
   isFullAccess?: boolean;
   onProRequired?: () => void;
+  onNavigateToPayment?: () => void;
 }
 
-export default function ShareModal({ isOpen, onClose, type, doctorProfile, paymentMethods, isFullAccess, onProRequired }: ShareModalProps) {
+export default function ShareModal({ isOpen, onClose, type, doctorProfile, paymentMethods, isFullAccess, onProRequired, onNavigateToPayment }: ShareModalProps) {
   const { isTrial } = useAuth();
   const [items, setItems] = useState<SelectableItem[]>([]);
   const [includeAmount, setIncludeAmount] = useState(false);
@@ -446,9 +447,19 @@ export default function ShareModal({ isOpen, onClose, type, doctorProfile, payme
             </CheckboxLabel>
           ))}
           {items.length === 0 && (
-            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, marginTop: 20 }}>
-              No hay datos configurados para compartir.
-            </p>
+            <div style={{ textAlign: 'center', marginTop: 20, marginBottom: 10 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
+                {type === 'payment' ? 'No hay métodos de pago registrados para compartir.' : 'No hay datos configurados para compartir.'}
+              </p>
+              {type === 'payment' && onNavigateToPayment && (
+                <button 
+                  onClick={() => { onClose(); onNavigateToPayment(); }}
+                  style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '10px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s', width: '100%' }}
+                >
+                  Agregar métodos de pago
+                </button>
+              )}
+            </div>
           )}
 
           {type === 'payment' && items.length > 0 && (

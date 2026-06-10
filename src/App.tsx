@@ -177,6 +177,7 @@ const DrawerHead = styled.div<{ $customColor?: string }>`
     }
   }
 
+
   .share-btn {
     position: absolute;
     top: 16px;
@@ -199,6 +200,8 @@ const DrawerHead = styled.div<{ $customColor?: string }>`
     }
   }
 `;
+
+
 
 const ToggleTrack = styled.div<{ $isOn: boolean }>`
   width: 36px;
@@ -260,9 +263,13 @@ const SidebarTabBtn = styled.button<{ $active: boolean }>`
   border: none;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.3s;
+  gap: 6px;
+  position: relative;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
   outline: none;
 
   &:hover {
@@ -519,9 +526,10 @@ function InnerApp() {
   const isExitingRef = useRef(false);  // true while Salir is unwinding — suppresses modal re-trigger
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'main' | 'config' | 'support'>('main');
-  const [sidebarShareModalOpen, setSidebarShareModalOpen] = useState(false);
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
   const [proModal, setProModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+  const [sidebarShareModalOpen, setSidebarShareModalOpen] = useState(false);
+  const [recipeShareModalOpen, setRecipeShareModalOpen] = useState(false);
 
   // ── History / Navigation trap ──────────────────────────────────────────────
   // Keep ref in sync so the popstate handler never reads a stale section value
@@ -715,6 +723,10 @@ function InnerApp() {
     setCurrentMedicineSelected({ nombre: '', indicaciones: '' });
   };
 
+  const AddMedicineDirect = (med: { nombre: string; indicaciones: string }) => {
+    setCurrentRecipe(prev => [med, ...prev]);
+  };
+
   const DeleteMedicine = (index: number) => {
     const arr = [...currentRecipe]; arr.splice(index, 1); setCurrentRecipe(arr);
   };
@@ -855,10 +867,35 @@ function InnerApp() {
     setWaConfig({ message: msg, defaultPhone: personalData.phone || undefined });
   }, [treatmentsList, personalData, doctorProfile]);
 
+  const handleShareRecipeText = useCallback(() => {
+    if (currentRecipe.length === 0) return;
+    const fecha = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
+    const doctor = `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim();
+    const patient = personalData.name ? `Paciente: ${personalData.name}` : '';
+    const items = currentRecipe
+      .map(m => `• *${m.nombre}*\n  ${m.indicaciones}`)
+      .join('\n\n');
+    const msg = [
+      `💊 *Recipe Médico*`,
+      `Fecha: ${fecha}`,
+      patient,
+      ``,
+      items,
+      ``,
+      `_${doctor}_`,
+      doctorProfile.especialidad ? `_${doctorProfile.especialidad}_` : null,
+      doctorProfile.mpps ? `MPPS: ${doctorProfile.mpps}` : null,
+      doctorProfile.cov ? `COV: ${doctorProfile.cov}` : null,
+      doctorProfile.telefono ? `Tel: ${doctorProfile.telefono}` : null,
+    ].filter(v => v !== null).join('\n');
+    setWaConfig({ message: msg, defaultPhone: personalData.phone || undefined });
+  }, [currentRecipe, personalData, doctorProfile]);
+
+
   const handleShareRecipe = useCallback(() => {
     if (currentRecipe.length === 0) return;
-    setWaConfig({ message: '', defaultPhone: personalData.phone || undefined });
-  }, [currentRecipe, personalData]);
+    handleShareRecipeText();
+  }, [currentRecipe, handleShareRecipeText]);
 
   const handleShareInforme = useCallback(() => {
     if (!report.trim()) return;
@@ -900,6 +937,11 @@ function InnerApp() {
       alert('Hubo un error al intentar compartir el PDF.');
     }
   }, [componentToPrintRef, section, personalData, doctorProfile]);
+
+  const handleShareRecipePdf = useCallback(() => {
+    setRecipeShareModalOpen(false);
+    handleSharePdfDirectly();
+  }, [handleSharePdfDirectly]);
 
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -996,11 +1038,13 @@ function InnerApp() {
         isFullAccess={isFullAccess}
         onProRequired={() => setProModal({ isOpen: true, message: 'Esta función es exclusiva del plan PRO.' })}
       />
+
       {drawerOpen && <Backdrop onClick={() => setDrawerOpen(false)} />}
 
       {/* Drawer */}
       <DrawerContainer $open={drawerOpen}>
         <DrawerHead $customColor={doctorProfile.color}>
+
           <button className="share-btn" onClick={() => setSidebarShareModalOpen(true)} title="Compartir Perfil">
             <Share2 size={15} strokeWidth={2.5} />
           </button>
@@ -1355,7 +1399,8 @@ function InnerApp() {
               <Recipe AddMedicine={AddMedicine} handleCurrentRecipe={handleCurrentRecipe}
                 medicinesList={medicinesList} currentRecipe={currentRecipe}
                 DeleteMedicine={DeleteMedicine} currentMedicineSelected={currentMedicineSelected}
-                setCurrentMedicineSelected={setCurrentMedicineSelected} />
+                setCurrentMedicineSelected={setCurrentMedicineSelected}
+                onAddDirect={AddMedicineDirect} />
             </SectionInner>
           </SectionView>
         )}

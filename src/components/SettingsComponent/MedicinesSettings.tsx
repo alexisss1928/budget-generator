@@ -121,6 +121,9 @@ const ListItem = styled.div`
     color: var(--text);
     font-weight: 600;
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .subinfo {
@@ -151,8 +154,6 @@ const ListItem = styled.div`
     }
   }
 `;
-
-
 
 const ActionRow = styled.div`
   padding: 16px 18px;
@@ -244,6 +245,8 @@ const ModalOverlay = styled.div`
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(2px);
+  padding: 20px;
+  box-sizing: border-box;
 `;
 
 const ModalContent = styled.div`
@@ -251,7 +254,9 @@ const ModalContent = styled.div`
   padding: 24px;
   border-radius: 18px;
   width: 90%;
-  max-width: 420px;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 12px 40px rgba(0,0,0,0.18);
 
   h3 {
@@ -275,7 +280,7 @@ const ModalContent = styled.div`
       color: var(--text-secondary);
     }
 
-    input {
+    input, select {
       background: var(--input-bg) !important;
       color: var(--text) !important;
       border: none;
@@ -290,6 +295,39 @@ const ModalContent = styled.div`
     }
   }
 
+  .field-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+
+    > div {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      input {
+        background: var(--input-bg) !important;
+        color: var(--text) !important;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 13px;
+        outline: none;
+        box-sizing: border-box;
+        width: 100%;
+        transition: box-shadow 0.15s;
+        &:focus { box-shadow: 0 0 0 2px var(--accent); }
+      }
+    }
+  }
+
   .buttons {
     display: flex;
     justify-content: flex-end;
@@ -298,15 +336,82 @@ const ModalContent = styled.div`
   }
 `;
 
+// Toggle Adultos/Niños
+const PatientToggle = styled.div`
+  display: flex;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 0;
+`;
+
+const ToggleBtn = styled.button<{ $active: boolean }>`
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: ${p => p.$active ? 'var(--accent)' : 'transparent'};
+  color: ${p => p.$active ? '#fff' : 'var(--text-secondary)'};
+  outline: none;
+`;
+
+const PediatricNote = styled.div`
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  line-height: 1.5;
+`;
+
+const PediatricBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type ConfigType = {
   onMedicinesChange: () => void;
 };
 
+type NewMedicineState = {
+  nombre: string;
+  indicaciones: string;
+  isPediatric: boolean;
+  concentracionMg: string;
+  concentracionMl: string;
+  dosisPorKg: string;
+  dosisAlDia: string;
+};
+
+const DEFAULT_NEW_MEDICINE: NewMedicineState = {
+  nombre: '',
+  indicaciones: '',
+  isPediatric: false,
+  concentracionMg: '',
+  concentracionMl: '',
+  dosisPorKg: '',
+  dosisAlDia: '',
+};
+
 const ConfigMedicines = ({ onMedicinesChange }: ConfigType) => {
   const [myMedicines, setMyMedicines] = useState<MedicineRecord[]>([]);
-  const [newMedicine, setNewMedicine] = useState({ nombre: '', indicaciones: '' });
+  const [newMedicine, setNewMedicine] = useState<NewMedicineState>(DEFAULT_NEW_MEDICINE);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadMedicines = async () => {
@@ -318,7 +423,7 @@ const ConfigMedicines = ({ onMedicinesChange }: ConfigType) => {
     loadMedicines();
   }, []);
 
-  const handleNewMedicine = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewMedicine = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { value, name } = event.target;
     setNewMedicine({ ...newMedicine, [name]: value });
   };
@@ -381,8 +486,22 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
 
   const AddMedicine = async () => {
     if (!newMedicine.nombre.trim()) return;
-    await saveMedicine(newMedicine);
-    setNewMedicine({ nombre: '', indicaciones: '' });
+
+    const record: MedicineRecord = {
+      nombre: newMedicine.nombre.trim(),
+      indicaciones: newMedicine.indicaciones.trim(),
+    };
+
+    if (newMedicine.isPediatric) {
+      record.isPediatric = true;
+      record.concentracionMg = parseFloat(newMedicine.concentracionMg) || 0;
+      record.concentracionMl = parseFloat(newMedicine.concentracionMl) || 0;
+      record.dosisPorKg = parseFloat(newMedicine.dosisPorKg) || 0;
+      record.dosisAlDia = parseFloat(newMedicine.dosisAlDia) || 0;
+    }
+
+    await saveMedicine(record);
+    setNewMedicine(DEFAULT_NEW_MEDICINE);
     setIsModalOpen(false);
     await loadMedicines();
     onMedicinesChange();
@@ -391,7 +510,7 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setNewMedicine({ nombre: '', indicaciones: '' });
+    setNewMedicine(DEFAULT_NEW_MEDICINE);
   };
 
   const DeleteMedicineById = async (id: number) => {
@@ -426,8 +545,15 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
             myMedicines.map((medicine) => (
               <ListItem key={medicine.id}>
                 <div>
-                  <div className="info">{medicine.nombre}</div>
-                  <div className="subinfo">{medicine.indicaciones}</div>
+                  <div className="info">
+                    {medicine.nombre}
+                    {medicine.isPediatric && <PediatricBadge>NIÑOS</PediatricBadge>}
+                  </div>
+                  <div className="subinfo">
+                    {medicine.isPediatric
+                      ? `${medicine.concentracionMg}mg/${medicine.concentracionMl}ml · ${medicine.dosisPorKg}mg/kg/día · ${medicine.dosisAlDia} dosis/día`
+                      : medicine.indicaciones}
+                  </div>
                 </div>
                 <div className="actions">
                   <button onClick={() => DeleteMedicineById(medicine.id!)} title="Eliminar">
@@ -482,6 +608,26 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
         <ModalOverlay onClick={closeModal}>
           <ModalContent onClick={(e) => e.stopPropagation()}>
             <h3>Nuevo Medicamento</h3>
+
+            {/* Toggle Adultos / Niños */}
+            <PatientToggle>
+              <ToggleBtn
+                $active={!newMedicine.isPediatric}
+                onClick={() => setNewMedicine({ ...newMedicine, isPediatric: false })}
+                type="button"
+              >
+                Adultos
+              </ToggleBtn>
+              <ToggleBtn
+                $active={newMedicine.isPediatric}
+                onClick={() => setNewMedicine({ ...newMedicine, isPediatric: true })}
+                type="button"
+              >
+                Niños
+              </ToggleBtn>
+            </PatientToggle>
+
+            {/* Campo nombre (común) */}
             <div className="field">
               <label>Nombre del medicamento</label>
               <input
@@ -489,22 +635,90 @@ Azitromicina - 500 mg,500 mg diarios por 3 dias`;
                 name="nombre"
                 value={newMedicine.nombre}
                 onChange={handleNewMedicine}
-                placeholder="Ej: Ibuprofeno 400mg"
+                placeholder={newMedicine.isPediatric ? 'Ej: Amoxicilina Suspensión' : 'Ej: Ibuprofeno 400mg'}
                 autoFocus
                 autoComplete="off"
               />
             </div>
-            <div className="field">
-              <label>Indicaciones</label>
-              <input
-                type="text"
-                name="indicaciones"
-                value={newMedicine.indicaciones}
-                onChange={handleNewMedicine}
-                placeholder="Ej: 1 tableta cada 8 horas"
-                autoComplete="off"
-              />
-            </div>
+
+            {/* Modo Adultos */}
+            {!newMedicine.isPediatric && (
+              <div className="field">
+                <label>Indicaciones / Posología</label>
+                <input
+                  type="text"
+                  name="indicaciones"
+                  value={newMedicine.indicaciones}
+                  onChange={handleNewMedicine}
+                  placeholder="Ej: 1 tableta cada 8 horas por 7 días"
+                  autoComplete="off"
+                />
+              </div>
+            )}
+
+            {/* Modo Niños */}
+            {newMedicine.isPediatric && (
+              <>
+                <PediatricNote>
+                  Los campos de concentración y dosis se usarán para calcular automáticamente la posología según el peso del paciente al agregar al recipe.
+                </PediatricNote>
+
+                <div className="field-row">
+                  <div>
+                    <label>Concentración (mg)</label>
+                    <input
+                      type="number"
+                      name="concentracionMg"
+                      value={newMedicine.concentracionMg}
+                      onChange={handleNewMedicine}
+                      placeholder="Ej: 250"
+                      min="0"
+                      step="any"
+                    />
+                  </div>
+                  <div>
+                    <label>por (ml)</label>
+                    <input
+                      type="number"
+                      name="concentracionMl"
+                      value={newMedicine.concentracionMl}
+                      onChange={handleNewMedicine}
+                      placeholder="Ej: 5"
+                      min="0"
+                      step="any"
+                    />
+                  </div>
+                </div>
+
+                <div className="field-row">
+                  <div>
+                    <label>Dosis por kg (mg/kg/día)</label>
+                    <input
+                      type="number"
+                      name="dosisPorKg"
+                      value={newMedicine.dosisPorKg}
+                      onChange={handleNewMedicine}
+                      placeholder="Ej: 40"
+                      min="0"
+                      step="any"
+                    />
+                  </div>
+                  <div>
+                    <label>Dosis al día</label>
+                    <input
+                      type="number"
+                      name="dosisAlDia"
+                      value={newMedicine.dosisAlDia}
+                      onChange={handleNewMedicine}
+                      placeholder="Ej: 3"
+                      min="1"
+                      step="1"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="buttons">
               <SecondaryBtn onClick={closeModal}>Cancelar</SecondaryBtn>
               <PrimaryBtn onClick={AddMedicine}>Guardar</PrimaryBtn>

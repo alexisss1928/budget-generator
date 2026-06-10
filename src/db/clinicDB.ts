@@ -18,7 +18,14 @@ export type MedicineRecord = {
   id?: number;
   nombre: string;
   indicaciones: string;
+  // Pediatric fields (only set for pediatric medicines)
+  isPediatric?: boolean;
+  concentracionMg?: number;   // mg por unidad de volumen
+  concentracionMl?: number;   // ml por unidad (ej: 5ml)
+  dosisPorKg?: number;        // mg/kg/día
+  dosisAlDia?: number;        // número de tomas al día
 };
+
 
 export type HistoryType = 'recipe' | 'presupuesto' | 'informe';
 

@@ -142,47 +142,10 @@ const SectionLabel = styled.p`
 
 const ActionGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin-bottom: 28px;
   padding: 4px;
-`;
-
-const ShareButtonsRow = styled.div`
-  display: flex;
-  gap: 12px;
-  margin-bottom: 28px;
-
-  button {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 12px;
-    border-radius: 16px;
-    border: none;
-    background: var(--surface);
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-
-    svg {
-      color: var(--accent);
-    }
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
-    }
-
-    &:active {
-      transform: translateY(2px);
-    }
-  }
 `;
 
 const MissingProfileBanner = styled.div`
@@ -231,12 +194,12 @@ const MissingProfileBanner = styled.div`
 const ActionCard = styled.div<{ $locked?: boolean }>`
   background: var(--surface);
   border-radius: 20px;
-  padding: 12px 8px;
+  padding: 14px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 1 / 1;
+  min-height: 105px;
   position: relative;
   cursor: pointer;
   opacity: ${(p) => p.$locked ? 0.4 : 1};
@@ -795,6 +758,14 @@ const actions = [
     color: '#9b59b6',
     icon: <Pill size={20} strokeWidth={2.5} />,
   },
+  {
+    section: 'share_payment',
+    type: 'share_payment',
+    label: 'Pagos',
+    desc: 'Compartir',
+    color: '#f39c12',
+    icon: <Share2 size={20} strokeWidth={2.5} />,
+  },
 ];
 
 // ─── Type helpers ─────────────────────────────────────────────────────────────
@@ -901,6 +872,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         paymentMethods={paymentMethods}
         isFullAccess={isFullAccess}
         onProRequired={onProRequired}
+        onNavigateToPayment={() => onNavigate('Métodos de pago')}
       />
 
       <Wrapper>
@@ -938,16 +910,6 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
 
 
 
-      {/* Share Buttons */}
-      <ShareButtonsRow>
-        <button onClick={() => setShareModal({ isOpen: true, type: 'doctor' })}>
-          <Share2 size={16} /> Perfil
-        </button>
-        <button onClick={() => setShareModal({ isOpen: true, type: 'payment' })}>
-          <Share2 size={16} /> Pagos
-        </button>
-      </ShareButtonsRow>
-
       {/* Quick Actions */}
       <SectionLabel>Acciones rápidas</SectionLabel>
       <ActionGrid>
@@ -957,7 +919,14 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
             <ActionCard
               key={a.section}
               $locked={locked}
-              onClick={() => locked ? onProRequired() : onNavigate(a.section)}
+              onClick={() => {
+                if (locked) return onProRequired();
+                if (a.type === 'share_payment') {
+                  setShareModal({ isOpen: true, type: 'payment' });
+                } else {
+                  onNavigate(a.section);
+                }
+              }}
               id={`home-card-${a.section.toLowerCase()}`}
               style={{ animationDelay: `${i * 0.07}s` }}
             >
