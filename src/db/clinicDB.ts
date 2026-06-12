@@ -3,7 +3,7 @@
 // Stores: treatments, medicines, history, doctorProfile
 
 const DB_NAME = 'ClinicManagerDB';
-const DB_VERSION = 4; // bumped to add paymentMethods store
+const DB_VERSION = 5; // bumped to add shoppingList store
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -101,6 +101,13 @@ export type PaymentMethodRecord = {
   isActive: boolean;
 };
 
+export type ShoppingItemRecord = {
+  id?: number;
+  nombre: string;
+  cantidad: string;
+  notaAdicional: string;
+};
+
 export const DEFAULT_DOCTOR_PROFILE: DoctorProfile = {
   prefix: 'Dr.',
   nombre: '',
@@ -181,6 +188,15 @@ export function initDB(): Promise<IDBDatabase> {
           autoIncrement: true,
         });
         pmStore.createIndex('type', 'type', { unique: false });
+      }
+
+      // v5: shopping list
+      if (!db.objectStoreNames.contains('shoppingList')) {
+        const shopStore = db.createObjectStore('shoppingList', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
+        shopStore.createIndex('nombre', 'nombre', { unique: false });
       }
     };
 
@@ -382,11 +398,30 @@ export async function deletePaymentMethod(id: number): Promise<void> {
   await promisifyRequest(getStore(db, 'paymentMethods', 'readwrite').delete(id));
 }
 
+// ─── Shopping List ────────────────────────────────────────────────────────────
+
+export async function getAllShoppingItems(): Promise<ShoppingItemRecord[]> {
+  const db = await initDB();
+  return getAllFromStore<ShoppingItemRecord>(db, 'shoppingList');
+}
+
+export async function saveShoppingItem(item: ShoppingItemRecord): Promise<number> {
+  const db = await initDB();
+  return promisifyRequest<number>(
+    getStore(db, 'shoppingList', 'readwrite').put(item) as IDBRequest<number>
+  );
+}
+
+export async function deleteShoppingItem(id: number): Promise<void> {
+  const db = await initDB();
+  await promisifyRequest(getStore(db, 'shoppingList', 'readwrite').delete(id));
+}
+
 // ─── Export / Import ──────────────────────────────────────────────────────────
 
 export async function exportDB(): Promise<string> {
   const db = await initDB();
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList'];
   const exportData: Record<string, any> = {};
 
   for (const storeName of stores) {
@@ -406,7 +441,7 @@ export async function exportDB(): Promise<string> {
 export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 'replace'): Promise<void> {
   const db = await initDB();
   const data = JSON.parse(jsonData);
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList'];
 
   for (const storeName of stores) {
     if (data[storeName] && db.objectStoreNames.contains(storeName)) {
@@ -433,7 +468,7 @@ export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 're
 
 export async function clearAllData(): Promise<void> {
   const db = await initDB();
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList'];
 
   for (const storeName of stores) {
     if (db.objectStoreNames.contains(storeName)) {

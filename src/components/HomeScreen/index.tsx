@@ -5,13 +5,14 @@ import Logo from '../../assets/leafAssets/logo.png';
 import {
   FileText, ClipboardList, Pill,
   ChevronDown, ChevronRight, Edit2,
-  Share2, Download, Trash2, AlertTriangle, Calculator
+  Share2, Download, Trash2, AlertTriangle, Calculator, Monitor, ShoppingCart, Plus
 } from 'lucide-react';
-import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods } from '../../db/clinicDB';
+import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods, getAllShoppingItems, saveShoppingItem } from '../../db/clinicDB';
 import WhatsAppModal from '../WhatsAppModal';
 import ShareModal from '../ShareModal';
 import ContactQRModal from '../ContactQRModal';
 import DoseCalculatorModal from '../DoseCalculatorModal';
+import NegatoscopioScreen from '../NegatoscopioScreen';
 import { useAuth } from '../../context/AuthContext';
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -122,7 +123,10 @@ const WelcomeSpecialty = styled.span`
   z-index: 1;
 `;
 
-const SectionLabel = styled.p`
+const SectionLabel = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
@@ -130,6 +134,23 @@ const SectionLabel = styled.p`
   letter-spacing: 1.5px;
   margin-bottom: 12px;
   padding-left: 2px;
+  
+  .edit-btn {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: normal;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--accent-bg);
+    transition: opacity 0.2s;
+    
+    &:hover {
+      opacity: 0.8;
+    }
+  }
 `;
 
 
@@ -705,6 +726,35 @@ const actions = [
     icon: <Calculator size={20} strokeWidth={2.5} />,
     proOnly: true,
   },
+  {
+    section: 'negatoscopio',
+    type: 'negatoscopio',
+    label: 'Negatoscopio',
+    desc: 'Visor de rayos X',
+    color: '#16a085',
+    icon: <Monitor size={20} strokeWidth={2.5} />,
+  },
+  {
+    section: 'Lista de compras',
+    type: 'shopping_list',
+    label: 'Compras',
+    desc: 'Lista de insumos',
+    color: '#e67e22',
+    icon: <ShoppingCart size={20} strokeWidth={2.5} />,
+  },
+  {
+    section: 'quick_add_shopping',
+    type: 'quick_add_shopping',
+    label: 'Añadir',
+    desc: 'A compras',
+    color: '#16a085',
+    icon: (
+      <div style={{ position: 'relative' }}>
+        <ShoppingCart size={20} strokeWidth={2.5} />
+        <Plus size={12} strokeWidth={4} style={{ position: 'absolute', top: -6, right: -8, color: '#fff', background: '#16a085', borderRadius: '50%', padding: '1px' }} />
+      </div>
+    ),
+  },
 ];
 
 // ─── Type helpers ─────────────────────────────────────────────────────────────
@@ -738,19 +788,55 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRecord[]>([]);
   const [isContactQRModalOpen, setIsContactQRModalOpen] = useState(false);
   const [isDoseCalcModalOpen, setIsDoseCalcModalOpen] = useState(false);
+  const [isNegatoscopioOpen, setIsNegatoscopioOpen] = useState(false);
   const [shareModal, setShareModal] = useState<{ isOpen: boolean; type: 'doctor' | 'payment' }>({
     isOpen: false,
     type: 'doctor'
   });
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddData, setQuickAddData] = useState({ nombre: '', cantidad: '', notaAdicional: '' });
+  const [isShoppingReminderDismissed, setIsShoppingReminderDismissed] = useState(false);
+  
+  const [isEditActionsOpen, setIsEditActionsOpen] = useState(false);
+  const [hiddenActions, setHiddenActions] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('hidden_quick_actions') || '[]'); } catch { return []; }
+  });
+
+  const toggleActionVisibility = (type: string) => {
+    setHiddenActions(prev => {
+      const next = prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type];
+      localStorage.setItem('hidden_quick_actions', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleSaveQuickAdd = async () => {
+    if (!quickAddData.nombre.trim() || !quickAddData.cantidad.trim()) {
+      return alert("El nombre y la cantidad son requeridos");
+    }
+    await saveShoppingItem({
+      nombre: quickAddData.nombre.trim(),
+      cantidad: quickAddData.cantidad.trim(),
+      notaAdicional: quickAddData.notaAdicional.trim()
+    });
+    setIsQuickAddOpen(false);
+    refreshRecent();
+  };
   
 
 
-  const refreshRecent = () => getAllHistory().then((all) => {
-    setRecent(all.slice(0, 5));
-    const c: Record<string, number> = {};
-    all.forEach((r) => { c[r.type] = (c[r.type] || 0) + 1; });
-    setCounts(c);
-  });
+  const refreshRecent = () => {
+    getAllHistory().then((all) => {
+      setRecent(all.slice(0, 5));
+      const c: Record<string, number> = {};
+      all.forEach((r) => { c[r.type] = (c[r.type] || 0) + 1; });
+      
+      getAllShoppingItems().then((items) => {
+        c['shopping_list'] = items.length;
+        setCounts(c);
+      });
+    });
+  };
 
   const toggleOpen = (id: number | undefined) => {
     if (id === undefined) return;
@@ -826,27 +912,107 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         <DoseCalculatorModal onClose={() => setIsDoseCalcModalOpen(false)} />
       )}
 
-      <Wrapper>
-      {/* Welcome Banner */}
-      <WelcomeCard $customColor={doctorProfile.color} onClick={() => setIsContactQRModalOpen(true)}>
-        <BgLogo src={(isFullAccess && doctorProfile.logoDataUrl) ? doctorProfile.logoDataUrl : Logo} alt="" />
+      {isNegatoscopioOpen && (
+        <NegatoscopioScreen onClose={() => setIsNegatoscopioOpen(false)} />
+      )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative', zIndex: 1 }}>
-          {(isFullAccess && doctorProfile.logoDataUrl) ? (
-            <WelcomeLogo src={doctorProfile.logoDataUrl} alt="Logo" style={{ filter: 'none', objectFit: 'contain', width: 60, height: 60, borderRadius: '50%', background: '#fff', padding: 2, marginBottom: 0 }} />
-          ) : (
-            <WelcomeLogo src={Logo} alt="Logo" style={{ width: 60, height: 60, marginBottom: 0 }} />
-          )}
-          <div>
-            <WelcomeName>
-              {doctorProfile.nombre ? `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim() : '¡Bienvenido!'}
-            </WelcomeName>
-            <WelcomeSpecialty style={{ display: 'block' }}>
-              {doctorProfile.especialidad || 'Configura tu perfil para empezar'}
-            </WelcomeSpecialty>
+      {isQuickAddOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setIsQuickAddOpen(false)}>
+          <div style={{ background: 'var(--surface)', borderRadius: '20px', width: '100%', maxWidth: '400px', padding: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 20px', fontSize: '18px', color: 'var(--text)' }}>Agregar Producto</h3>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>Nombre del Producto</label>
+              <input type="text" value={quickAddData.nombre} onChange={e => setQuickAddData({...quickAddData, nombre: e.target.value})} placeholder="Ej. Guantes de Látex" autoFocus style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', outline: 'none' }} />
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>Cantidad</label>
+              <input type="number" value={quickAddData.cantidad} onChange={e => setQuickAddData({...quickAddData, cantidad: e.target.value})} placeholder="Ej. 5" style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', outline: 'none' }} />
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>Nota Adicional (Opcional)</label>
+              <textarea value={quickAddData.notaAdicional} onChange={e => setQuickAddData({...quickAddData, notaAdicional: e.target.value})} placeholder="Ej. Talla M..." style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', outline: 'none', resize: 'vertical', minHeight: '80px' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button style={{ flex: 1, padding: '12px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)' }} onClick={() => setIsQuickAddOpen(false)}>Cancelar</button>
+              <button style={{ flex: 1, padding: '12px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', border: 'none', background: 'var(--accent)', color: 'white' }} onClick={handleSaveQuickAdd}>Guardar</button>
+            </div>
           </div>
         </div>
-      </WelcomeCard>
+      )}
+
+      {isEditActionsOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setIsEditActionsOpen(false)}>
+          <div style={{ background: 'var(--surface)', borderRadius: '20px', width: '100%', maxWidth: '400px', padding: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 8px', fontSize: '18px', color: 'var(--text)' }}>Editar Acciones Rápidas</h3>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary)' }}>Selecciona cuáles acciones quieres ver en la pantalla principal.</p>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '20px' }}>
+              {actions.filter(a => a.type !== 'calc_dosis' && a.type !== 'negatoscopio').map(a => {
+                const isHidden = hiddenActions.includes(a.type);
+                return (
+                  <label key={a.type} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--bg)', borderRadius: '12px', border: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.2s' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ color: a.color, display: 'flex' }}>{a.icon}</div>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>{a.label}</span>
+                    </div>
+                    <input 
+                      type="checkbox" 
+                      checked={!isHidden} 
+                      onChange={() => toggleActionVisibility(a.type)} 
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer', margin: 0 }}
+                    />
+                  </label>
+                );
+              })}
+            </div>
+            <button style={{ width: '100%', padding: '14px', borderRadius: '12px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', border: 'none', background: 'var(--accent)', color: 'white', marginTop: 'auto' }} onClick={() => setIsEditActionsOpen(false)}>Hecho</button>
+          </div>
+        </div>
+      )}
+
+      <Wrapper>
+      
+      {(() => {
+        const showShoppingReminder = counts['shopping_list'] > 0 && !isShoppingReminderDismissed;
+        return (
+          <>
+      {/* Welcome Banner */}
+      {showShoppingReminder ? (
+        <WelcomeCard $customColor="#eab308" onClick={() => onNavigate('Lista de compras')}>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <WelcomeName style={{ fontSize: '20px', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <ShoppingCart size={24} /> Compras pendientes
+            </WelcomeName>
+            <WelcomeSpecialty style={{ display: 'block', marginBottom: '16px', color: 'rgba(255,255,255,0.95)', fontSize: '14px' }}>
+              Tienes {counts['shopping_list']} artículo(s) anotado(s) por comprar.
+            </WelcomeSpecialty>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={(e) => { e.stopPropagation(); onNavigate('Lista de compras'); }} style={{ background: '#fff', color: '#eab308', border: 'none', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>Ver lista</button>
+              <button onClick={(e) => { e.stopPropagation(); setIsShoppingReminderDismissed(true); }} style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.6)', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' }}>Descartar</button>
+            </div>
+          </div>
+        </WelcomeCard>
+      ) : (
+        <WelcomeCard $customColor={doctorProfile.color} onClick={() => setIsContactQRModalOpen(true)}>
+          <BgLogo src={(isFullAccess && doctorProfile.logoDataUrl) ? doctorProfile.logoDataUrl : Logo} alt="" />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative', zIndex: 1 }}>
+            {(isFullAccess && doctorProfile.logoDataUrl) ? (
+              <WelcomeLogo src={doctorProfile.logoDataUrl} alt="Logo" style={{ filter: 'none', objectFit: 'contain', width: 60, height: 60, borderRadius: '50%', background: '#fff', padding: 2, marginBottom: 0 }} />
+            ) : (
+              <WelcomeLogo src={Logo} alt="Logo" style={{ width: 60, height: 60, marginBottom: 0 }} />
+            )}
+            
+            <div>
+              <WelcomeName>
+                {doctorProfile.nombre ? `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim() : '¡Bienvenido!'}
+              </WelcomeName>
+              <WelcomeSpecialty style={{ display: 'block' }}>
+                {doctorProfile.especialidad || 'Configura tu perfil para empezar'}
+              </WelcomeSpecialty>
+            </div>
+          </div>
+        </WelcomeCard>
+      )}
 
       {/* Missing Profile Warning */}
       {!doctorProfile.nombre && (
@@ -862,9 +1028,12 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
 
 
       {/* Quick Actions */}
-      <SectionLabel>Acciones rápidas</SectionLabel>
+      <SectionLabel>
+        <span>Acciones rápidas</span>
+        <span className="edit-btn" onClick={() => setIsEditActionsOpen(true)}>Editar</span>
+      </SectionLabel>
       <ActionGrid>
-        {actions.map((a, i) => {
+        {actions.filter(a => a.type !== 'calc_dosis' && a.type !== 'negatoscopio' && !hiddenActions.includes(a.type)).map((a, i) => {
           const locked = a.proOnly && !isFullAccess;
           return (
             <ActionCard
@@ -874,13 +1043,63 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
                 if (locked) return onProRequired();
                 if (a.type === 'calc_dosis') {
                   setIsDoseCalcModalOpen(true);
-                } else if (a.type === 'share_payment') {
+                } else if (a.type === 'negatoscopio') {
+                  setIsNegatoscopioOpen(true);
+                } else if (a.type === 'quick_add_shopping') {
+                  setQuickAddData({ nombre: '', cantidad: '', notaAdicional: '' });
+                  setIsQuickAddOpen(true);
+                } else if (a.type === 'share_payment' || a.section === 'share_payment') {
                   setShareModal({ isOpen: true, type: 'payment' });
                 } else {
                   onNavigate(a.section);
                 }
               }}
               id={`home-card-${a.section.toLowerCase()}`}
+              style={{ animationDelay: `${i * 0.07}s` }}
+            >
+              {locked && <ActionCountDot $color="#fff" style={{ background: '#eab308', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>PRO</ActionCountDot>}
+              {!locked && isTrial && a.proOnly && <ActionCountDot $color="#fff" style={{ background: '#3b82f6', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>TRIAL</ActionCountDot>}
+              {!locked && !(isTrial && a.proOnly) && counts[a.type] !== undefined && (
+                <ActionCountDot $color={a.color}>
+                  {counts[a.type]}
+                </ActionCountDot>
+              )}
+              
+              <IconBadge $color={a.color}>
+                {a.icon}
+              </IconBadge>
+
+              <ActionContent>
+                <h4 style={{ whiteSpace: 'pre-line' }}>{a.label}</h4>
+                <ActionSubtext>{a.desc}</ActionSubtext>
+              </ActionContent>
+            </ActionCard>
+          );
+        })}
+      </ActionGrid>
+
+      {/* Tools */}
+      <SectionLabel style={{ marginTop: '24px' }}>Herramientas</SectionLabel>
+      <ActionGrid>
+        {actions.filter(a => a.type === 'calc_dosis' || a.type === 'negatoscopio').map((a, i) => {
+          const locked = a.proOnly && !isFullAccess;
+          return (
+            <ActionCard
+              key={a.section}
+              $locked={locked}
+              onClick={() => {
+                if (locked) return onProRequired();
+                if (a.type === 'calc_dosis') {
+                  setIsDoseCalcModalOpen(true);
+                } else if (a.type === 'negatoscopio') {
+                  setIsNegatoscopioOpen(true);
+                } else if (a.type === 'share_payment') {
+                  setShareModal({ isOpen: true, type: 'payment' });
+                } else {
+                  onNavigate(a.section);
+                }
+              }}
+              id={`home-card-tool-${a.section.toLowerCase()}`}
               style={{ animationDelay: `${i * 0.07}s` }}
             >
               {locked && <ActionCountDot $color="#fff" style={{ background: '#eab308', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>PRO</ActionCountDot>}
@@ -1073,6 +1292,9 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
           </ConfirmBox>
         </ConfirmOverlay>
       )}
+      </>
+        );
+      })()}
       </Wrapper>
     </>
   );

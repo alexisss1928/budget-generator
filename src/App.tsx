@@ -5,7 +5,7 @@ import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
   Menu, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle, ShoppingCart
 } from 'lucide-react';
 
 // Context
@@ -34,6 +34,7 @@ import TermsAndConditionsScreen from './components/TermsAndConditionsScreen';
 import FeedbackScreen from './components/FeedbackScreen';
 import ProUpgradeModal from './components/ProUpgradeModal';
 import ShareModal from './components/ShareModal';
+import ShoppingListScreen from './components/ShoppingListScreen';
 import AnalysisLoader from './components/AnalysisLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { usePWA } from './hooks/usePWA';
@@ -842,8 +843,26 @@ function InnerApp() {
     }
   }, [historyPrintRecord, doctorProfile]);
 
-  const handleWhatsApp = useCallback(() => {
+  const handleWhatsApp = useCallback(async () => {
     if (treatmentsList.length === 0) return;
+    
+    // Limits check
+    const allowed = await checkFreeLimits('presupuesto');
+    if (!allowed) return;
+
+    // Save to history
+    try {
+      await saveToHistory({
+        type: 'presupuesto',
+        date: new Date().toISOString(),
+        patientName: personalData.name,
+        patientId: personalData.identification,
+        patientPhone: personalData.phone || undefined,
+        patientEmail: personalData.email || undefined,
+        data: { treatments: treatmentsList }
+      });
+    } catch (err) { console.error(err); }
+
     const fecha = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
     const doctor = `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim();
     const patient = personalData.name ? `Paciente: ${personalData.name}` : '';
@@ -867,8 +886,24 @@ function InnerApp() {
     setWaConfig({ message: msg, defaultPhone: personalData.phone || undefined });
   }, [treatmentsList, personalData, doctorProfile]);
 
-  const handleShareRecipeText = useCallback(() => {
+  const handleShareRecipeText = useCallback(async () => {
     if (currentRecipe.length === 0) return;
+    
+    const allowed = await checkFreeLimits('recipe');
+    if (!allowed) return;
+
+    try {
+      await saveToHistory({
+        type: 'recipe',
+        date: new Date().toISOString(),
+        patientName: personalData.name,
+        patientId: personalData.identification,
+        patientPhone: personalData.phone || undefined,
+        patientEmail: personalData.email || undefined,
+        data: { medicines: currentRecipe }
+      });
+    } catch (err) { console.error(err); }
+
     const fecha = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
     const doctor = `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`.trim();
     const patient = personalData.name ? `Paciente: ${personalData.name}` : '';
@@ -897,8 +932,24 @@ function InnerApp() {
     handleShareRecipeText();
   }, [currentRecipe, handleShareRecipeText]);
 
-  const handleShareInforme = useCallback(() => {
+  const handleShareInforme = useCallback(async () => {
     if (!report.trim()) return;
+
+    const allowed = await checkFreeLimits('informe');
+    if (!allowed) return;
+
+    try {
+      await saveToHistory({
+        type: 'informe',
+        date: new Date().toISOString(),
+        patientName: personalData.name,
+        patientId: personalData.identification,
+        patientPhone: personalData.phone || undefined,
+        patientEmail: personalData.email || undefined,
+        data: { report }
+      });
+    } catch (err) { console.error(err); }
+
     setWaConfig({ message: '', defaultPhone: personalData.phone || undefined });
   }, [report, personalData]);
 
@@ -960,6 +1011,7 @@ function InnerApp() {
     { label: 'Presupuesto', section: 'Presupuesto', icon: <FileText size={15} /> },
     { label: 'Informe', section: 'Informe', icon: <ClipboardList size={15} />, proOnly: true },
     { label: 'Recipe', section: 'Recipes', icon: <Pill size={15} /> },
+    { label: 'Lista de compras', section: 'Lista de compras', icon: <ShoppingCart size={15} /> },
     { label: 'Historial', section: 'Historial', icon: <HistoryIcon size={15} /> },
   ];
 
@@ -1516,6 +1568,19 @@ function InnerApp() {
         {section === 'Términos y condiciones' && (
           <SectionView>
             <TermsAndConditionsScreen onBack={() => navigate('Inicio')} />
+          </SectionView>
+        )}
+
+        {section === 'Lista de compras' && (
+          <SectionView>
+            <SectionInner>
+              <SectionHeader>
+                <BackBtn onClick={() => navigate('Inicio')}>
+                  <ChevronLeft size={15} /> Inicio
+                </BackBtn>
+              </SectionHeader>
+              <ShoppingListScreen />
+            </SectionInner>
           </SectionView>
         )}
       </ContentArea>
