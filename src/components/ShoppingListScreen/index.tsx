@@ -421,7 +421,7 @@ export default function ShoppingListScreen() {
   };
 
   const handleDeselectAll = () => {
-    setSelectedIds(newSet => new Set());
+    setSelectedIds(new Set());
   };
 
   const isAllSelected = items.length > 0 && selectedIds.size === items.length;
@@ -559,7 +559,7 @@ export default function ShoppingListScreen() {
               const isSelected = selectedIds.has(item.id);
 
               return (
-                <ListItemCard key={item.id} $selected={isSelected} onClick={() => setOpenItemId(prev => prev === item.id ? null : item.id)}>
+                <ListItemCard key={item.id} $selected={isSelected} onClick={() => setOpenItemId(prev => prev === item.id ? null : item.id!)}>
                   <div className="top-row">
                     <div className="checkbox" onClick={(e) => { e.stopPropagation(); toggleSelect(item.id!); }}>
                       {isSelected ? <CheckSquare size={24} /> : <Square size={24} />}
