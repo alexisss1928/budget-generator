@@ -466,8 +466,17 @@ const ConfigMedicines = ({ onMedicinesChange, isFullAccess, onProRequired }: Con
 
   const handleDownload = () => {
     const data = `nombre,indicaciones,presentacion,isPediatric,concentracionMg,concentracionMl,dosisPorKg,dosisAlDia
-Ibuprofeno - 400 mg,"400 mg cada 6 horas, 600 mg cada 8 horas por 3 dias si hay dolor",Comprimidos,false,,,,
-Amoxicilina (Pediátrico),,Suspensión,true,250,5,50,3`;
+Ibuprofeno - 600 mg,"1 comprimido cada 8 horas por 3 dias",Comprimidos,false,,,,
+Acetaminofén - 500 mg,"1 tableta cada 6 horas por 3 dias",Tabletas,false,,,,
+Amoxicilina - 500 mg,"1 capsula cada 8 horas por 7 dias",Capsulas,false,,,,
+Amoxicilina + Ácido Clavulánico - 875/125 mg,"1 comprimido cada 12 horas por 7 dias",Comprimidos,false,,,,
+Clindamicina - 300 mg,"1 capsula cada 8 horas por 7 dias",Capsulas,false,,,,
+Ketoprofeno - 100 mg,"1 capsula cada 12 horas por 3",Capsulas,false,,,,
+Amoxicilina (Pediátrico),,Suspensión,true,250,5,50,3
+Ibuprofeno (Pediátrico),,Suspensión,true,100,5,10,4
+Acetaminofén (Pediátrico),,Solución oral,true,120,5,15,4
+Amoxicilina + Ácido Clavulánico (Pediátrico),,Suspensión,true,250,5,45,2
+Clindamicina (Pediátrico),,Suspensión,true,75,5,30,3`;
     const blob = new Blob([data], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
