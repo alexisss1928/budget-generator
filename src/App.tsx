@@ -107,7 +107,6 @@ const DrawerContainer = styled.aside<{ $open: boolean }>`
   z-index: 300;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
   box-shadow: 4px 0 30px rgba(0,0,0,0.25);
 `;
 
@@ -230,6 +229,15 @@ const ToggleThumb = styled.div<{ $isOn: boolean }>`
 const DrawerNav = styled.nav`
   flex: 1;
   padding: 10px 0;
+  overflow-y: auto;
+  
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
 `;
 
 const SidebarTabsContainer = styled.div<{ $activeTab: 'main' | 'config' | 'support' }>`
@@ -1124,7 +1132,7 @@ function InnerApp() {
                 borderRadius: '10px',
                 background: section === 'AdminPanel' ? '#bdbdbd' : '#d5d5d5',
                 border: `1px solid ${section === 'AdminPanel' ? '#b0b0b0' : '#c0c0c0'}`,
-                color: 'var(--text)',
+                color: '#333',
                 fontSize: '13px',
                 fontWeight: 600,
                 display: 'flex',
@@ -1212,25 +1220,25 @@ function InnerApp() {
               </DrawerItem>
             </>
           )}
-
-          <div style={{ marginTop: 'auto' }}>
-            <DrawerDivider />
-            <DrawerItem onClick={toggleTheme}>
-              <div className="item-content">
-                {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
-                Modo Oscuro
-              </div>
-              <ToggleTrack $isOn={theme === 'dark'}>
-                <ToggleThumb $isOn={theme === 'dark'} />
-              </ToggleTrack>
-            </DrawerItem>
-            <DrawerItem onClick={signOut}>
-              <div className="item-content">
-                <LogOut size={15} /> Cerrar Sesión
-              </div>
-            </DrawerItem>
-          </div>
         </DrawerNav>
+
+        <div style={{ marginTop: 'auto', flexShrink: 0 }}>
+          <DrawerDivider />
+          <DrawerItem onClick={toggleTheme}>
+            <div className="item-content">
+              {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+              Modo Oscuro
+            </div>
+            <ToggleTrack $isOn={theme === 'dark'}>
+              <ToggleThumb $isOn={theme === 'dark'} />
+            </ToggleTrack>
+          </DrawerItem>
+          <DrawerItem onClick={signOut}>
+            <div className="item-content">
+              <LogOut size={15} /> Cerrar Sesión
+            </div>
+          </DrawerItem>
+        </div>
 
         {user?.role === 'ADMIN' ? (
           <div style={{ padding: '0 18px 14px' }}>

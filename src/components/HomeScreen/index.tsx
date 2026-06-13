@@ -832,7 +832,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
       all.forEach((r) => { c[r.type] = (c[r.type] || 0) + 1; });
       
       getAllShoppingItems().then((items) => {
-        c['shopping_list'] = items.length;
+        c['shopping_list'] = items.filter(i => !i.completado).length;
         setCounts(c);
       });
     });

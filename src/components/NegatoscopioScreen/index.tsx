@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { X, Ruler, AlertTriangle, Plus, Minus, Save, Sliders, Grid } from 'lucide-react';
+import { X, Ruler, AlertTriangle, Plus, Minus, Save, Sliders, Grid, ArrowRight } from 'lucide-react';
 
 const FullScreenOverlay = styled.div`
   position: fixed;
@@ -40,17 +40,46 @@ const IconButton = styled.button`
 
 const WarningBox = styled.div`
   position: absolute;
-  bottom: 30px; left: 30px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
   background: #fff3e0;
   border: 1px solid #ffb74d;
   color: #e65100;
-  padding: 12px 20px;
-  border-radius: 12px;
-  display: flex; align-items: center; gap: 12px;
-  font-size: 14px; font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: 32px 24px;
+  border-radius: 20px;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 16px;
+  font-size: 15px; 
+  font-weight: 600; 
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
   z-index: 10;
-  max-width: 300px;
+  max-width: 320px;
+
+  svg {
+    width: 48px;
+    height: 48px;
+  }
+`;
+
+const PointerWrap = styled.div`
+  position: absolute;
+  bottom: 88px; 
+  right: 80px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e65100;
+  font-weight: 700;
+  font-size: 15px;
+  z-index: 10;
+  @keyframes bounceRight {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(10px); }
+  }
+  animation: bounceRight 1.5s infinite ease-in-out;
 `;
 
 const CalibrateOverlay = styled.div`
@@ -428,12 +457,18 @@ export default function NegatoscopioScreen({ onClose }: NegatoscopioProps) {
       </BottomRightControls>
 
       {!isCalibrated && !isCalibrating && (
-        <WarningBox>
-          <AlertTriangle size={24} />
-          <div>
-            La pantalla no está calibrada. Las medidas de la regla milimetrada podrían ser inexactas. Te recomendamos calibrarla.
-          </div>
-        </WarningBox>
+        <>
+          <WarningBox>
+            <AlertTriangle />
+            <div>
+              La pantalla no está calibrada. Las medidas de la regla podrían ser inexactas. Te recomendamos calibrarla para mayor precisión.
+            </div>
+          </WarningBox>
+          <PointerWrap>
+            <span>Calibrar aquí</span>
+            <ArrowRight size={20} />
+          </PointerWrap>
+        </>
       )}
 
       {isCalibrating && (

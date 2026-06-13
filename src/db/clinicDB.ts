@@ -106,6 +106,7 @@ export type ShoppingItemRecord = {
   nombre: string;
   cantidad: string;
   notaAdicional: string;
+  completado?: boolean;
 };
 
 export const DEFAULT_DOCTOR_PROFILE: DoctorProfile = {

@@ -132,29 +132,22 @@ const PrintContentLayout = ({
             gap: '4px',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <p style={{ ...Bold, color: professionalData.accentColor, margin: 0 }}>
-              Paciente:
-              <span style={{ color: '#fff' }}> {personalData.name}</span>
-              {personalData.isMinor && (
-                <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '7px', marginLeft: '6px' }}>(Menor de edad)</span>
+          <div style={{ fontSize: '8px' }}>
+            <p style={{ ...Bold, color: professionalData.accentColor, margin: 0, fontSize: '8px' }}>
+              Paciente:{' '}
+              <span style={{ color: '#fff', fontWeight: 700 }}>{personalData.name}</span>
+              {personalData.identification && (
+                <span style={{ color: 'rgba(255,255,255,0.75)', marginLeft: '8px', fontSize: '7px' }}>C.I. {personalData.identification}</span>
               )}
-            </p>
-            <p style={{ ...Bold, color: professionalData.accentColor, margin: 0 }}>
-              R.I.F./C.I.:{' '}
-              <span style={{ color: '#fff' }}>{personalData.identification}</span>{' '}
             </p>
           </div>
           {personalData.isMinor && personalData.guardianName && (
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.25)', paddingTop: '4px', fontSize: '8px' }}>
-              <p style={{ margin: 0, fontWeight: 700, color: professionalData.accentColor }}>
+              <p style={{ margin: 0, fontWeight: 700, color: professionalData.accentColor, fontSize: '8px' }}>
                 Representante:{' '}
                 <span style={{ color: '#fff', fontWeight: 700 }}>{personalData.guardianName}</span>
                 {personalData.guardianId && (
                   <span style={{ color: 'rgba(255,255,255,0.75)', marginLeft: '8px', fontSize: '7px' }}>C.I. {personalData.guardianId}</span>
-                )}
-                {personalData.guardianRelationship && (
-                  <span style={{ color: 'rgba(255,255,255,0.75)', marginLeft: '10px', fontSize: '7px' }}>({personalData.guardianRelationship})</span>
                 )}
               </p>
             </div>

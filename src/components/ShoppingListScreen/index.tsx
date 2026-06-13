@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ShoppingCart, PlusCircle, Trash2, Edit2, Share2, CheckSquare, Square, Info, ChevronDown } from 'lucide-react';
+import { ShoppingCart, PlusCircle, Trash2, Edit2, Share2, CheckSquare, Square, Info, ChevronDown, ListChecks, CheckCircle, Circle } from 'lucide-react';
 import {
   getAllShoppingItems,
   saveShoppingItem,
@@ -116,16 +116,18 @@ const ListContainer = styled.div`
   padding: 16px;
 `;
 
-const ListItemCard = styled.div<{ $selected: boolean }>`
+const ListItemCard = styled.div<{ $selected: boolean; $isShareMode?: boolean }>`
   display: flex;
   flex-direction: column;
-  background: var(--surface);
-  border: 1px solid ${p => p.$selected ? 'var(--accent)' : 'var(--border)'};
+  background: ${p => p.$isShareMode ? (p.$selected ? 'var(--accent-bg)' : 'var(--surface-alt)') : 'var(--surface)'};
+  border: ${p => p.$isShareMode ? '2px' : '1px'} ${p => p.$isShareMode && !p.$selected ? 'dashed' : 'solid'} ${p => p.$selected || p.$isShareMode ? 'var(--accent)' : 'var(--border)'};
   border-radius: 12px;
-  padding: 16px;
+  padding: ${p => p.$selected && p.$isShareMode ? '15px' : '16px'};
   gap: 12px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: ${p => p.$selected ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'};
+  transform: ${p => p.$selected && p.$isShareMode ? 'scale(1.02)' : 'scale(1)'};
+  cursor: pointer;
 
   .top-row {
     display: flex;
@@ -393,7 +395,9 @@ const ConfirmBox = styled(ModalContent)`
 export default function ShoppingListScreen() {
   const [items, setItems] = useState<ShoppingItemRecord[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isShareMode, setIsShareMode] = useState(false);
   const [openItemId, setOpenItemId] = useState<number | null>(null);
+  const [isBoughtOpen, setIsBoughtOpen] = useState(false);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ShoppingItemRecord | null>(null);
@@ -415,8 +419,9 @@ export default function ShoppingListScreen() {
   }, []);
 
   const handleSelectAll = () => {
+    const pendingItems = items.filter(i => !i.completado);
     const newSet = new Set<number>();
-    items.forEach(i => i.id && newSet.add(i.id));
+    pendingItems.forEach(i => i.id && newSet.add(i.id));
     setSelectedIds(newSet);
   };
 
@@ -424,14 +429,18 @@ export default function ShoppingListScreen() {
     setSelectedIds(new Set());
   };
 
-  const isAllSelected = items.length > 0 && selectedIds.size === items.length;
+  const pendingCount = items.filter(i => !i.completado).length;
+  const isAllSelected = pendingCount > 0 && selectedIds.size === pendingCount;
 
   const toggleSelectAll = () => {
-    if (isAllSelected) {
-      handleDeselectAll();
-    } else {
-      handleSelectAll();
-    }
+    if (isAllSelected) handleDeselectAll();
+    else handleSelectAll();
+  };
+
+  const toggleComplete = async (item: ShoppingItemRecord) => {
+    const updated = { ...item, completado: !item.completado };
+    await saveShoppingItem(updated);
+    loadItems();
   };
 
   const toggleSelect = (id: number) => {
@@ -531,7 +540,7 @@ export default function ShoppingListScreen() {
       <InfoBanner>
         <Info size={16} strokeWidth={2.5} />
         <p>
-          <strong>Haz tus pedidos:</strong> Selecciona los productos que necesites y pulsa el botón de compartir para enviar la lista directamente a tu proveedor de confianza.
+          <strong>Gestiona tu lista:</strong> Toca un ítem para marcarlo como comprado. Usa el botón "Armar Pedido" para seleccionar varios productos y enviarlos directamente a tu proveedor.
         </p>
       </InfoBanner>
 
@@ -539,45 +548,97 @@ export default function ShoppingListScreen() {
         <CardTitle>
           <div className="left">
             <ShoppingCart size={18} />
-            <span>Lista de Compras</span>
+            <span>Pendientes</span>
           </div>
           {items.length > 0 && (
             <div className="right">
-              <button onClick={toggleSelectAll} title={isAllSelected ? "Deseleccionar Todo" : "Seleccionar Todo"}>
-                {isAllSelected ? <CheckSquare size={18} /> : <Square size={18} />}
+              {isShareMode && (
+                <button 
+                  onClick={toggleSelectAll} 
+                  title={isAllSelected ? "Deseleccionar todos" : "Seleccionar todos"}
+                  style={{ 
+                    color: isAllSelected ? 'var(--accent)' : 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    padding: '6px 10px',
+                    background: isAllSelected ? 'var(--accent-bg)' : 'transparent',
+                    borderRadius: '8px'
+                  }}
+                >
+                  {isAllSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+                  Todos
+                </button>
+              )}
+              <button 
+                onClick={() => { setIsShareMode(!isShareMode); if (isShareMode) setSelectedIds(new Set()); }} 
+                title={isShareMode ? "Cancelar pedido" : "Armar pedido"}
+                style={{ 
+                  color: isShareMode ? 'var(--accent)' : 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  padding: '6px 10px'
+                }}
+              >
+                <ListChecks size={16} />
+                {isShareMode ? "Cancelar" : "Armar Pedido"}
               </button>
             </div>
           )}
         </CardTitle>
 
-        {items.length === 0 ? (
-          <EmptyState>No hay ítems en tu lista de compras.</EmptyState>
+        {items.filter(i => !i.completado).length === 0 ? (
+          <EmptyState>No hay ítems pendientes.</EmptyState>
         ) : (
           <ListContainer>
-            {items.map((item) => {
+            {items.filter(i => !i.completado).map((item) => {
               if (!item.id) return null;
               const isSelected = selectedIds.has(item.id);
+              const isChecked = isShareMode ? isSelected : !!item.completado;
 
               return (
-                <ListItemCard key={item.id} $selected={isSelected} onClick={() => setOpenItemId(prev => prev === item.id ? null : item.id!)}>
+                <ListItemCard 
+                  key={item.id} 
+                  $selected={isShareMode && isSelected} 
+                  $isShareMode={isShareMode}
+                  onClick={() => {
+                    if (isShareMode) toggleSelect(item.id!);
+                    else setOpenItemId(prev => prev === item.id ? null : item.id!);
+                  }}
+                >
                   <div className="top-row">
-                    <div className="checkbox" onClick={(e) => { e.stopPropagation(); toggleSelect(item.id!); }}>
-                      {isSelected ? <CheckSquare size={24} /> : <Square size={24} />}
+                    <div className="checkbox" onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (isShareMode) toggleSelect(item.id!);
+                      else toggleComplete(item);
+                    }}>
+                      {isShareMode ? (
+                        isSelected ? <CheckCircle size={24} color="var(--accent)" fill="var(--accent-bg)" /> : <Circle size={24} />
+                      ) : (
+                        isChecked ? <CheckSquare size={24} /> : <Square size={24} />
+                      )}
                     </div>
                     <div className="content">
                       <div className="header">
                         <h4>{item.nombre}</h4>
                         <div className="qty-wrap">
                           <span className="qty">{item.cantidad}</span>
-                          <div className="chevron" style={{ transform: openItemId === item.id ? 'rotate(180deg)' : 'none' }}>
-                            <ChevronDown size={18} />
-                          </div>
+                          {!isShareMode && (
+                            <div className="chevron" style={{ transform: openItemId === item.id ? 'rotate(180deg)' : 'none' }}>
+                              <ChevronDown size={18} />
+                            </div>
+                          )}
                         </div>
                       </div>
-                      {openItemId === item.id && item.notaAdicional && <p>{item.notaAdicional}</p>}
+                      {!isShareMode && openItemId === item.id && item.notaAdicional && <p>{item.notaAdicional}</p>}
                     </div>
                   </div>
-                  {openItemId === item.id && (
+                  {!isShareMode && openItemId === item.id && (
                     <div className="actions" onClick={e => e.stopPropagation()}>
                       <button onClick={() => handleEdit(item)}>
                         <Edit2 size={18} />
@@ -594,11 +655,87 @@ export default function ShoppingListScreen() {
         )}
       </FormCard>
 
+      {items.filter(i => i.completado).length > 0 && (
+        <FormCard>
+          <CardTitle 
+            style={{ cursor: 'pointer', borderBottom: isBoughtOpen ? '1px solid var(--border)' : 'none' }} 
+            onClick={() => setIsBoughtOpen(!isBoughtOpen)}
+          >
+            <div className="left">
+              <CheckSquare size={18} />
+              <span>Comprados ({items.filter(i => i.completado).length})</span>
+            </div>
+            <div className="right" style={{ color: 'var(--text-muted)', transition: 'transform 0.2s', transform: isBoughtOpen ? 'rotate(180deg)' : 'none' }}>
+              <ChevronDown size={18} />
+            </div>
+          </CardTitle>
+          
+          {isBoughtOpen && (
+            <ListContainer>
+              {items.filter(i => i.completado).map((item) => {
+                if (!item.id) return null;
+
+                return (
+                  <ListItemCard 
+                    key={item.id} 
+                    $selected={false} 
+                    onClick={() => {
+                      if (isShareMode) return;
+                      setOpenItemId(prev => prev === item.id ? null : item.id!);
+                    }} 
+                    style={{ 
+                      opacity: 0.6, 
+                      filter: 'grayscale(100%)',
+                      background: 'var(--surface-alt)',
+                      cursor: isShareMode ? 'default' : 'pointer'
+                    }}
+                  >
+                    <div className="top-row">
+                      <div className="checkbox" onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (isShareMode) return;
+                        toggleComplete(item);
+                      }} style={{ cursor: isShareMode ? 'default' : 'pointer' }}>
+                        <CheckSquare size={24} />
+                      </div>
+                      <div className="content">
+                        <div className="header">
+                          <h4 style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>{item.nombre}</h4>
+                          <div className="qty-wrap">
+                            <span className="qty" style={{ background: 'transparent', border: '1px solid var(--border)' }}>{item.cantidad}</span>
+                            {!isShareMode && (
+                              <div className="chevron" style={{ transform: openItemId === item.id ? 'rotate(180deg)' : 'none' }}>
+                                <ChevronDown size={18} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {!isShareMode && openItemId === item.id && item.notaAdicional && <p>{item.notaAdicional}</p>}
+                      </div>
+                    </div>
+                    {!isShareMode && openItemId === item.id && (
+                      <div className="actions" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => handleEdit(item)}>
+                          <Edit2 size={18} />
+                        </button>
+                        <button className="danger" onClick={() => handleDeleteClick(item)}>
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    )}
+                  </ListItemCard>
+                );
+              })}
+            </ListContainer>
+          )}
+        </FormCard>
+      )}
+
       <FloatingAddBtn onClick={openAddModal}>
         <PlusCircle size={28} />
       </FloatingAddBtn>
 
-      {selectedIds.size > 0 && (
+      {isShareMode && selectedIds.size > 0 && (
         <FloatingShareBtn onClick={handleShare} title="Compartir seleccionados">
           <Share2 size={24} />
         </FloatingShareBtn>

@@ -5,7 +5,9 @@ import './index.css';
 import api from './services/api.ts';
 
 // Ping the backend to wake it up (e.g. from Render free tier sleep)
-api.get('/').catch(() => {});
+// We use fetch instead of api.get to avoid triggering the 401 interceptor and logging out
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+fetch(API_BASE_URL).catch(() => {});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
