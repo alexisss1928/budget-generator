@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { Crown, X, CheckCircle, ArrowRight, Sparkles, ChevronLeft } from 'lucide-react';
+import { toast } from 'react-toastify';
 import LeafLogo from '../../assets/leafAssets/logo_horz.png';
 import PaypalImg from '../../assets/pagos/paypal.png';
 import BinanceImg from '../../assets/pagos/binance.png';
