@@ -754,6 +754,7 @@ const actions = [
         <Plus size={12} strokeWidth={4} style={{ position: 'absolute', top: -6, right: -8, color: '#fff', background: '#16a085', borderRadius: '50%', padding: '1px' }} />
       </div>
     ),
+    proOnly: true,
   },
 ];
 
@@ -1030,7 +1031,13 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
       {/* Quick Actions */}
       <SectionLabel>
         <span>Acciones rápidas</span>
-        <span className="edit-btn" onClick={() => setIsEditActionsOpen(true)}>Editar</span>
+        <span className="edit-btn" onClick={() => {
+          if (!isFullAccess) return onProRequired();
+          setIsEditActionsOpen(true);
+        }}>
+          Editar
+          {!isFullAccess && <span style={{ marginLeft: '4px', fontSize: '8px', background: '#eab308', color: '#fff', padding: '2px 4px', borderRadius: '4px', verticalAlign: 'middle' }}>PRO</span>}
+        </span>
       </SectionLabel>
       <ActionGrid>
         {actions.filter(a => a.type !== 'calc_dosis' && a.type !== 'negatoscopio' && !hiddenActions.includes(a.type)).map((a, i) => {
