@@ -147,14 +147,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = `${API_BASE}/auth/google`;
   }, []);
 
-  const signOut = useCallback(async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // ignore
-    }
+  const signOut = useCallback(() => {
+    // 1. Limpiar storage y estado inmediatamente para que el UI reaccione sin esperar
     clearStorage();
     setUser(null);
+
+    // 2. Hacer la petición de logout en segundo plano (fire-and-forget)
+    // Así si Render está dormido, no bloquea al usuario.
+    api.post('/auth/logout').catch(() => {
+      // ignore
+    });
+
+    // 3. Forzar redirección para limpiar el stack de navegación (history traps de la PWA) y variables en memoria
+    window.location.href = '/';
   }, []);
 
   const refreshUser = useCallback(async () => {
