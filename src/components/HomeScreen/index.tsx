@@ -858,7 +858,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
       const items = record.data.medicines.map((m) => `- ${m.nombre}\n  ${m.indicaciones}`).join('\n');
       msg = `*Recipe Médico*\nFecha: ${fecha}\n${patient}\n\n${items}`;
     } else if (record.type === 'informe' && record.data.report) {
-      msg = `*Informe Clínico*\nFecha: ${fecha}\n${patient}\n\n${record.data.report}`;
+      msg = `*Informe Clínico*\nFecha: ${fecha}\n${patient}\n\nAdjunto archivo PDF.`;
     }
     msg += `\n\n_${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}_`;
     if (doctorProfile.especialidad) msg += `\n_${doctorProfile.especialidad}_`;
@@ -1040,7 +1040,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         </span>
       </SectionLabel>
       <ActionGrid>
-        {actions.filter(a => a.type !== 'calc_dosis' && a.type !== 'negatoscopio' && !hiddenActions.includes(a.type)).map((a, i) => {
+        {actions.filter(a => a.type !== 'calc_dosis' && a.type !== 'negatoscopio' && (!isFullAccess || !hiddenActions.includes(a.type))).map((a, i) => {
           const locked = a.proOnly && !isFullAccess;
           return (
             <ActionCard

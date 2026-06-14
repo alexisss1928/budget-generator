@@ -8,6 +8,8 @@ import {
   deleteReportTemplate,
   ReportTemplate,
 } from '../../db/clinicDB';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 // ─── Styled Components (Matching Budget & DoctorSettings) ──────────────────
 
@@ -134,6 +136,37 @@ const SaveTemplateLink = styled.a`
 
   &:hover {
     color: var(--text);
+  }
+`;
+
+const QuillWrapper = styled.div`
+  width: 100%;
+  .ql-toolbar {
+    background: var(--surface-alt) !important;
+    border: 1px solid var(--border) !important;
+    border-bottom: none !important;
+    border-radius: 8px 8px 0 0;
+  }
+  .ql-container {
+    background: var(--input-bg) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 0 8px 8px;
+    min-height: 250px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text) !important;
+  }
+  .ql-editor {
+    min-height: 250px;
+  }
+  .ql-stroke {
+    stroke: var(--text) !important;
+  }
+  .ql-fill {
+    fill: var(--text) !important;
+  }
+  .ql-picker {
+    color: var(--text) !important;
   }
 `;
 
@@ -287,13 +320,24 @@ const Report = ({ report, setReport, handleReportData }: ReportType) => {
               <Eraser size={14} /> Limpiar
             </SecondaryBtn>
           </div>
-          <textarea
-            name="informe"
-            value={report}
-            onChange={handleReportData}
-            placeholder="Redacte el informe médico aquí..."
-            autoComplete="off"
-          />
+          <QuillWrapper style={{ marginTop: '10px' }}>
+            <ReactQuill
+              theme="snow"
+              value={report}
+              onChange={(content) => {
+                const e = { target: { name: 'informe', value: content } } as any;
+                handleReportData(e);
+              }}
+              placeholder="Redacte el informe médico aquí..."
+              modules={{
+                toolbar: [
+                  ['bold', 'italic', 'underline'],
+                  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                  ['clean']
+                ]
+              }}
+            />
+          </QuillWrapper>
           <SaveTemplateLink onClick={() => setIsModalOpen(true)}>
             Guardar como plantilla
           </SaveTemplateLink>

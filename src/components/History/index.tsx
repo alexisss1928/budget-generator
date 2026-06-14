@@ -471,7 +471,7 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
       const items = record.data.medicines.map((m) => `- ${m.nombre}\n  ${m.indicaciones}`).join('\n');
       msg = `*Recipe Médico*\nFecha: ${fecha}\n${patient}\n\n${items}`;
     } else if (record.type === 'informe' && record.data.report) {
-      msg = `*Informe Clínico*\nFecha: ${fecha}\n${patient}\n\n${record.data.report}`;
+      msg = `*Informe Clínico*\nFecha: ${fecha}\n${patient}\n\nAdjunto archivo PDF.`;
     }
 
     msg += `\n\n_${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}_`;

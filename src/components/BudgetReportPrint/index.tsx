@@ -281,21 +281,17 @@ const BudgetReportPrint = ({
         ) : null}
 
         {/* Informe text */}
-        {section === 'Informe'
-          ? report.split('\n').map((parrafo, i) => (
-            <p
-              key={i}
-              style={{
-                marginTop: '30px',
-                marginBottom: '0',
-                fontSize: '16px',
-                textIndent: '30px',
-              }}
-            >
-              {parrafo}
-            </p>
-          ))
-          : null}
+        {section === 'Informe' ? (
+          <div
+            className="informe-content"
+            style={{
+              marginTop: '30px',
+              fontSize: '16px',
+              lineHeight: '1.6',
+            }}
+            dangerouslySetInnerHTML={{ __html: report }}
+          />
+        ) : null}
       </div>
 
       {/* Footer */}
