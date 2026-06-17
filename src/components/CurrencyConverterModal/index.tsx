@@ -374,9 +374,6 @@ function convert(amount: number, from: Currency, to: Currency, bcv: BcvData): nu
 
 const QUICK_AMOUNTS = [10, 50, 100, 500, 1000];
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-import { Copy, Check, ArrowLeftRight, RefreshCw, X } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
