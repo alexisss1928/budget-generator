@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { X, Upload, Camera, Crop, Check, RotateCcw } from 'lucide-react';
+import { X, Upload, Camera, Check, RotateCcw } from 'lucide-react';
 
 // ─── Animations ───────────────────────────────────────────────────────────────
 
@@ -339,9 +339,6 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
 
   // ── Canvas display coords → CSS % for overlay ───────────────────────────
 
-  const canvasEl = canvasRef.current;
-  const displayW = canvasEl?.getBoundingClientRect().width || canvasDisplaySize.current.w;
-  const displayH = canvasEl?.getBoundingClientRect().height || canvasDisplaySize.current.h;
   const cw = canvasDisplaySize.current.w || 1;
   const ch = canvasDisplaySize.current.h || 1;
 
