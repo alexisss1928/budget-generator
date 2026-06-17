@@ -5,7 +5,7 @@ import Logo from '../../assets/leafAssets/logo.png';
 import {
   FileText, ClipboardList, Pill,
   ChevronDown, ChevronRight, Edit2,
-  Share2, Download, Trash2, AlertTriangle, Calculator, Monitor, ShoppingCart, Plus
+  Share2, Download, Trash2, AlertTriangle, Calculator, Monitor, ShoppingCart, Plus, DollarSign
 } from 'lucide-react';
 import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods, getAllShoppingItems, saveShoppingItem } from '../../db/clinicDB';
 import WhatsAppModal from '../WhatsAppModal';
@@ -13,6 +13,7 @@ import ShareModal from '../ShareModal';
 import ContactQRModal from '../ContactQRModal';
 import DoseCalculatorModal from '../DoseCalculatorModal';
 import NegatoscopioScreen from '../NegatoscopioScreen';
+import CurrencyConverterModal from '../CurrencyConverterModal';
 import { useAuth } from '../../context/AuthContext';
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -735,6 +736,14 @@ const actions = [
     icon: <Monitor size={20} strokeWidth={2.5} />,
   },
   {
+    section: 'conversor_bcv',
+    type: 'conversor_bcv',
+    label: 'Conversor',
+    desc: 'Divisas BCV',
+    color: '#0ea5e9',
+    icon: <DollarSign size={20} strokeWidth={2.5} />,
+  },
+  {
     section: 'Lista de compras',
     type: 'shopping_list',
     label: 'Compras',
@@ -790,6 +799,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
   const [isContactQRModalOpen, setIsContactQRModalOpen] = useState(false);
   const [isDoseCalcModalOpen, setIsDoseCalcModalOpen] = useState(false);
   const [isNegatoscopioOpen, setIsNegatoscopioOpen] = useState(false);
+  const [isCurrencyConverterOpen, setIsCurrencyConverterOpen] = useState(false);
   const [shareModal, setShareModal] = useState<{ isOpen: boolean; type: 'doctor' | 'payment' }>({
     isOpen: false,
     type: 'doctor'
@@ -917,6 +927,10 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         <NegatoscopioScreen onClose={() => setIsNegatoscopioOpen(false)} />
       )}
 
+      {isCurrencyConverterOpen && (
+        <CurrencyConverterModal onClose={() => setIsCurrencyConverterOpen(false)} />
+      )}
+
       {isQuickAddOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setIsQuickAddOpen(false)}>
           <div style={{ background: 'var(--surface)', borderRadius: '20px', width: '100%', maxWidth: '400px', padding: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
@@ -1040,7 +1054,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
         </span>
       </SectionLabel>
       <ActionGrid>
-        {actions.filter(a => a.type !== 'calc_dosis' && a.type !== 'negatoscopio' && (!isFullAccess || !hiddenActions.includes(a.type))).map((a, i) => {
+        {actions.filter(a => a.type !== 'calc_dosis' && a.type !== 'negatoscopio' && a.type !== 'conversor_bcv' && (!isFullAccess || !hiddenActions.includes(a.type))).map((a, i) => {
           const locked = a.proOnly && !isFullAccess;
           return (
             <ActionCard
@@ -1052,6 +1066,8 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
                   setIsDoseCalcModalOpen(true);
                 } else if (a.type === 'negatoscopio') {
                   setIsNegatoscopioOpen(true);
+                } else if (a.type === 'conversor_bcv') {
+                  setIsCurrencyConverterOpen(true);
                 } else if (a.type === 'quick_add_shopping') {
                   setQuickAddData({ nombre: '', cantidad: '', notaAdicional: '' });
                   setIsQuickAddOpen(true);
@@ -1088,7 +1104,7 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
       {/* Tools */}
       <SectionLabel style={{ marginTop: '24px' }}>Herramientas</SectionLabel>
       <ActionGrid>
-        {actions.filter(a => a.type === 'calc_dosis' || a.type === 'negatoscopio').map((a, i) => {
+        {actions.filter(a => a.type === 'calc_dosis' || a.type === 'negatoscopio' || a.type === 'conversor_bcv').map((a, i) => {
           const locked = a.proOnly && !isFullAccess;
           return (
             <ActionCard
@@ -1100,6 +1116,8 @@ const HomeScreen = ({ onNavigate, doctorProfile, onLoadRecord, onDownloadRecord,
                   setIsDoseCalcModalOpen(true);
                 } else if (a.type === 'negatoscopio') {
                   setIsNegatoscopioOpen(true);
+                } else if (a.type === 'conversor_bcv') {
+                  setIsCurrencyConverterOpen(true);
                 } else if (a.type === 'share_payment') {
                   setShareModal({ isOpen: true, type: 'payment' });
                 } else {

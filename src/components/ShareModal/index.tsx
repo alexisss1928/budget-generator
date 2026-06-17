@@ -275,7 +275,7 @@ export default function ShareModal({ isOpen, onClose, type, doctorProfile, payme
   const [includeAmount, setIncludeAmount] = useState(false);
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('Bs.');
-  const [bcvData, setBcvData] = useState<{ usd: number, eur: number, date: string } | null>(null);
+  const [bcvData, setBcvData] = useState<{ usd: number, eur: number, date: string, savedAt?: string } | null>(null);
   const [isFetchingBcv, setIsFetchingBcv] = useState(false);
 
   useEffect(() => {
@@ -300,7 +300,8 @@ export default function ShareModal({ isOpen, onClose, type, doctorProfile, payme
       const newData = {
         usd: dataUsd.promedio || dataUsd.venta || 0,
         eur: dataEur.promedio || dataEur.venta || 0,
-        date: new Date().toLocaleString('es-VE')
+        date: new Date().toLocaleString('es-VE'),
+        savedAt: new Date().toISOString()
       };
       setBcvData(newData);
       localStorage.setItem('bcv_rates', JSON.stringify(newData));
@@ -526,11 +527,36 @@ export default function ShareModal({ isOpen, onClose, type, doctorProfile, payme
                     </div>
                     {bcvData ? (
                       <>
+                        {(() => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const savedDate = bcvData.savedAt ? new Date(bcvData.savedAt) : null;
+                          if (savedDate) savedDate.setHours(0, 0, 0, 0);
+                          const isOutdated = savedDate ? savedDate < today : false;
+                          return isOutdated ? (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '6px',
+                              background: 'rgba(234,179,8,0.12)',
+                              border: '1px solid rgba(234,179,8,0.4)',
+                              borderRadius: '6px',
+                              padding: '7px 10px',
+                              marginBottom: '10px',
+                              fontSize: '11px',
+                              color: '#b45309',
+                              lineHeight: 1.4
+                            }}>
+                              <span style={{ fontSize: '13px', flexShrink: 0 }}>⚠️</span>
+                              <span>Las tasas mostradas son del <strong>{bcvData.date}</strong>. Podrían estar desactualizadas. Haz clic en <strong>Actualizar</strong> para obtener los valores de hoy.</span>
+                            </div>
+                          ) : null;
+                        })()}
                         <div className="rates">
                           <div><span>Dólar (USD)</span><b>Bs. {bcvData.usd.toFixed(2)}</b></div>
                           <div><span>Euro (EUR)</span><b>Bs. {bcvData.eur.toFixed(2)}</b></div>
                         </div>
-                        <div className="date">Última extr: {bcvData.date}</div>
+                        <div className="date">Última act: {bcvData.date}</div>
                       </>
                     ) : (
                       <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 11, padding: '10px 0' }}>
