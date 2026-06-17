@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import {
   User, Stethoscope, Building2, MapPin, Phone, Mail, AtSign,
-  IdCard, Save, ImagePlus, Info,
+  IdCard, Save, ImagePlus, Info, Trash2,
 } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
@@ -224,6 +224,26 @@ const SaveBtn = styled.button`
   }
 `;
 
+const DeleteImgBtn = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid #fca5a5;
+  color: #ef4444;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #fee2e2;
+  }
+`;
+
 const OptionalTag = styled.span`
   font-size: 10px;
   background: var(--surface-raised);
@@ -250,6 +270,7 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
     field: 'logoDataUrl' | 'selloDataUrl' | 'firmaDataUrl';
     label: string;
     aspect: string;
+    removeBackground: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -267,10 +288,11 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
     field: 'logoDataUrl' | 'selloDataUrl' | 'firmaDataUrl',
     label: string,
     aspect: string,
-    accessAllowed = true
+    accessAllowed = true,
+    removeBackground = false
   ) => {
     if (!accessAllowed) { onProRequired?.(); return; }
-    setCropperState({ field, label, aspect });
+    setCropperState({ field, label, aspect, removeBackground });
   };
 
   const handleCropConfirm = (dataUrl: string) => {
@@ -292,6 +314,7 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
         <ImageCropperModal
           label={cropperState.label}
           aspectHint={cropperState.aspect}
+          removeBackground={cropperState.removeBackground}
           onConfirm={handleCropConfirm}
           onClose={() => setCropperState(null)}
         />
@@ -532,12 +555,20 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
                 <ImagePlus size={22} />
               )}
             </ImagePreview>
+            {isFullAccess && profile.logoDataUrl && (
+              <DeleteImgBtn
+                onClick={(e) => { e.stopPropagation(); set('logoDataUrl', ''); }}
+                title="Eliminar logo"
+              >
+                <Trash2 size={11} /> Eliminar
+              </DeleteImgBtn>
+            )}
           </ImageUploadCard>
 
           {/* Sello */}
           <ImageUploadCard
             style={{ minWidth: '80px', cursor: 'pointer' }}
-            onClick={() => openCropper('selloDataUrl', 'Sello', '1:1')}
+            onClick={() => openCropper('selloDataUrl', 'Sello', '1:1', true, true)}
           >
             <ImageLabel>Sello</ImageLabel>
             <ImagePreview
@@ -551,12 +582,20 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
                 <ImagePlus size={22} />
               )}
             </ImagePreview>
+            {profile.selloDataUrl && (
+              <DeleteImgBtn
+                onClick={(e) => { e.stopPropagation(); set('selloDataUrl', ''); }}
+                title="Eliminar sello"
+              >
+                <Trash2 size={11} /> Eliminar
+              </DeleteImgBtn>
+            )}
           </ImageUploadCard>
 
           {/* Firma */}
           <ImageUploadCard
             style={{ flex: 2, minWidth: '140px', cursor: 'pointer' }}
-            onClick={() => openCropper('firmaDataUrl', 'Firma', 'libre')}
+            onClick={() => openCropper('firmaDataUrl', 'Firma', 'libre', true, true)}
           >
             <ImageLabel>Firma</ImageLabel>
             <ImagePreview
@@ -571,6 +610,14 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
                 <ImagePlus size={22} />
               )}
             </ImagePreview>
+            {profile.firmaDataUrl && (
+              <DeleteImgBtn
+                onClick={(e) => { e.stopPropagation(); set('firmaDataUrl', ''); }}
+                title="Eliminar firma"
+              >
+                <Trash2 size={11} /> Eliminar
+              </DeleteImgBtn>
+            )}
           </ImageUploadCard>
         </ImageSection>
       </FormCard>

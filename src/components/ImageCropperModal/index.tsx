@@ -127,8 +127,7 @@ const Handle = styled.div`
   height: 12px;
   background: #fff;
   border-radius: 50%;
-  pointer-events: all;
-  cursor: pointer;
+  pointer-events: none;
 `;
 
 const CropHint = styled.p`
@@ -160,6 +159,8 @@ const ActionBtn = styled.button<{ $primary?: boolean }>`
   font-family: inherit;
   transition: all 0.18s;
 
+  &:disabled { opacity: 0.6; pointer-events: none; }
+
   &:hover {
     opacity: ${(p) => p.$primary ? 0.88 : 1};
     background: ${(p) => p.$primary ? 'var(--accent)' : 'var(--surface-alt)'};
@@ -172,18 +173,26 @@ interface CropRect { x: number; y: number; w: number; h: number; }
 
 interface Props {
   label: string;
-  aspectHint?: string; // e.g. "1:1" | "libre"
+  aspectHint?: string;
+  removeBackground?: boolean;
   onConfirm: (dataUrl: string) => void;
   onClose: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ImageCropperModal({ label, aspectHint = 'libre', onConfirm, onClose }: Props) {
+export default function ImageCropperModal({
+  label,
+  aspectHint = 'libre',
+  removeBackground = false,
+  onConfirm,
+  onClose,
+}: Props) {
   const [step, setStep] = useState<'pick' | 'crop'>('pick');
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Crop state (in canvas-display coordinates)
+  // Crop state (canvas-display coordinates)
   const [crop, setCrop] = useState<CropRect>({ x: 20, y: 20, w: 200, h: 200 });
   const [dragging, setDragging] = useState<'move' | 'se' | 'sw' | 'ne' | 'nw' | null>(null);
   const dragStart = useRef<{ mx: number; my: number; rect: CropRect } | null>(null);
@@ -193,6 +202,7 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const canvasDisplaySize = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+  const originalFileRef = useRef<File | null>(null);
 
   // Draw image on canvas whenever imageSrc changes
   useEffect(() => {
@@ -202,14 +212,12 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
     const img = new Image();
     img.onload = () => {
       imgRef.current = img;
-      // Fit image into max 380px wide
       const maxW = 380;
       const scale = Math.min(1, maxW / img.naturalWidth);
       canvas.width = Math.round(img.naturalWidth * scale);
       canvas.height = Math.round(img.naturalHeight * scale);
       canvasDisplaySize.current = { w: canvas.width, h: canvas.height };
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      // Default crop: full image with 10px padding
       const pad = 10;
       setCrop({ x: pad, y: pad, w: canvas.width - pad * 2, h: canvas.height - pad * 2 });
     };
@@ -217,6 +225,7 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
   }, [imageSrc]);
 
   const loadFile = (file: File) => {
+    originalFileRef.current = file;
     const reader = new FileReader();
     reader.onload = (e) => {
       setImageSrc(e.target?.result as string);
@@ -225,7 +234,7 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
     reader.readAsDataURL(file);
   };
 
-  // ── Pointer events for crop ──────────────────────────────────────────────
+  // ── Pointer events ───────────────────────────────────────────────────────
 
   const getCanvasPos = useCallback((e: React.PointerEvent): { x: number; y: number } => {
     const canvas = canvasRef.current!;
@@ -249,7 +258,7 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
       ['se', c.x + c.w, c.y + c.h],
     ];
     for (const [dir, cx, cy] of corners) {
-      if (Math.abs(pos.x - cx) <= hs && Math.abs(pos.y - cy) <= hs) return dir as any;
+      if (Math.abs(pos.x - cx) <= hs && Math.abs(pos.y - cy) <= hs) return dir as 'nw' | 'ne' | 'sw' | 'se';
     }
     if (pos.x >= c.x && pos.x <= c.x + c.w && pos.y >= c.y && pos.y <= c.y + c.h) return 'move';
     return null;
@@ -285,17 +294,11 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
     const r = dragStart.current.rect;
     let next: CropRect = { ...r };
 
-    if (dragging === 'move') {
-      next = { ...r, x: r.x + dx, y: r.y + dy };
-    } else if (dragging === 'se') {
-      next = { ...r, w: r.w + dx, h: r.h + dy };
-    } else if (dragging === 'sw') {
-      next = { x: r.x + dx, y: r.y, w: r.w - dx, h: r.h + dy };
-    } else if (dragging === 'ne') {
-      next = { x: r.x, y: r.y + dy, w: r.w + dx, h: r.h - dy };
-    } else if (dragging === 'nw') {
-      next = { x: r.x + dx, y: r.y + dy, w: r.w - dx, h: r.h - dy };
-    }
+    if (dragging === 'move')      next = { ...r, x: r.x + dx, y: r.y + dy };
+    else if (dragging === 'se')   next = { ...r, w: r.w + dx, h: r.h + dy };
+    else if (dragging === 'sw')   next = { x: r.x + dx, y: r.y, w: r.w - dx, h: r.h + dy };
+    else if (dragging === 'ne')   next = { x: r.x, y: r.y + dy, w: r.w + dx, h: r.h - dy };
+    else if (dragging === 'nw')   next = { x: r.x + dx, y: r.y + dy, w: r.w - dx, h: r.h - dy };
 
     setCrop(clampCrop(next));
   };
@@ -305,17 +308,75 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
     dragStart.current = null;
   };
 
-  // ── Crop and export ──────────────────────────────────────────────────────
+  // ── Background removal ────────────────────────────────────────────────────
+  //
+  // Algorithm:
+  //   1. Strong contrast boost to polarize ink (dark) vs paper (light).
+  //   2. Two-threshold system:
+  //      • lum >= UPPER (180) → fully transparent (background)
+  //      • lum <= LOWER (85)  → fully opaque (definite ink)
+  //      • between            → quadratic t² curve (aggressively kills light grays)
 
-  const handleConfirm = () => {
+  const processImage = (croppedDataUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const originalFile = originalFileRef.current;
+      const isPng = originalFile?.type === 'image/png' ||
+                    croppedDataUrl.startsWith('data:image/png');
+
+      const img = new Image();
+      img.onload = () => {
+        const out = document.createElement('canvas');
+        out.width = img.naturalWidth;
+        out.height = img.naturalHeight;
+        const ctx = out.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, out.width, out.height);
+        const d = imageData.data;
+
+        // Step 1: Contrast boost (stronger for non-PNG which may be JPEG artifacts)
+        const cf = isPng ? 2.8 : 3.8;
+        const bo = -20;
+        for (let i = 0; i < d.length; i += 4) {
+          d[i]     = Math.min(255, Math.max(0, cf * (d[i]     - 128) + 128 + bo));
+          d[i + 1] = Math.min(255, Math.max(0, cf * (d[i + 1] - 128) + 128 + bo));
+          d[i + 2] = Math.min(255, Math.max(0, cf * (d[i + 2] - 128) + 128 + bo));
+        }
+
+        // Step 2: Two-threshold removal with quadratic falloff
+        const UPPER = 180; // brighter → background (transparent)
+        const LOWER = 85;  // darker   → ink (opaque)
+
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], g = d[i + 1], b = d[i + 2];
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (lum >= UPPER) {
+            d[i + 3] = 0;
+          } else if (lum <= LOWER) {
+            d[i + 3] = 255;
+          } else {
+            // t goes 0 (at UPPER) → 1 (at LOWER); t² punishes mid-grays hard
+            const t = (UPPER - lum) / (UPPER - LOWER);
+            d[i + 3] = Math.round(t * t * 255);
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        resolve(out.toDataURL('image/png'));
+      };
+      img.src = croppedDataUrl;
+    });
+  };
+
+  // ── Crop and export ───────────────────────────────────────────────────────
+
+  const handleConfirm = async () => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
     if (!canvas || !img) return;
 
-    // Scale crop coords back to natural image size
     const scaleX = img.naturalWidth / canvas.width;
     const scaleY = img.naturalHeight / canvas.height;
-
     const sx = Math.round(crop.x * scaleX);
     const sy = Math.round(crop.y * scaleY);
     const sw = Math.round(crop.w * scaleX);
@@ -326,8 +387,19 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
     out.height = sh;
     const ctx = out.getContext('2d')!;
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    const croppedDataUrl = out.toDataURL('image/png');
 
-    onConfirm(out.toDataURL('image/png'));
+    if (removeBackground) {
+      setIsProcessing(true);
+      try {
+        const processed = await processImage(croppedDataUrl);
+        onConfirm(processed);
+      } finally {
+        setIsProcessing(false);
+      }
+    } else {
+      onConfirm(croppedDataUrl);
+    }
   };
 
   const handleReset = () => {
@@ -337,7 +409,7 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
-  // ── Canvas display coords → CSS % for overlay ───────────────────────────
+  // ── CSS % for selection overlay ───────────────────────────────────────────
 
   const cw = canvasDisplaySize.current.w || 1;
   const ch = canvasDisplaySize.current.h || 1;
@@ -374,7 +446,6 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
               </SourceBtn>
             </SourcePickerRow>
 
-            {/* Hidden file inputs */}
             <input
               ref={fileInputRef}
               type="file"
@@ -393,6 +464,9 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
 
             <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>
               Selecciona un archivo de tu dispositivo o usa la cámara para tomar una foto.
+              {removeBackground && (
+                <><br /><strong style={{ color: 'var(--accent)' }}>El fondo será eliminado automáticamente.</strong></>
+              )}
             </p>
           </>
         )}
@@ -408,33 +482,49 @@ export default function ImageCropperModal({ label, aspectHint = 'libre', onConfi
                 onPointerUp={onPointerUp}
                 onPointerLeave={onPointerUp}
               />
-              {/* Overlay selection box */}
               <SelectionBox style={selStyle} />
-              {/* Corner handles rendered as absolutely positioned dots */}
               {[
                 { dir: 'nw', s: { left: selStyle.left, top: selStyle.top, transform: 'translate(-50%,-50%)' } },
                 { dir: 'ne', s: { left: `calc(${selStyle.left} + ${selStyle.width})`, top: selStyle.top, transform: 'translate(-50%,-50%)' } },
                 { dir: 'sw', s: { left: selStyle.left, top: `calc(${selStyle.top} + ${selStyle.height})`, transform: 'translate(-50%,-50%)' } },
                 { dir: 'se', s: { left: `calc(${selStyle.left} + ${selStyle.width})`, top: `calc(${selStyle.top} + ${selStyle.height})`, transform: 'translate(-50%,-50%)' } },
               ].map(({ dir, s }) => (
-                <Handle key={dir} style={{ ...s, pointerEvents: 'none' }} />
+                <Handle key={dir} style={s} />
               ))}
             </CropArea>
 
             <CropHint>
-              Arrastra los bordes o esquinas para ajustar el área de recorte · Aspecto: {aspectHint}
+              Arrastra los bordes o esquinas para ajustar el área · Aspecto: {aspectHint}
             </CropHint>
 
             <ActionRow>
-              <ActionBtn onClick={handleReset}>
+              <ActionBtn onClick={handleReset} disabled={isProcessing}>
                 <RotateCcw size={14} />
                 Cambiar
               </ActionBtn>
-              <ActionBtn $primary onClick={handleConfirm}>
-                <Check size={14} />
-                Confirmar
+              <ActionBtn $primary onClick={handleConfirm} disabled={isProcessing}>
+                {isProcessing ? (
+                  <>
+                    <span style={{
+                      width: 14, height: 14,
+                      border: '2px solid rgba(255,255,255,0.35)',
+                      borderTopColor: '#fff',
+                      borderRadius: '50%',
+                      display: 'inline-block',
+                      animation: 'spin 0.7s linear infinite',
+                    }} />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} />
+                    Confirmar
+                  </>
+                )}
               </ActionBtn>
             </ActionRow>
+
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </>
         )}
       </Modal>
