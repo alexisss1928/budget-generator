@@ -227,14 +227,12 @@ const SaveBtn = styled.button`
 const DeleteImgBtn = styled.button`
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
   background: transparent;
   border: 1px solid #fca5a5;
   color: #ef4444;
   border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 600;
+  padding: 5px 7px;
   cursor: pointer;
   font-family: inherit;
   transition: all 0.15s;
@@ -535,6 +533,25 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
           <span>Imágenes del documento</span>
         </CardTitle>
 
+        {/* PNG recommendation banner */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px',
+          margin: '18px 18px 0',
+          padding: '11px 14px',
+          background: 'var(--accent-bg)',
+          borderLeft: '3px solid var(--accent)',
+          fontSize: '12px',
+          color: 'var(--text-secondary)',
+          lineHeight: 1.5,
+        }}>
+          <Info size={15} style={{ flexShrink: 0, marginTop: 1, color: 'var(--accent)' }} />
+          <span>
+            Haremos lo posible por procesar tu firma y sello automáticamente, pero para mejores resultados te recomendamos subir tus imágenes en formato <strong style={{ color: 'var(--text)' }}>PNG con fondo transparente</strong>.
+          </span>
+        </div>
+
         <ImageSection>
           {/* Logo */}
           <ImageUploadCard style={{ minWidth: '80px', opacity: !isFullAccess ? 0.6 : 1, cursor: 'pointer' }}
@@ -560,7 +577,7 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
                 onClick={(e) => { e.stopPropagation(); set('logoDataUrl', ''); }}
                 title="Eliminar logo"
               >
-                <Trash2 size={11} /> Eliminar
+                <Trash2 size={12} />
               </DeleteImgBtn>
             )}
           </ImageUploadCard>
@@ -587,7 +604,7 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
                 onClick={(e) => { e.stopPropagation(); set('selloDataUrl', ''); }}
                 title="Eliminar sello"
               >
-                <Trash2 size={11} /> Eliminar
+                <Trash2 size={12} />
               </DeleteImgBtn>
             )}
           </ImageUploadCard>
@@ -615,7 +632,7 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
                 onClick={(e) => { e.stopPropagation(); set('firmaDataUrl', ''); }}
                 title="Eliminar firma"
               >
-                <Trash2 size={11} /> Eliminar
+                <Trash2 size={12} />
               </DeleteImgBtn>
             )}
           </ImageUploadCard>
