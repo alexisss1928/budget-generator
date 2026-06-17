@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { X, RefreshCw, ArrowLeftRight } from 'lucide-react';
+import { X, RefreshCw, ArrowLeftRight, Copy, Check } from 'lucide-react';
 
 // ─── Animations ───────────────────────────────────────────────────────────────
 
@@ -256,6 +256,33 @@ const ConversionRow = styled.div`
   }
 `;
 
+const CopyButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  &.copied {
+    background: var(--success-bg, #ecfdf5);
+    border-color: var(--success, #10b981);
+    color: var(--success, #10b981);
+  }
+`;
+
 const FieldLabel = styled.label`
   font-size: 11px;
   font-weight: 700;
@@ -349,6 +376,8 @@ const QUICK_AMOUNTS = [10, 50, 100, 500, 1000];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+import { Copy, Check, ArrowLeftRight, RefreshCw, X } from 'lucide-react';
+
 interface Props {
   onClose: () => void;
 }
@@ -356,6 +385,7 @@ interface Props {
 export default function CurrencyConverterModal({ onClose }: Props) {
   const [bcvData, setBcvData] = useState<BcvData | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const [fromCurrency, setFromCurrency] = useState<Currency>('$');
   const [toCurrency,   setToCurrency]   = useState<Currency>('Bs.');
@@ -386,6 +416,13 @@ export default function CurrencyConverterModal({ onClose }: Props) {
     setFromCurrency(toCurrency);
     setToCurrency(fromCurrency);
     setFromValue(toValue);
+  };
+
+  const handleCopy = () => {
+    if (!toValue) return;
+    navigator.clipboard.writeText(toValue);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleQuickAmount = (amt: number) => {
@@ -570,6 +607,15 @@ export default function CurrencyConverterModal({ onClose }: Props) {
                 value={toValue}
                 readOnly
               />
+              <CopyButton 
+                onClick={handleCopy} 
+                className={isCopied ? 'copied' : ''}
+                title="Copiar resultado"
+                disabled={!toValue}
+                style={{ opacity: !toValue ? 0.5 : 1, cursor: !toValue ? 'default' : 'pointer' }}
+              >
+                {isCopied ? <Check size={16} /> : <Copy size={16} />}
+              </CopyButton>
             </ConversionRow>
           </ConversionCard>
         </ConverterSection>
