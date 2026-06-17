@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import {
   User, Stethoscope, Building2, MapPin, Phone, Mail, AtSign,
@@ -7,6 +7,7 @@ import {
 
 import { useAuth } from '../../context/AuthContext';
 import { getDoctorProfile, saveDoctorProfile, DoctorProfile, DEFAULT_DOCTOR_PROFILE } from '../../db/clinicDB';
+import ImageCropperModal from '../ImageCropperModal';
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 
@@ -245,10 +246,11 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
   const { isTrial } = useAuth();
   const [profile, setProfile] = useState<DoctorProfile>({ ...DEFAULT_DOCTOR_PROFILE });
   const [loaded, setLoaded] = useState(false);
-
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const selloInputRef = useRef<HTMLInputElement>(null);
-  const firmaInputRef = useRef<HTMLInputElement>(null);
+  const [cropperState, setCropperState] = useState<{
+    field: 'logoDataUrl' | 'selloDataUrl' | 'firmaDataUrl';
+    label: string;
+    aspect: string;
+  } | null>(null);
 
   useEffect(() => {
     getDoctorProfile().then((saved) => {
@@ -261,15 +263,20 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
     setProfile((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleImageUpload = (
+  const openCropper = (
     field: 'logoDataUrl' | 'selloDataUrl' | 'firmaDataUrl',
-    file: File
+    label: string,
+    aspect: string,
+    accessAllowed = true
   ) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setProfile((prev) => ({ ...prev, [field]: e.target?.result as string }));
-    };
-    reader.readAsDataURL(file);
+    if (!accessAllowed) { onProRequired?.(); return; }
+    setCropperState({ field, label, aspect });
+  };
+
+  const handleCropConfirm = (dataUrl: string) => {
+    if (!cropperState) return;
+    setProfile((prev) => ({ ...prev, [cropperState.field]: dataUrl }));
+    setCropperState(null);
   };
 
   const handleSave = async () => {
@@ -280,6 +287,15 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
   if (!loaded) return null;
 
   return (
+    <>
+      {cropperState && (
+        <ImageCropperModal
+          label={cropperState.label}
+          aspectHint={cropperState.aspect}
+          onConfirm={handleCropConfirm}
+          onClose={() => setCropperState(null)}
+        />
+      )}
     <Wrapper>
       {/* Info Banner */}
       <InfoBanner>
@@ -498,14 +514,8 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
 
         <ImageSection>
           {/* Logo */}
-          <ImageUploadCard style={{ minWidth: '80px', opacity: !isFullAccess ? 0.6 : 1, cursor: !isFullAccess ? 'pointer' : 'default' }}
-            onClickCapture={(e) => {
-              if (!isFullAccess && onProRequired) {
-                e.preventDefault();
-                e.stopPropagation();
-                onProRequired();
-              }
-            }}
+          <ImageUploadCard style={{ minWidth: '80px', opacity: !isFullAccess ? 0.6 : 1, cursor: 'pointer' }}
+            onClick={() => openCropper('logoDataUrl', 'Logo', '1:1', isFullAccess)}
           >
             <ImageLabel>
               Logo
@@ -514,8 +524,7 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
             <ImagePreview
               $shape="circle"
               $hasImage={!!(isFullAccess && profile.logoDataUrl)}
-              onClick={() => { if (isFullAccess) logoInputRef.current?.click() }}
-              title={isFullAccess ? "Subir logo" : "Exclusivo plan PRO"}
+              title={isFullAccess ? 'Subir logo' : 'Exclusivo plan PRO'}
             >
               {(isFullAccess && profile.logoDataUrl) ? (
                 <img src={profile.logoDataUrl} alt="Logo" />
@@ -523,24 +532,17 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
                 <ImagePlus size={22} />
               )}
             </ImagePreview>
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                if (e.target.files?.[0] && isFullAccess) handleImageUpload('logoDataUrl', e.target.files[0]);
-              }}
-            />
           </ImageUploadCard>
 
           {/* Sello */}
-          <ImageUploadCard style={{ minWidth: '80px' }}>
+          <ImageUploadCard
+            style={{ minWidth: '80px', cursor: 'pointer' }}
+            onClick={() => openCropper('selloDataUrl', 'Sello', '1:1')}
+          >
             <ImageLabel>Sello</ImageLabel>
             <ImagePreview
               $shape="square"
               $hasImage={!!profile.selloDataUrl}
-              onClick={() => selloInputRef.current?.click()}
               title="Subir sello"
             >
               {profile.selloDataUrl ? (
@@ -549,24 +551,17 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
                 <ImagePlus size={22} />
               )}
             </ImagePreview>
-            <input
-              ref={selloInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                if (e.target.files?.[0]) handleImageUpload('selloDataUrl', e.target.files[0]);
-              }}
-            />
           </ImageUploadCard>
 
           {/* Firma */}
-          <ImageUploadCard style={{ flex: 2, minWidth: '140px' }}>
+          <ImageUploadCard
+            style={{ flex: 2, minWidth: '140px', cursor: 'pointer' }}
+            onClick={() => openCropper('firmaDataUrl', 'Firma', 'libre')}
+          >
             <ImageLabel>Firma</ImageLabel>
             <ImagePreview
               $shape="wide"
               $hasImage={!!profile.firmaDataUrl}
-              onClick={() => firmaInputRef.current?.click()}
               title="Subir firma"
               style={{ width: '100%', height: '80px' }}
             >
@@ -576,15 +571,6 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
                 <ImagePlus size={22} />
               )}
             </ImagePreview>
-            <input
-              ref={firmaInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                if (e.target.files?.[0]) handleImageUpload('firmaDataUrl', e.target.files[0]);
-              }}
-            />
           </ImageUploadCard>
         </ImageSection>
       </FormCard>
@@ -595,6 +581,7 @@ const DoctorSettings = ({ onProfileSaved, isFullAccess, onProRequired }: DoctorS
         Guardar perfil
       </SaveBtn>
     </Wrapper>
+  </>
   );
 };
 
