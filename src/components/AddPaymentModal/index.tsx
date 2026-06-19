@@ -192,22 +192,6 @@ const ResultBox = styled.div`
   }
 `;
 
-const ButtonA_BS = styled.button`
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  flex-shrink: 0;
-
-  &:hover {
-    opacity: 0.8;
-  }
-`;
 
 // ─── Component ──────────────────────────────────────────────────────────────────
 

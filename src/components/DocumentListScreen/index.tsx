@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { Share2, Download, Trash2, AlertTriangle, Edit2, Plus, Search, FileText, ClipboardList, Pill, ChevronLeft, ChevronDown } from 'lucide-react';
+import { Share2, Download, Trash2, AlertTriangle, Edit2, Plus, Search, FileText, ClipboardList, Pill, ChevronLeft } from 'lucide-react';
 import {
   getAllHistory,
   searchHistory,
   deleteHistoryRecord,
-  HistoryType,
+  HistoryRecord,
   DoctorProfile,
 } from '../../db/clinicDB';
 import PresupuestoDetail from '../PresupuestoDetail';
@@ -67,15 +67,6 @@ const TopRow = styled.div`
   gap: 10px;
 `;
 
-const PageTitle = styled.h2`
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--text);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
 
 const NewBtn = styled.button`
   display: flex;
@@ -620,7 +611,7 @@ export default function DocumentListScreen({
 
                     {/* Presupuesto content */}
                     {record.type === 'presupuesto' && record.data.treatments && (
-                      <PresupuestoDetail record={record} onUpdate={() => loadData()} />
+                      <PresupuestoDetail record={record} onUpdate={() => load()} />
                     )}
 
                     {/* Informe content */}

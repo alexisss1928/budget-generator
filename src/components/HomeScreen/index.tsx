@@ -1319,7 +1319,7 @@ const HomeScreen = ({ onNavigate, onNewDoc, doctorProfile, onLoadRecord, onDownl
 
                         {/* Presupuesto */}
                         {record.type === 'presupuesto' && record.data.treatments && (
-                          <PresupuestoDetail record={record} onUpdate={() => fetchRecent()} />
+                          <PresupuestoDetail record={record} onUpdate={() => refreshRecent()} />
                         )}
 
                         {/* Informe */}

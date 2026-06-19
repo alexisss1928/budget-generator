@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
-  Users, ChevronLeft, ChevronDown,
+  ChevronLeft, ChevronDown,
   FileText, ClipboardList, Pill,
   Share2, Download, Edit2, Trash2, AlertTriangle, Search, User
 } from 'lucide-react';
@@ -72,15 +72,7 @@ const BackBtn = styled.button`
   &:hover { background: var(--accent-bg); color: var(--accent); }
 `;
 
-const PageTitle = styled.h2`
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--text);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
+
 
 const SearchWrap = styled.div`
   position: relative;
