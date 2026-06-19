@@ -103,6 +103,38 @@ const SearchWrap = styled.div`
   }
 `;
 
+const FilterBar = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  
+  /* hide scrollbar */
+  &::-webkit-scrollbar { display: none; }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+`;
+
+const FilterBtn = styled.button<{ $active?: boolean }>`
+  background: ${(p) => p.$active ? 'var(--accent)' : 'var(--surface-alt)'};
+  color: ${(p) => p.$active ? '#fff' : 'var(--text-secondary)'};
+  border: 1px solid ${(p) => p.$active ? 'var(--accent)' : 'var(--border)'};
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: inherit;
+
+  &:hover {
+    background: ${(p) => p.$active ? 'var(--accent)' : 'var(--border)'};
+    color: ${(p) => p.$active ? '#fff' : 'var(--text)'};
+  }
+`;
+
 const ListArea = styled.div`
   padding: 14px 16px;
   display: flex;
@@ -133,18 +165,44 @@ const PatientHeader = styled.div`
   user-select: none;
 `;
 
-const PatientAvatar = styled.div`
+const AVATAR_COLORS = [
+  { bg: '#ffebee', color: '#c62828' }, // A, N
+  { bg: '#e8eaf6', color: '#283593' }, // B, O
+  { bg: '#e8f5e9', color: '#2e7d32' }, // C, P
+  { bg: '#fff3e0', color: '#ef6c00' }, // D, Q
+  { bg: '#f3e5f5', color: '#6a1b9a' }, // E, R
+  { bg: '#e0f7fa', color: '#00838f' }, // F, S
+  { bg: '#fce4ec', color: '#ad1457' }, // G, T
+  { bg: '#e8f5e9', color: '#2e7d32' }, // H, U
+  { bg: '#fff8e1', color: '#f9a825' }, // I, V
+  { bg: '#e1f5fe', color: '#0277bd' }, // J, W
+  { bg: '#fbe9e7', color: '#d84315' }, // K, X
+  { bg: '#eceff1', color: '#455a64' }, // L, Y
+  { bg: '#e8eaf6', color: '#283593' }, // M, Z
+];
+
+function getAvatarColor(name: string) {
+  const initial = name.trim().charAt(0).toUpperCase();
+  const code = initial.charCodeAt(0);
+  if (code >= 65 && code <= 90) {
+    return AVATAR_COLORS[(code - 65) % AVATAR_COLORS.length];
+  }
+  return { bg: '#eceff1', color: '#455a64' };
+}
+
+const PatientAvatar = styled.div<{ $bg?: string; $color?: string }>`
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+  background: ${(p) => p.$bg || 'linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%)'};
+  color: ${(p) => p.$color || '#fff'};
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  font-size: 16px;
   font-weight: 800;
-  font-size: 15px;
   flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 `;
 
 const PatientInfo = styled.div`
@@ -536,6 +594,7 @@ export default function PatientsScreen({
 }: Props) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'az' | 'za'>('recent');
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
   const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
@@ -543,8 +602,26 @@ export default function PatientsScreen({
 
   const load = useCallback(async () => {
     const all = query ? await searchHistory(query) : await getAllHistory();
-    setPatients(groupByPatient(all));
-  }, [query]);
+    const grouped = groupByPatient(all);
+    if (sortBy === 'recent') {
+      grouped.sort((a, b) => {
+        const d1 = b.records[0] ? new Date(b.records[0].date).getTime() : 0;
+        const d2 = a.records[0] ? new Date(a.records[0].date).getTime() : 0;
+        return d1 - d2;
+      });
+    } else if (sortBy === 'oldest') {
+      grouped.sort((a, b) => {
+        const d1 = a.records[0] ? new Date(a.records[0].date).getTime() : 0;
+        const d2 = b.records[0] ? new Date(b.records[0].date).getTime() : 0;
+        return d1 - d2;
+      });
+    } else if (sortBy === 'az') {
+      grouped.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === 'za') {
+      grouped.sort((a, b) => b.name.localeCompare(a.name));
+    }
+    setPatients(grouped);
+  }, [query, sortBy]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -618,6 +695,21 @@ export default function PatientsScreen({
               id="patients-search"
             />
           </SearchWrap>
+          
+          <FilterBar>
+            <FilterBtn $active={sortBy === 'recent'} onClick={() => setSortBy('recent')}>
+              Más recientes
+            </FilterBtn>
+            <FilterBtn $active={sortBy === 'oldest'} onClick={() => setSortBy('oldest')}>
+              Más antiguos
+            </FilterBtn>
+            <FilterBtn $active={sortBy === 'az'} onClick={() => setSortBy('az')}>
+              Alfabético (A-Z)
+            </FilterBtn>
+            <FilterBtn $active={sortBy === 'za'} onClick={() => setSortBy('za')}>
+              Alfabético (Z-A)
+            </FilterBtn>
+          </FilterBar>
         </TopBar>
 
         <ListArea>
@@ -635,6 +727,8 @@ export default function PatientsScreen({
               const isOpen = openKey === patient.key;
               const initials = patient.name !== 'Sin nombre' ? getInitials(patient.name) : '?';
 
+              const colors = getAvatarColor(patient.name);
+
               const byType = {
                 presupuesto: patient.records.filter((r) => r.type === 'presupuesto'),
                 informe:     patient.records.filter((r) => r.type === 'informe'),
@@ -644,7 +738,7 @@ export default function PatientsScreen({
               return (
                 <PatientCard key={patient.key}>
                   <PatientHeader onClick={() => setOpenKey(isOpen ? null : patient.key)}>
-                    <PatientAvatar>{initials}</PatientAvatar>
+                    <PatientAvatar $bg={colors.bg} $color={colors.color}>{initials}</PatientAvatar>
                     <PatientInfo>
                       <PatientName>{patient.name}</PatientName>
                       <PatientMeta>

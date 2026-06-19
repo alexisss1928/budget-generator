@@ -3,9 +3,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   Menu, Home, FileText, ClipboardList, Pill,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle, ShoppingCart
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle, ShoppingCart, Save
 } from 'lucide-react';
 
 // Context
@@ -504,6 +506,20 @@ const WhatsAppFAB = styled.button`
   &:active { transform: scale(0.96); }
 `;
 
+const JustSaveFAB = styled.button`
+  width: 52px; height: 52px;
+  background: var(--surface);
+  border: 1px solid var(--border); 
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--accent);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+  &:hover { transform: scale(1.1); box-shadow: var(--shadow-lg); background: var(--accent-bg); }
+  &:active { transform: scale(0.96); }
+`;
+
 
 const PrintPage = styled.div`
   width: 841px; height: 1250px;
@@ -795,7 +811,44 @@ function InnerApp() {
     };
 
     html2pdf().set(opt).from(componentToPrintRef.current).save();
+    if (section === 'Recipes') navigate('Listado-Recipe');
+    if (section === 'Presupuesto') navigate('Listado-Presupuesto');
+    if (section === 'Informe') navigate('Listado-Informe');
   }, [componentToPrintRef, section, currentRecipe, treatmentsList, report, personalData]);
+
+  const handleSaveOnly = useCallback(async () => {
+    if (section === 'Recipes' && currentRecipe.length > 0) {
+      const allowed = await checkFreeLimits('recipe');
+      if (!allowed) return;
+    } else if (section === 'Presupuesto' && treatmentsList.length > 0) {
+      const allowed = await checkFreeLimits('presupuesto');
+      if (!allowed) return;
+    } else if (section === 'Informe' && report !== '') {
+      const allowed = await checkFreeLimits('informe');
+      if (!allowed) return;
+    }
+
+    const contactData = {
+      patientPhone: personalData.phone || undefined,
+      patientEmail: personalData.email || undefined,
+    };
+    try {
+      if (section === 'Recipes' && currentRecipe.length > 0) {
+        await saveToHistory({ type: 'recipe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, ...contactData, data: { medicines: currentRecipe } });
+      } else if (section === 'Presupuesto' && treatmentsList.length > 0) {
+        await saveToHistory({ type: 'presupuesto', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, ...contactData, data: { treatments: treatmentsList } });
+      } else if (section === 'Informe' && report !== '') {
+        await saveToHistory({ type: 'informe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, ...contactData, data: { report } });
+      }
+      toast.success('Información guardada exitosamente.');
+      if (section === 'Recipes') navigate('Listado-Recipe');
+      if (section === 'Presupuesto') navigate('Listado-Presupuesto');
+      if (section === 'Informe') navigate('Listado-Informe');
+    } catch (err) { 
+      console.error('Error guardando historial:', err);
+      toast.error('Hubo un error al guardar la información.');
+    }
+  }, [section, currentRecipe, treatmentsList, report, personalData]);
 
   // ── Direct History Print & Share ───────────────────────────────────────────
   const historyPrintRef = useRef<HTMLDivElement>(null);
@@ -897,6 +950,7 @@ function InnerApp() {
       doctorProfile.telefono ? `Tel: ${doctorProfile.telefono}` : '',
     ].filter(Boolean).join('\n');
     setWaConfig({ message: msg, defaultPhone: personalData.phone || undefined });
+    navigate('Listado-Presupuesto');
   }, [treatmentsList, personalData, doctorProfile]);
 
   const handleShareRecipeText = useCallback(async () => {
@@ -937,6 +991,7 @@ function InnerApp() {
       doctorProfile.telefono ? `Tel: ${doctorProfile.telefono}` : null,
     ].filter(v => v !== null).join('\n');
     setWaConfig({ message: msg, defaultPhone: personalData.phone || undefined });
+    navigate('Listado-Recipe');
   }, [currentRecipe, personalData, doctorProfile]);
 
 
@@ -964,6 +1019,7 @@ function InnerApp() {
     } catch (err) { console.error(err); }
 
     setWaConfig({ message: '', defaultPhone: personalData.phone || undefined });
+    navigate('Listado-Informe');
   }, [report, personalData]);
 
   const handleSharePdfDirectly = useCallback(async () => {
@@ -1010,6 +1066,7 @@ function InnerApp() {
   }, [loadDoctorProfile, loadTreatmentsFromDB, loadMedicinesFromDB]);
 
   const hasContent = report !== '' || treatmentsList.length > 0 || currentRecipe.length > 0;
+  const isEditingDoc = section === 'Presupuesto' || section === 'Recipes' || section === 'Informe';
 
   // ── Nav items ──────────────────────────────────────────────────────────────
   type NavItemType = {
@@ -1036,7 +1093,7 @@ function InnerApp() {
     { label: 'Respaldo y Restauración', section: 'Respaldo', icon: <Database size={13} /> },
   ];
 
-  const navigate = async (s: string) => {
+  async function navigate(s: string) {
     // Show limit modal early only when navigating to the creation form directly (not to list)
     if (s === 'Presupuesto' && treatmentsList.length === 0) {
       await checkFreeLimits('presupuesto');
@@ -1098,6 +1155,7 @@ function InnerApp() {
   return (
     <AppShell>
       <PWABanners {...pwa} />
+      <ToastContainer position="bottom-center" autoClose={3000} hideProgressBar theme="colored" />
       {waConfig !== null && (
         <WhatsAppModal
           message={waConfig.message}
@@ -1678,7 +1736,7 @@ function InnerApp() {
       </ContentArea>
 
       {/* FABs */}
-      {hasContent && (
+      {isEditingDoc && hasContent && (
         <FABGroup>
           {section === 'Presupuesto' && treatmentsList.length > 0 && (
             <WhatsAppFAB onClick={handleWhatsApp} aria-label="Compartir" title="Compartir">
@@ -1698,6 +1756,9 @@ function InnerApp() {
           <SaveFAB onClick={handlePrint} aria-label="Descargar PDF" title="Descargar PDF">
             <Download size={22} />
           </SaveFAB>
+          <JustSaveFAB onClick={handleSaveOnly} aria-label="Guardar" title="Guardar">
+            <Save size={22} />
+          </JustSaveFAB>
         </FABGroup>
       )}
 
