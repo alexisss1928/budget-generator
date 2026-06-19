@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, KeyboardEvent } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { Plus, X, Tag, Search, Trash2, Play, Image as ImageIcon, Film, ChevronLeft, BookOpen, Info, ChevronDown } from 'lucide-react';
+import { Plus, X, Tag, Search, Trash2, Play, Image as ImageIcon, Film, ChevronLeft, Info, ChevronDown } from 'lucide-react';
 import { MediaLibraryItem, getAllMediaItems, saveMediaItem, deleteMediaItem } from '../../db/clinicDB';
 
 // ─── Animations ───────────────────────────────────────────────────────────────
@@ -52,13 +52,6 @@ const BackBtn = styled.button`
   &:hover { background: var(--accent-bg); color: var(--accent); }
 `;
 
-const PageTitle = styled.h1`
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--text);
-  margin: 0;
-  flex: 1;
-`;
 
 const AddBtn = styled.button`
   display: flex;
