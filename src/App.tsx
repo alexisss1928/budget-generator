@@ -7,7 +7,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
   Menu, Home, FileText, ClipboardList, Pill,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle, ShoppingCart, Save
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle, ShoppingCart, Save, BookOpen
 } from 'lucide-react';
 
 // Context
@@ -39,6 +39,7 @@ import FeedbackScreen from './components/FeedbackScreen';
 import ProUpgradeModal from './components/ProUpgradeModal';
 import ShareModal from './components/ShareModal';
 import ShoppingListScreen from './components/ShoppingListScreen';
+import MediaLibraryScreen from './components/MediaLibraryScreen';
 import AnalysisLoader from './components/AnalysisLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { usePWA } from './hooks/usePWA';
@@ -1083,6 +1084,7 @@ function InnerApp() {
     { label: 'Informes', section: 'Listado-Informe', icon: <ClipboardList size={15} />, proOnly: true },
     { label: 'Recipes', section: 'Listado-Recipe', icon: <Pill size={15} /> },
     { label: 'Lista de compras', section: 'Lista de compras', icon: <ShoppingCart size={15} /> },
+    { label: 'Recursos Didácticos', section: 'Recursos Didácticos', icon: <BookOpen size={15} />, proOnly: true },
   ];
 
   const configItems: NavItemType[] = [
@@ -1730,6 +1732,14 @@ function InnerApp() {
                 </BackBtn>
               </SectionHeader>
               <ShoppingListScreen />
+            </SectionInner>
+          </SectionView>
+        )}
+
+        {section === 'Recursos Didácticos' && (
+          <SectionView>
+            <SectionInner>
+              <MediaLibraryScreen onBack={() => navigate('Inicio')} />
             </SectionInner>
           </SectionView>
         )}

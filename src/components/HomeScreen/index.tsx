@@ -5,7 +5,7 @@ import Logo from '../../assets/leafAssets/logo.png';
 import {
   FileText, ClipboardList, Pill,
   ChevronDown, ChevronRight, Edit2,
-  Share2, Download, Trash2, AlertTriangle, Calculator, Monitor, ShoppingCart, Plus, DollarSign, Users
+  Share2, Download, Trash2, AlertTriangle, Calculator, Monitor, ShoppingCart, Plus, DollarSign, Users, BookOpen
 } from 'lucide-react';
 import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods, getAllShoppingItems, saveShoppingItem } from '../../db/clinicDB';
 import PresupuestoDetail from '../PresupuestoDetail';
@@ -709,6 +709,7 @@ const actions = [
         <Plus size={12} strokeWidth={4} style={{ position: 'absolute', top: -6, right: -8, color: '#fff', background: '#719e81', borderRadius: '50%', padding: '1px' }} />
       </div>
     ),
+    proOnly: true,
   },
   {
     section: 'Listado-Informe',
@@ -753,6 +754,7 @@ const actions = [
         <Plus size={12} strokeWidth={4} style={{ position: 'absolute', top: -6, right: -8, color: '#fff', background: '#9b59b6', borderRadius: '50%', padding: '1px' }} />
       </div>
     ),
+    proOnly: true,
   },
   {
     section: 'share_payment',
@@ -808,6 +810,14 @@ const actions = [
       </div>
     ),
     proOnly: true,
+  },
+  {
+    section: 'Recursos Didácticos',
+    type: 'recursos_didacticos',
+    label: 'Recursos',
+    desc: 'Material educativo',
+    color: '#7c3aed',
+    icon: <BookOpen size={20} strokeWidth={2.5} />,
   },
 ];
 
