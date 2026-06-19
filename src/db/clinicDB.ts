@@ -43,6 +43,17 @@ export type MedicineListItem = {
   indicaciones: string;
 };
 
+export type PaymentRecord = {
+  id: string;
+  date: string;
+  currency: 'USD' | 'VES';
+  method: string;
+  amount: number;         // Monto original (en USD o VES)
+  exchangeRate?: number;  // Tasa de cambio usada si la moneda fue VES y hubo conversión
+  amountUSD: number;      // Monto equivalente en dólares para restar del total
+  reference: string;
+};
+
 export type HistoryRecord = {
   id?: number;
   type: HistoryType;
@@ -55,6 +66,7 @@ export type HistoryRecord = {
     medicines?: MedicineListItem[];
     treatments?: TreatmentListItem[];
     report?: string;
+    payments?: PaymentRecord[];
   };
 };
 
@@ -290,7 +302,7 @@ export async function saveAllMedicines(medicines: MedicineRecord[]): Promise<voi
 export async function saveToHistory(record: HistoryRecord): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'history', 'readwrite').add(record) as IDBRequest<number>
+    getStore(db, 'history', 'readwrite').put(record) as IDBRequest<number>
   );
 }
 

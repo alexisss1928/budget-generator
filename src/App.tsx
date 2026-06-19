@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import html2pdf from 'html2pdf.js';
 import styled, { keyframes } from 'styled-components';
 import {
-  Menu, Home, FileText, ClipboardList, Pill, History as HistoryIcon,
+  Menu, Home, FileText, ClipboardList, Pill,
   Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle, ShoppingCart
 } from 'lucide-react';
 
@@ -21,6 +21,8 @@ import ConfigComponent from './components/SettingsComponent';
 import ConfigMedicines from './components/SettingsComponent/MedicinesSettings';
 import Recipe from './components/Recipe';
 import History from './components/History';
+import DocumentListScreen from './components/DocumentListScreen';
+import PatientsScreen from './components/PatientsScreen';
 import HomeScreen from './components/HomeScreen';
 import PacientData from './components/PacientData';
 import DoctorSettings from './components/DoctorSettings';
@@ -515,6 +517,9 @@ const sectionTitle: Record<string, string> = {
   Presupuesto: 'Presupuesto',
   Informe: 'Informe clínico',
   Recipes: 'Recipe médico',
+  'Listado-Presupuesto': 'Presupuestos',
+  'Listado-Informe': 'Informes',
+  'Listado-Recipe': 'Recipes',
   Historial: 'Historial',
   'Administrar tratamientos': 'Tratamientos',
   'Administrar medicamentos': 'Medicamentos',
@@ -1016,11 +1021,11 @@ function InnerApp() {
 
   const navItems: NavItemType[] = [
     { label: 'Inicio', section: 'Inicio', icon: <Home size={15} /> },
-    { label: 'Presupuesto', section: 'Presupuesto', icon: <FileText size={15} /> },
-    { label: 'Informe', section: 'Informe', icon: <ClipboardList size={15} />, proOnly: true },
-    { label: 'Recipe', section: 'Recipes', icon: <Pill size={15} /> },
+    { label: 'Pacientes', section: 'Pacientes', icon: <Users size={15} /> },
+    { label: 'Presupuestos', section: 'Listado-Presupuesto', icon: <FileText size={15} /> },
+    { label: 'Informes', section: 'Listado-Informe', icon: <ClipboardList size={15} />, proOnly: true },
+    { label: 'Recipes', section: 'Listado-Recipe', icon: <Pill size={15} /> },
     { label: 'Lista de compras', section: 'Lista de compras', icon: <ShoppingCart size={15} /> },
-    { label: 'Historial', section: 'Historial', icon: <HistoryIcon size={15} /> },
   ];
 
   const configItems: NavItemType[] = [
@@ -1032,7 +1037,7 @@ function InnerApp() {
   ];
 
   const navigate = async (s: string) => {
-    // Show limit modal early if navigating to an empty section
+    // Show limit modal early only when navigating to the creation form directly (not to list)
     if (s === 'Presupuesto' && treatmentsList.length === 0) {
       await checkFreeLimits('presupuesto');
     } else if (s === 'Recipes' && currentRecipe.length === 0) {
@@ -1055,6 +1060,30 @@ function InnerApp() {
       setReport('');
       setDocumentDate(getLocalDateString());
     }
+  };
+
+  // Navigate to a creation form with a clean state
+  const navigateNewDoc = async (docType: 'presupuesto' | 'recipe' | 'informe') => {
+    const sectionMap = { presupuesto: 'Presupuesto', recipe: 'Recipes', informe: 'Informe' } as const;
+    const allowed = await checkFreeLimits(docType);
+    if (!allowed) return;
+    // Clean state
+    setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
+    setDocumentDate(getLocalDateString());
+    if (docType === 'presupuesto') {
+      setTreatmentsList([]);
+      setCurrentBudget({ nombre: '', precio: '', insuranceCoverage: '', quantity: '', observations: '' });
+    } else if (docType === 'recipe') {
+      setCurrentRecipe([]);
+      setCurrentMedicineSelected({ nombre: '', indicaciones: '', presentacion: '' });
+    } else {
+      setReport('');
+    }
+    setSection(sectionMap[docType]);
+    sectionRef.current = sectionMap[docType];
+    setDrawerOpen(false);
+    window.history.pushState({ section: sectionMap[docType] }, '', '/');
+    historyDepthRef.current++;
   };
 
   let trialDaysLeft = 0;
@@ -1334,6 +1363,7 @@ function InnerApp() {
         {section === 'Inicio' && (
           <HomeScreen
             onNavigate={navigate}
+            onNewDoc={navigateNewDoc}
             doctorProfile={doctorProfile}
             onLoadRecord={handleLoadRecord}
             onDownloadRecord={handleDownloadHistoryRecord}
@@ -1472,6 +1502,60 @@ function InnerApp() {
               </SectionHeader>
               <History doctorProfile={doctorProfile} onLoadRecord={handleLoadRecord} onDownloadRecord={handleDownloadHistoryRecord} onShareHistoryRecordPdf={handleShareHistoryRecordPdf} />
             </SectionInner>
+          </SectionView>
+        )}
+
+        {section === 'Pacientes' && (
+          <SectionView>
+            <PatientsScreen
+              doctorProfile={doctorProfile}
+              onBack={() => navigate('Inicio')}
+              onLoadRecord={handleLoadRecord}
+              onDownloadRecord={handleDownloadHistoryRecord}
+              onSharePdf={handleShareHistoryRecordPdf}
+            />
+          </SectionView>
+        )}
+
+        {section === 'Listado-Presupuesto' && (
+          <SectionView>
+            <DocumentListScreen
+              type="presupuesto"
+              doctorProfile={doctorProfile}
+              onBack={() => navigate('Inicio')}
+              onCreateNew={() => navigateNewDoc('presupuesto')}
+              onLoadRecord={handleLoadRecord}
+              onDownloadRecord={handleDownloadHistoryRecord}
+              onSharePdf={handleShareHistoryRecordPdf}
+            />
+          </SectionView>
+        )}
+
+        {section === 'Listado-Informe' && (
+          <SectionView>
+            <DocumentListScreen
+              type="informe"
+              doctorProfile={doctorProfile}
+              onBack={() => navigate('Inicio')}
+              onCreateNew={() => navigateNewDoc('informe')}
+              onLoadRecord={handleLoadRecord}
+              onDownloadRecord={handleDownloadHistoryRecord}
+              onSharePdf={handleShareHistoryRecordPdf}
+            />
+          </SectionView>
+        )}
+
+        {section === 'Listado-Recipe' && (
+          <SectionView>
+            <DocumentListScreen
+              type="recipe"
+              doctorProfile={doctorProfile}
+              onBack={() => navigate('Inicio')}
+              onCreateNew={() => navigateNewDoc('recipe')}
+              onLoadRecord={handleLoadRecord}
+              onDownloadRecord={handleDownloadHistoryRecord}
+              onSharePdf={handleShareHistoryRecordPdf}
+            />
           </SectionView>
         )}
 
