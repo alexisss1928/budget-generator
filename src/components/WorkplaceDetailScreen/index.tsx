@@ -357,7 +357,7 @@ const toDateStr = (d: Date) => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-const getPeriodStartForDate = (targetDate: Date, cutoffType: string, customDays?: number, daysOfWeek?: number[]) => {
+const getPeriodStartForDate = (targetDate: Date, cutoffType: string, _customDays?: number, daysOfWeek?: number[]) => {
   const d = new Date(targetDate);
   d.setHours(0,0,0,0);
   
