@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ChevronLeft, Plus, Briefcase, Trash2, Edit2, Calendar } from 'lucide-react';
+import { ChevronLeft, Plus, Briefcase, Trash2, Edit2 } from 'lucide-react';
 import { WorkplaceRecord, getAllWorkplaces, saveWorkplace, deleteWorkplace } from '../../db/clinicDB';
 
 const ScreenContainer = styled.div`
@@ -244,13 +244,10 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWorkplace, setEditingWorkplace] = useState<WorkplaceRecord | null>(null);
 
-  const defaultFormState = {
+  const defaultFormState: Omit<WorkplaceRecord, 'id'> = {
     name: '',
-    feeType: 'fixed_percentage' as const,
+    feeType: 'fixed_percentage',
     feeValue: '',
-    cutoffType: 'monthly' as const,
-    customCutoffDays: 0,
-    cutoffDaysOfWeek: [] as number[]
   };
 
   const [form, setForm] = useState<Omit<WorkplaceRecord, 'id'>>(defaultFormState);
@@ -271,9 +268,6 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
         name: workplace.name,
         feeType: workplace.feeType,
         feeValue: workplace.feeValue,
-        cutoffType: workplace.cutoffType,
-        customCutoffDays: workplace.customCutoffDays || 0,
-        cutoffDaysOfWeek: workplace.cutoffDaysOfWeek || []
       });
     } else {
       setEditingWorkplace(null);
@@ -311,26 +305,10 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
   };
 
   const getFeeTypeText = (type: string, value: string) => {
-    if (type === 'fixed_percentage') return `Porcentaje fijo: ${value}%`;
+    if (type === 'fixed_percentage') return `${value}% fijo`;
     if (type === 'variable') return `Variable por procedimiento`;
     if (type === 'custom_formula') return `Fórmula: ${value}`;
     return type;
-  };
-
-  const getCutoffText = (type: string, days?: number, daysOfWeek?: number[]) => {
-    const map: any = {
-      daily: 'Diario',
-      weekly: 'Semanal',
-      biweekly: 'Quincenal',
-      monthly: 'Mensual',
-      custom: `Cada ${days} días`,
-      weekly_days: 'Días de semana específicos'
-    };
-    if (type === 'weekly_days' && daysOfWeek && daysOfWeek.length > 0) {
-      const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-      return `Días: ${daysOfWeek.map(d => dayNames[d]).join(', ')}`;
-    }
-    return map[type] || type;
   };
 
   return (
@@ -366,14 +344,9 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
                     </IconButton>
                   </Actions>
                 </CardHeader>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <SubText>
-                    <strong>Honorarios:</strong> {getFeeTypeText(wp.feeType, wp.feeValue)}
-                  </SubText>
-                  <SubText>
-                    <Calendar size={14} /> <strong>Corte:</strong> {getCutoffText(wp.cutoffType, wp.customCutoffDays, wp.cutoffDaysOfWeek)}
-                  </SubText>
-                </div>
+                <SubText>
+                  <strong>Honorarios:</strong> {getFeeTypeText(wp.feeType, wp.feeValue)}
+                </SubText>
               </Card>
             ))}
           </Grid>
@@ -400,7 +373,7 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
               <Label>Tipo de honorarios</Label>
               <Select 
                 value={form.feeType} 
-                onChange={e => setForm({...form, feeType: e.target.value as any})}
+                onChange={e => setForm({...form, feeType: e.target.value as WorkplaceRecord['feeType']})}
               >
                 <option value="fixed_percentage">Porcentaje Fijo</option>
                 <option value="variable">Variable por Procedimiento</option>
@@ -431,78 +404,6 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', display: 'block' }}>
                   Usa la variable "costo" en tu fórmula. Ej: costo * 0.3
                 </span>
-              </FormGroup>
-            )}
-
-            <FormGroup>
-              <Label>Frecuencia de corte de pago {editingWorkplace && '(No editable)'}</Label>
-              <Select 
-                value={form.cutoffType} 
-                onChange={e => setForm({...form, cutoffType: e.target.value as any})}
-                disabled={!!editingWorkplace}
-              >
-                <option value="daily">Diario</option>
-                <option value="weekly">Semanal</option>
-                <option value="weekly_days">Días específicos de la semana</option>
-                <option value="biweekly">Quincenal</option>
-                <option value="monthly">Mensual</option>
-                <option value="custom">Personalizado (días)</option>
-              </Select>
-            </FormGroup>
-
-            {form.cutoffType === 'weekly_days' && (
-              <FormGroup>
-                <Label>Días de corte en la semana {editingWorkplace && '(No editable)'}</Label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {[
-                    { id: 1, label: 'L' },
-                    { id: 2, label: 'M' },
-                    { id: 3, label: 'X' },
-                    { id: 4, label: 'J' },
-                    { id: 5, label: 'V' },
-                    { id: 6, label: 'S' },
-                    { id: 0, label: 'D' }
-                  ].map(d => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      disabled={!!editingWorkplace}
-                      onClick={() => {
-                        const arr = form.cutoffDaysOfWeek || [];
-                        if (arr.includes(d.id)) {
-                          setForm({...form, cutoffDaysOfWeek: arr.filter(x => x !== d.id)});
-                        } else {
-                          setForm({...form, cutoffDaysOfWeek: [...arr, d.id].sort()});
-                        }
-                      }}
-                      style={{
-                        width: '36px', height: '36px', borderRadius: '50%',
-                        border: '1px solid var(--border)',
-                        background: form.cutoffDaysOfWeek?.includes(d.id) ? 'var(--accent)' : 'transparent',
-                        color: form.cutoffDaysOfWeek?.includes(d.id) ? '#fff' : 'var(--text)',
-                        cursor: editingWorkplace ? 'not-allowed' : 'pointer',
-                        fontWeight: 600,
-                        transition: 'all 0.2s',
-                        opacity: editingWorkplace && !form.cutoffDaysOfWeek?.includes(d.id) ? 0.5 : 1
-                      }}
-                    >
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              </FormGroup>
-            )}
-
-            {form.cutoffType === 'custom' && (
-              <FormGroup>
-                <Label>Días del corte {editingWorkplace && '(No editable)'}</Label>
-                <Input 
-                  type="number" 
-                  value={form.customCutoffDays} 
-                  onChange={e => setForm({...form, customCutoffDays: parseInt(e.target.value) || 0})} 
-                  placeholder="Ej. 45" 
-                  disabled={!!editingWorkplace}
-                />
               </FormGroup>
             )}
 

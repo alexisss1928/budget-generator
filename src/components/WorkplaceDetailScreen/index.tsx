@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
-import { ChevronLeft, Plus, DollarSign, Calendar, FileText, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import { 
-  WorkplaceRecord, 
-  WorkplacePaymentRecord, 
-  getAllWorkplaces, 
-  getPaymentsByWorkplace, 
+import { ChevronLeft, Plus, DollarSign, Calendar, Trash2, Filter, Edit2 } from 'lucide-react';
+import {
+  WorkplaceRecord,
+  WorkplacePaymentRecord,
+  getAllWorkplaces,
+  getPaymentsByWorkplace,
   saveWorkplacePayment,
   deleteWorkplacePayment
 } from '../../db/clinicDB';
@@ -70,7 +70,7 @@ const StatsCard = styled.div`
   border-radius: 16px;
   padding: 24px;
   color: #fff;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
   display: flex;
   flex-direction: column;
@@ -90,7 +90,7 @@ const StatsCard = styled.div`
 `;
 
 const StatLabel = styled.div`
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
   opacity: 0.8;
@@ -107,33 +107,170 @@ const StatValue = styled.div`
   gap: 4px;
 `;
 
-const ListHeader = styled.h3`
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0 0 16px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+// --- Filter Panel ---
+const FilterPanel = styled.div`
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-card);
 `;
 
-const PaymentItem = styled.div`
-  background: var(--surface);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow-card);
+const FilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border: 1px solid var(--border);
+  cursor: pointer;
+  gap: 8px;
 `;
 
-const PaymentInfo = styled.div`
+const FilterTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+`;
+
+const FilterBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+`;
+
+const FilterGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
 `;
+
+const FilterLabel = styled.label`
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const FilterInput = styled.input`
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  &:focus { border-color: var(--accent); }
+`;
+
+const FilterBadge = styled.span`
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 99px;
+  padding: 2px 8px;
+`;
+
+// --- Day Slider ---
+const DaySliderContainer = styled.div`
+  display: flex;
+  overflow-x: auto;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  &::-webkit-scrollbar { display: none; }
+  scroll-behavior: smooth;
+`;
+
+const DaySlide = styled.div<{ $active?: boolean; $hasData?: boolean }>`
+  min-width: 58px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: ${p => p.$active ? 'var(--accent)' : 'var(--surface)'};
+  color: ${p => p.$active ? '#fff' : 'var(--text)'};
+  border: 1px solid ${p => p.$active ? 'var(--accent)' : 'var(--border)'};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  box-shadow: ${p => p.$active ? '0 4px 12px rgba(0,0,0,0.25)' : 'none'};
+
+  &:hover { transform: translateY(-2px); }
+`;
+
+const DayName = styled.div`
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-bottom: 4px;
+`;
+
+const DayNumber = styled.div`
+  font-size: 18px;
+  font-weight: 700;
+`;
+
+const DayDot = styled.div`
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10b981;
+  margin-top: 4px;
+`;
+
+// --- Payment Items ---
+const DayHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+`;
+
+const DayTitle = styled.div`
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+`;
+
+const DayTotal = styled.div`
+  font-size: 14px;
+  font-weight: 700;
+  color: #10b981;
+`;
+
+const PatientGroupCard = styled.div`
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+`;
+
+const PatientHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+`;
+
+const ProcedureRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+`;
+
+
 
 const PatientName = styled.div`
   font-size: 14px;
@@ -146,7 +283,7 @@ const ProcedureText = styled.div`
   color: var(--text-secondary);
 `;
 
-const DateText = styled.div`
+const TimeText = styled.div`
   font-size: 11px;
   color: var(--text-muted);
   display: flex;
@@ -159,7 +296,7 @@ const PaymentAmount = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 3px;
 `;
 
 const Earned = styled.div`
@@ -173,6 +310,17 @@ const TotalCost = styled.div`
   color: var(--text-muted);
 `;
 
+const EmptyDayState = styled.div`
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  font-size: 13px;
+`;
+
+// --- Modal ---
 const ModalOverlay = styled.div`
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.5);
@@ -189,6 +337,8 @@ const ModalContent = styled.div`
   width: 100%;
   max-width: 400px;
   box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
 `;
 
 const FormGroup = styled.div`
@@ -214,10 +364,7 @@ const Input = styled.input`
   font-size: 14px;
   box-sizing: border-box;
   outline: none;
-
-  &:focus {
-    border-color: var(--accent);
-  }
+  &:focus { border-color: var(--accent); }
 `;
 
 const ReadOnlyInput = styled.div`
@@ -227,7 +374,6 @@ const ReadOnlyInput = styled.div`
   background: rgba(16, 185, 129, 0.1);
   color: #10b981;
   border: 1px solid rgba(16, 185, 129, 0.3);
-  font-family: inherit;
   font-size: 16px;
   font-weight: 700;
   box-sizing: border-box;
@@ -251,154 +397,17 @@ const Button = styled.button<{ $primary?: boolean }>`
   background: ${p => p.$primary ? 'var(--accent)' : 'transparent'};
   color: ${p => p.$primary ? '#fff' : 'var(--text)'};
   transition: all 0.2s;
-
-  &:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
+  &:hover { opacity: 0.9; transform: translateY(-1px); }
 `;
 
-// --- New Components for Slider and History ---
+// --- Helpers ---
 
-const DaySliderContainer = styled.div`
-  display: flex;
-  overflow-x: auto;
-  gap: 12px;
-  padding-bottom: 12px;
-  margin-bottom: 24px;
-  &::-webkit-scrollbar { display: none; }
-`;
+const toDateStr = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-const DaySlide = styled.div<{ $active?: boolean }>`
-  min-width: 65px;
-  padding: 12px 8px;
-  border-radius: 12px;
-  background: ${p => p.$active ? 'var(--accent)' : 'var(--surface)'};
-  color: ${p => p.$active ? '#fff' : 'var(--text)'};
-  border: 1px solid ${p => p.$active ? 'var(--accent)' : 'var(--border)'};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: ${p => p.$active ? '0 4px 12px rgba(var(--accent-rgb), 0.3)' : 'var(--shadow-sm)'};
+const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 864e5);
 
-  &:hover {
-    transform: translateY(-2px);
-  }
-`;
-
-const DayName = styled.div`
-  font-size: 11px;
-  text-transform: uppercase;
-  font-weight: 600;
-  opacity: 0.8;
-  margin-bottom: 4px;
-`;
-
-const DayNumber = styled.div`
-  font-size: 18px;
-  font-weight: 700;
-`;
-
-const HistoryBlock = styled.div`
-  background: var(--surface);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  margin-bottom: 12px;
-  overflow: hidden;
-`;
-
-const HistoryHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  cursor: pointer;
-  background: var(--hover-bg);
-  transition: background 0.2s;
-  &:hover { background: var(--border); }
-`;
-
-const HistoryTitle = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const HistoryTotal = styled.div`
-  font-size: 15px;
-  font-weight: 700;
-  color: #10b981;
-`;
-
-const HistoryContent = styled.div`
-  padding: 16px;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
-`;
-
-const EmptyDayState = styled.div`
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--text-secondary);
-  background: var(--surface);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-`;
-
-
-// --- Helper Functions ---
-
-const toDateStr = (d: Date) => {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-const getPeriodStartForDate = (targetDate: Date, cutoffType: string, _customDays?: number, daysOfWeek?: number[]) => {
-  const d = new Date(targetDate);
-  d.setHours(0,0,0,0);
-  
-  if (cutoffType === 'daily') {
-    return d;
-  } else if (cutoffType === 'weekly') {
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff));
-  } else if (cutoffType === 'biweekly') {
-    if (d.getDate() <= 15) {
-      return new Date(d.getFullYear(), d.getMonth(), 1);
-    } else {
-      return new Date(d.getFullYear(), d.getMonth(), 16);
-    }
-  } else if (cutoffType === 'weekly_days' && daysOfWeek && daysOfWeek.length > 0) {
-    const currentDayOfWeek = d.getDay(); // 0-6
-    
-    let daysDiff = 0;
-    let found = false;
-    const sortedDays = [...daysOfWeek].sort((a,b) => b - a);
-    for (const dayIndex of sortedDays) {
-      if (dayIndex <= currentDayOfWeek) {
-        daysDiff = currentDayOfWeek - dayIndex;
-        found = true;
-        break;
-      }
-    }
-    
-    if (!found) {
-      const maxDay = sortedDays[0];
-      daysDiff = currentDayOfWeek + (7 - maxDay);
-    }
-    
-    return new Date(d.getTime() - daysDiff * 24 * 60 * 60 * 1000);
-  } else {
-    // Monthly or Custom fallback
-    return new Date(d.getFullYear(), d.getMonth(), 1);
-  }
-};
-
+// --- Component ---
 
 interface Props {
   workplaceId: number;
@@ -409,146 +418,261 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
   const [workplace, setWorkplace] = useState<WorkplaceRecord | null>(null);
   const [payments, setPayments] = useState<WorkplacePaymentRecord[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState({ patientName: '', procedure: '', cost: '', variablePercentage: '' });
-  const [calculatedFee, setCalculatedFee] = useState<number>(0);
+  const [patientName, setPatientName] = useState('');
   
-  // UI State
+  const [proceduresList, setProceduresList] = useState<{ id: number, procedure: string, cost: string, variablePercentage: string }[]>([]);
+  const [isAddingProcedure, setIsAddingProcedure] = useState(false);
+  const [editingProcedureId, setEditingProcedureId] = useState<number | null>(null);
+  const [currentProcForm, setCurrentProcForm] = useState({ procedure: '', cost: '', variablePercentage: '' });
+  const [editingGroupId, setEditingGroupId] = useState<number[]>([]);
+  
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  // Day slider state – shows last 30 days
   const [selectedDayStr, setSelectedDayStr] = useState<string>(() => toDateStr(new Date()));
-  const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
+
+  // Date range filter
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const [filterFrom, setFilterFrom] = useState<string>(toDateStr(firstOfMonth));
+  const [filterTo, setFilterTo] = useState<string>(toDateStr(today));
+
+  const sliderRef = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {
     const allWorkplaces = await getAllWorkplaces();
     const wp = allWorkplaces.find(w => w.id === workplaceId);
-    if (wp) {
-      setWorkplace(wp);
-    }
+    if (wp) setWorkplace(wp);
     const wpPayments = await getPaymentsByWorkplace(workplaceId);
     wpPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setPayments(wpPayments);
   };
 
-  useEffect(() => {
-    loadData();
-  }, [workplaceId]);
+  useEffect(() => { loadData(); }, [workplaceId]);
 
+  // Scroll slider to today on load
   useEffect(() => {
-    const calculate = () => {
-      if (!workplace) return 0;
-      const costVal = parseFloat(form.cost) || 0;
-
-      if (workplace.feeType === 'fixed_percentage') {
-        const perc = parseFloat(workplace.feeValue) || 0;
-        return costVal * (perc / 100);
-      } else if (workplace.feeType === 'variable') {
-        const perc = parseFloat(form.variablePercentage) || 0;
-        return costVal * (perc / 100);
-      } else if (workplace.feeType === 'custom_formula') {
-        try {
-          const formulaStr = workplace.feeValue;
-          // eslint-disable-next-line no-new-func
-          const calcFunc = new Function('costo', 'return ' + formulaStr);
-          const res = calcFunc(costVal);
-          return isNaN(res) ? 0 : res;
-        } catch (e) {
-          console.error("Error en la formula", e);
-          return 0;
-        }
+    const scrollToEnd = () => {
+      if (sliderRef.current) {
+        sliderRef.current.scrollLeft = sliderRef.current.scrollWidth;
       }
-      return 0;
     };
+    
+    // Attempt immediately and after short delays to ensure DOM is ready
+    scrollToEnd();
+    const t1 = setTimeout(scrollToEnd, 100);
+    const t2 = setTimeout(scrollToEnd, 300);
+    
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
 
-    setCalculatedFee(calculate());
-  }, [form.cost, form.variablePercentage, workplace]);
+  // Calculation helpers
+  const calculateSingleFee = (p: { cost: string, variablePercentage: string }) => {
+    if (!workplace) return 0;
+    const costVal = parseFloat(p.cost) || 0;
+    let fee = 0;
+    if (workplace.feeType === 'fixed_percentage') {
+      fee = costVal * ((parseFloat(workplace.feeValue) || 0) / 100);
+    } else if (workplace.feeType === 'variable') {
+      fee = costVal * ((parseFloat(p.variablePercentage) || 0) / 100);
+    } else if (workplace.feeType === 'custom_formula') {
+      try {
+        // eslint-disable-next-line no-new-func
+        const fn = new Function('costo', 'return ' + workplace.feeValue);
+        const res = fn(costVal);
+        fee = isNaN(res) ? 0 : res;
+      } catch { fee = 0; }
+    }
+    return fee;
+  };
+
+  const totalCalculatedFee = useMemo(() => {
+    return proceduresList.reduce((acc, p) => acc + calculateSingleFee(p), 0);
+  }, [proceduresList, workplace]);
+
+  // --- Derived data ---
+
+  // Last 30 days for the slider
+  const sliderDays = useMemo(() => {
+    const days: Date[] = [];
+    for (let i = 29; i >= 0; i--) days.push(addDays(today, -i));
+    return days;
+  }, []);
+
+  // Group all payments by day string
+  const paymentsByDay = useMemo(() => {
+    const map: Record<string, WorkplacePaymentRecord[]> = {};
+    payments.forEach(p => {
+      const k = toDateStr(new Date(p.date));
+      if (!map[k]) map[k] = [];
+      map[k].push(p);
+    });
+    return map;
+  }, [payments]);
+
+  const selectedDayPayments = useMemo(
+    () => paymentsByDay[selectedDayStr] || [],
+    [paymentsByDay, selectedDayStr]
+  );
+
+  const groupedPayments = useMemo(() => {
+    const groups: Record<string, typeof selectedDayPayments> = {};
+    selectedDayPayments.forEach(p => {
+      const k = p.patientName;
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(p);
+    });
+    return Object.entries(groups).map(([patientName, payments]) => ({
+      patientName,
+      payments,
+      totalEarned: payments.reduce((acc, p) => acc + p.feeCalculated, 0),
+      totalCost: payments.reduce((acc, p) => acc + p.cost, 0),
+    }));
+  }, [selectedDayPayments]);
+
+  const selectedDayTotal = selectedDayPayments.reduce((a, p) => a + p.feeCalculated, 0);
+
+  // Filter range total
+  const filterFromDate = useMemo(() => {
+    const d = new Date(filterFrom + 'T00:00:00');
+    return isNaN(d.getTime()) ? null : d;
+  }, [filterFrom]);
+
+  const filterToDate = useMemo(() => {
+    const d = new Date(filterTo + 'T23:59:59');
+    return isNaN(d.getTime()) ? null : d;
+  }, [filterTo]);
+
+  const filteredPayments = useMemo(() => {
+    if (!filterFromDate || !filterToDate) return payments;
+    return payments.filter(p => {
+      const t = new Date(p.date).getTime();
+      return t >= filterFromDate.getTime() && t <= filterToDate.getTime();
+    });
+  }, [payments, filterFromDate, filterToDate]);
+
+  const filteredTotal = filteredPayments.reduce((a, p) => a + p.feeCalculated, 0);
+
+  const isFilterActive = filterFrom !== toDateStr(firstOfMonth) || filterTo !== toDateStr(today);
+
+  // --- Handlers ---
+
+  const handleSaveProcToList = () => {
+    if (!currentProcForm.procedure || !currentProcForm.cost) {
+      alert("Por favor completa el procedimiento y el costo.");
+      return;
+    }
+    if (editingProcedureId) {
+      setProceduresList(prev => prev.map(p => p.id === editingProcedureId ? { ...p, ...currentProcForm } : p));
+      setEditingProcedureId(null);
+    } else {
+      setProceduresList(prev => [...prev, { id: Date.now(), ...currentProcForm }]);
+      setIsAddingProcedure(false);
+    }
+    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
+  };
+
+  const handleEditProc = (p: any) => {
+    setEditingProcedureId(p.id);
+    setIsAddingProcedure(false);
+    setCurrentProcForm({ procedure: p.procedure, cost: p.cost, variablePercentage: p.variablePercentage });
+  };
+
+  const handleDeleteProc = (id: number) => {
+    setProceduresList(prev => prev.filter(p => p.id !== id));
+  };
 
   const handleSavePayment = async () => {
-    if (!form.patientName || !form.procedure || !form.cost) {
-      alert("Por favor completa todos los campos.");
+    if (!patientName) {
+      alert("Por favor ingresa el nombre del paciente.");
+      return;
+    }
+    
+    // Auto-save the current form if it has data and the list is empty
+    let listToSave = [...proceduresList];
+    if (proceduresList.length === 0 && currentProcForm.procedure && currentProcForm.cost) {
+      listToSave.push({ id: Date.now(), ...currentProcForm });
+    }
+
+    if (listToSave.length === 0) {
+      alert("Debes agregar al menos un procedimiento.");
       return;
     }
 
-    const record: WorkplacePaymentRecord = {
-      workplaceId,
-      // Usar la fecha del día seleccionado en el slider para que se asigne correctamente a ese día
-      date: new Date(selectedDayStr + "T12:00:00").toISOString(),
-      patientName: form.patientName,
-      procedure: form.procedure,
-      cost: parseFloat(form.cost),
-      feeCalculated: calculatedFee
-    };
+    // Determine if we are deleting any old records that were removed during edit
+    const currentIds = listToSave.map(p => p.id);
+    const idsToDelete = editingGroupId.filter(id => !currentIds.includes(id));
+    for (const id of idsToDelete) {
+      await deleteWorkplacePayment(id);
+    }
 
-    await saveWorkplacePayment(record);
+    const promises = listToSave.map(p => {
+      const isNew = p.id > 1000000000000;
+      const record: WorkplacePaymentRecord = {
+        workplaceId,
+        date: new Date(selectedDayStr + 'T12:00:00').toISOString(),
+        patientName,
+        procedure: p.procedure,
+        cost: parseFloat(p.cost) || 0,
+        feeCalculated: calculateSingleFee(p)
+      };
+      if (!isNew) record.id = p.id;
+      return saveWorkplacePayment(record);
+    });
+
+    await Promise.all(promises);
     setIsModalOpen(false);
-    setForm({ patientName: '', procedure: '', cost: '', variablePercentage: '' });
+    setPatientName('');
+    setProceduresList([]);
+    setIsAddingProcedure(false);
+    setEditingProcedureId(null);
+    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
+    setEditingGroupId([]);
     loadData();
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm("¿Seguro que deseas eliminar este registro?")) {
-      await deleteWorkplacePayment(id);
-      loadData();
-    }
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+    setPatientName('');
+    setProceduresList([]);
+    setIsAddingProcedure(false);
+    setEditingProcedureId(null);
+    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
+    setEditingGroupId([]);
   };
 
-  // --- Derived State ---
-  
-  const currentPeriodStart = useMemo(() => {
-    if (!workplace) return new Date();
-    return getPeriodStartForDate(new Date(), workplace.cutoffType, workplace.customCutoffDays, workplace.cutoffDaysOfWeek);
-  }, [workplace]);
-
-  const daysInPeriod = useMemo(() => {
-    if (!currentPeriodStart) return [];
-    const arr: Date[] = [];
-    const dt = new Date(currentPeriodStart);
-    const end = new Date(); // Today
-    end.setHours(0,0,0,0);
+  const handleEditPatientGroup = (group: { patientName: string, payments: WorkplacePaymentRecord[] }) => {
+    setIsModalOpen(true);
+    setPatientName(group.patientName);
     
-    // Safety check just in case
-    if (dt > end) return [end];
-
-    while (dt <= end) {
-      arr.push(new Date(dt));
-      dt.setDate(dt.getDate() + 1);
-    }
-    return arr;
-  }, [currentPeriodStart]);
-
-  const currentPayments = useMemo(() => {
-    return payments.filter(p => new Date(p.date).getTime() >= currentPeriodStart.getTime());
-  }, [payments, currentPeriodStart]);
-
-  const pastPayments = useMemo(() => {
-    return payments.filter(p => new Date(p.date).getTime() < currentPeriodStart.getTime());
-  }, [payments, currentPeriodStart]);
-
-  const selectedDayPayments = useMemo(() => {
-    return currentPayments.filter(p => toDateStr(new Date(p.date)) === selectedDayStr);
-  }, [currentPayments, selectedDayStr]);
-
-  const pastPeriods = useMemo(() => {
-    if (!workplace) return [];
-    const groups: Record<number, WorkplacePaymentRecord[]> = {};
-    pastPayments.forEach(p => {
-      const pDate = new Date(p.date);
-      const pStart = getPeriodStartForDate(pDate, workplace.cutoffType, workplace.customCutoffDays, workplace.cutoffDaysOfWeek);
-      const ts = pStart.getTime();
-      if (!groups[ts]) groups[ts] = [];
-      groups[ts].push(p);
+    const mappedList = group.payments.map(p => {
+      let vp = '';
+      if (workplace?.feeType === 'variable' && p.cost > 0) {
+        vp = ((p.feeCalculated / p.cost) * 100).toFixed(2);
+      }
+      return {
+        id: p.id!,
+        procedure: p.procedure,
+        cost: p.cost.toString(),
+        variablePercentage: vp
+      };
     });
     
-    return Object.keys(groups)
-      .map(Number)
-      .sort((a, b) => b - a)
-      .map(ts => ({
-        periodStart: new Date(ts),
-        payments: groups[ts]
-      }));
-  }, [pastPayments, workplace]);
+    setProceduresList(mappedList);
+    setEditingGroupId(group.payments.map(p => p.id!));
+    setIsAddingProcedure(false);
+    setEditingProcedureId(null);
+    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
+  };
 
-  const totalEarnedCurrentPeriod = currentPayments.reduce((acc, p) => acc + p.feeCalculated, 0);
-  const totalEarnedSelectedDay = selectedDayPayments.reduce((acc, p) => acc + p.feeCalculated, 0);
+
 
   if (!workplace) return null;
+
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
   return (
     <ScreenContainer>
@@ -557,186 +681,242 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
           <BackBtn onClick={onBack}>
             <ChevronLeft size={15} /> Volver
           </BackBtn>
-          <NewBtn onClick={() => setIsModalOpen(true)}>
-            <Plus size={14} /> Registrar Procedimiento
+          <NewBtn onClick={handleOpenModal}>
+            <Plus size={14} /> Registrar
           </NewBtn>
         </SectionHeader>
 
+        {/* Stats card for filter range */}
         <StatsCard>
-          <StatLabel>Acumulado del Corte ({workplace.name})</StatLabel>
-          <StatValue><DollarSign size={32} />{totalEarnedCurrentPeriod.toFixed(2)}</StatValue>
-          <div style={{ fontSize: '12px', marginTop: '12px', opacity: 0.7 }}>
-            Desde: {currentPeriodStart.toLocaleDateString('es-VE')}
+          <StatLabel>
+            {workplace.name} · {isFilterActive ? `${filterFrom} → ${filterTo}` : 'Este mes'}
+          </StatLabel>
+          <StatValue><DollarSign size={32} />{filteredTotal.toFixed(2)}</StatValue>
+          <div style={{ fontSize: '11px', marginTop: '8px', opacity: 0.6 }}>
+            {filteredPayments.length} procedimiento{filteredPayments.length !== 1 ? 's' : ''} en el período
           </div>
         </StatsCard>
 
-        {/* --- Day Slider --- */}
-        <DaySliderContainer>
-          {daysInPeriod.map(d => {
+        {/* Filter panel */}
+        <FilterPanel>
+          <FilterHeader onClick={() => setFilterOpen(v => !v)}>
+            <FilterTitle>
+              <Filter size={15} /> Filtro de período
+              {isFilterActive && <FilterBadge>activo</FilterBadge>}
+            </FilterTitle>
+            <span style={{ fontSize: '20px', color: 'var(--text-secondary)', lineHeight: 1 }}>
+              {filterOpen ? '−' : '+'}
+            </span>
+          </FilterHeader>
+
+          {filterOpen && (
+            <FilterBody>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <FilterGroup style={{ flex: 1 }}>
+                  <FilterLabel>Desde</FilterLabel>
+                  <FilterInput
+                    type="date"
+                    value={filterFrom}
+                    onChange={e => setFilterFrom(e.target.value)}
+                  />
+                </FilterGroup>
+                <FilterGroup style={{ flex: 1 }}>
+                  <FilterLabel>Hasta</FilterLabel>
+                  <FilterInput
+                    type="date"
+                    value={filterTo}
+                    onChange={e => setFilterTo(e.target.value)}
+                  />
+                </FilterGroup>
+              </div>
+              {isFilterActive && (
+                <Button 
+                  onClick={() => {
+                    setFilterFrom(toDateStr(firstOfMonth));
+                    setFilterTo(toDateStr(today));
+                  }}
+                  style={{ width: '100%', marginTop: '12px', padding: '8px', fontSize: '12px', background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)' }}
+                >
+                  Restablecer filtro
+                </Button>
+              )}
+            </FilterBody>
+          )}
+        </FilterPanel>
+
+        {/* Day slider (last 30 days) */}
+        <DaySliderContainer ref={sliderRef}>
+          {sliderDays.map(d => {
             const str = toDateStr(d);
             const isActive = str === selectedDayStr;
-            const dayNames = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+            const hasData = (paymentsByDay[str] || []).length > 0;
             return (
-              <DaySlide key={str} $active={isActive} onClick={() => setSelectedDayStr(str)}>
+              <DaySlide
+                key={str}
+                $active={isActive}
+                $hasData={hasData}
+                data-active={isActive}
+                onClick={() => setSelectedDayStr(str)}
+              >
                 <DayName>{dayNames[d.getDay()]}</DayName>
                 <DayNumber>{d.getDate()}</DayNumber>
+                {hasData && <DayDot />}
               </DaySlide>
             );
           })}
         </DaySliderContainer>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <ListHeader style={{ margin: 0 }}>
-            Procedimientos del Día
-          </ListHeader>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>
-            Total: <span style={{ color: '#10b981' }}>${totalEarnedSelectedDay.toFixed(2)}</span>
-          </div>
-        </div>
+        {/* Day detail */}
+        <DayHeader>
+          <DayTitle>
+            {new Date(selectedDayStr + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </DayTitle>
+          <DayTotal>${selectedDayTotal.toFixed(2)}</DayTotal>
+        </DayHeader>
 
-        {selectedDayPayments.length === 0 ? (
-          <EmptyDayState>
-            No hay procedimientos registrados para este día.
-          </EmptyDayState>
+        {groupedPayments.length === 0 ? (
+          <EmptyDayState>Sin procedimientos registrados este día.</EmptyDayState>
         ) : (
-          <div>
-            {selectedDayPayments.map(p => (
-              <PaymentItem key={p.id}>
-                <PaymentInfo>
-                  <PatientName>{p.patientName}</PatientName>
-                  <ProcedureText>{p.procedure}</ProcedureText>
-                  <DateText><Calendar size={11} /> {new Date(p.date).toLocaleString('es-VE', { timeStyle: 'short' })}</DateText>
-                </PaymentInfo>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <PaymentAmount>
-                    <Earned>+${p.feeCalculated.toFixed(2)}</Earned>
-                    <TotalCost>Costo: ${p.cost.toFixed(2)}</TotalCost>
-                  </PaymentAmount>
-                  <button 
-                    onClick={() => p.id && handleDelete(p.id)}
-                    style={{ background: 'transparent', border: 'none', color: '#ef4444', padding: '4px', cursor: 'pointer' }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+          groupedPayments.map(group => (
+            <PatientGroupCard key={group.patientName}>
+              <PatientHeader>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <PatientName>{group.patientName}</PatientName>
+                  <TimeText>
+                    <Calendar size={11} />
+                    {new Date(group.payments[0].date).toLocaleTimeString('es-VE', { timeStyle: 'short' })}
+                  </TimeText>
                 </div>
-              </PaymentItem>
-            ))}
-          </div>
-        )}
+                <PaymentAmount>
+                  <Earned>+${group.totalEarned.toFixed(2)}</Earned>
+                  <TotalCost>Total cobrado: ${group.totalCost.toFixed(2)}</TotalCost>
+                </PaymentAmount>
+              </PatientHeader>
+              
+              {group.payments.map(p => (
+                <ProcedureRow key={p.id}>
+                  <div>
+                    <ProcedureText>{p.procedure}</ProcedureText>
+                    <TotalCost>Costo: ${p.cost.toFixed(2)} | Honorario: ${p.feeCalculated.toFixed(2)}</TotalCost>
+                  </div>
+                </ProcedureRow>
+              ))}
 
-        {/* --- Past Periods History --- */}
-        {pastPeriods.length > 0 && (
-          <div style={{ marginTop: '40px' }}>
-            <ListHeader>
-              <FileText size={18} /> Cortes Anteriores
-            </ListHeader>
-            {pastPeriods.map(period => {
-              const isExpanded = expandedPeriod === period.periodStart.getTime();
-              const periodTotal = period.payments.reduce((acc, p) => acc + p.feeCalculated, 0);
-              return (
-                <HistoryBlock key={period.periodStart.getTime()}>
-                  <HistoryHeader onClick={() => setExpandedPeriod(isExpanded ? null : period.periodStart.getTime())}>
-                    <HistoryTitle>
-                      <Calendar size={15} /> 
-                      Corte desde {period.periodStart.toLocaleDateString('es-VE')}
-                    </HistoryTitle>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <HistoryTotal>${periodTotal.toFixed(2)}</HistoryTotal>
-                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </div>
-                  </HistoryHeader>
-                  {isExpanded && (
-                    <HistoryContent>
-                      {period.payments.map(p => (
-                        <PaymentItem key={p.id} style={{ boxShadow: 'none', border: '1px solid var(--border)', marginBottom: '8px' }}>
-                          <PaymentInfo>
-                            <PatientName>{p.patientName}</PatientName>
-                            <ProcedureText>{p.procedure}</ProcedureText>
-                            <DateText><Calendar size={11} /> {new Date(p.date).toLocaleDateString('es-VE')} {new Date(p.date).toLocaleTimeString('es-VE', { timeStyle: 'short' })}</DateText>
-                          </PaymentInfo>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <PaymentAmount>
-                              <Earned>+${p.feeCalculated.toFixed(2)}</Earned>
-                              <TotalCost>Costo: ${p.cost.toFixed(2)}</TotalCost>
-                            </PaymentAmount>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); p.id && handleDelete(p.id); }}
-                              style={{ background: 'transparent', border: 'none', color: '#ef4444', padding: '4px', cursor: 'pointer' }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </PaymentItem>
-                      ))}
-                    </HistoryContent>
-                  )}
-                </HistoryBlock>
-              )
-            })}
-          </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px', paddingTop: '12px', borderTop: '1px dashed var(--border)' }}>
+                <button
+                  onClick={() => handleEditPatientGroup(group)}
+                  style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Edit2 size={13} /> Editar paciente
+                </button>
+              </div>
+            </PatientGroupCard>
+          ))
         )}
-
       </SectionInner>
 
-      {/* --- Modal Registrar Procedimiento --- */}
+      {/* Modal */}
       {isModalOpen && (
         <ModalOverlay onClick={() => setIsModalOpen(false)}>
           <ModalContent onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 20px 0', color: 'var(--text)' }}>
-              Registrar Procedimiento
-              <div style={{ fontSize: '12px', fontWeight: 'normal', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                Para el día: {new Date(selectedDayStr + "T12:00:00").toLocaleDateString('es-VE')}
-              </div>
-            </h3>
+            <h3 style={{ margin: '0 0 4px 0', color: 'var(--text)' }}>Registrar Procedimiento</h3>
+            <p style={{ margin: '0 0 20px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+              Día: {new Date(selectedDayStr + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
 
             <FormGroup>
               <Label>Nombre del paciente</Label>
-              <Input 
-                value={form.patientName} 
-                onChange={e => setForm({...form, patientName: e.target.value})} 
-                placeholder="Ej. Juan Pérez" 
+              <Input
+                value={patientName}
+                onChange={e => setPatientName(e.target.value)}
+                placeholder="Ej. Juan Pérez"
               />
             </FormGroup>
 
-            <FormGroup>
-              <Label>Procedimiento realizado</Label>
-              <Input 
-                value={form.procedure} 
-                onChange={e => setForm({...form, procedure: e.target.value})} 
-                placeholder="Ej. Consulta Especialista" 
-              />
-            </FormGroup>
+            <Label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>Procedimientos</Label>
+            
+            {proceduresList.map(p => (
+              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--hover-bg)', padding: '12px', borderRadius: '10px', marginBottom: '8px', border: '1px solid var(--border)' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{p.procedure}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Costo: ${parseFloat(p.cost).toFixed(2)} | Honorario: ${calculateSingleFee(p).toFixed(2)}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button onClick={() => handleEditProc(p)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}><Edit2 size={14} /></button>
+                  <button onClick={() => handleDeleteProc(p.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}><Trash2 size={14} /></button>
+                </div>
+              </div>
+            ))}
 
-            <FormGroup>
-              <Label>Costo cobrado al paciente ($)</Label>
-              <Input 
-                type="number"
-                value={form.cost} 
-                onChange={e => setForm({...form, cost: e.target.value})} 
-                placeholder="Ej. 100" 
-              />
-            </FormGroup>
+            {(isAddingProcedure || editingProcedureId) && (
+              <div style={{ background: 'var(--surface)', padding: '16px', borderRadius: '10px', border: '1px dashed var(--accent)', marginBottom: '16px', marginTop: '12px' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--text)' }}>
+                  {editingProcedureId ? 'Editar procedimiento' : 'Nuevo procedimiento'}
+                </h4>
+                <FormGroup style={{ marginBottom: '10px' }}>
+                  <Label style={{ fontSize: '11px', marginBottom: '4px' }}>Procedimiento realizado</Label>
+                  <Input
+                    value={currentProcForm.procedure}
+                    onChange={e => setCurrentProcForm({ ...currentProcForm, procedure: e.target.value })}
+                    placeholder="Ej. Consulta Especialista"
+                    style={{ padding: '8px 10px', fontSize: '13px' }}
+                  />
+                </FormGroup>
 
-            {workplace.feeType === 'variable' && (
-              <FormGroup>
-                <Label>Porcentaje para este procedimiento (%)</Label>
-                <Input 
-                  type="number"
-                  value={form.variablePercentage} 
-                  onChange={e => setForm({...form, variablePercentage: e.target.value})} 
-                  placeholder="Ej. 25" 
-                />
-              </FormGroup>
+                <FormGroup style={{ marginBottom: '10px' }}>
+                  <Label style={{ fontSize: '11px', marginBottom: '4px' }}>Costo cobrado ($)</Label>
+                  <Input
+                    type="number"
+                    value={currentProcForm.cost}
+                    onChange={e => setCurrentProcForm({ ...currentProcForm, cost: e.target.value })}
+                    placeholder="Ej. 100"
+                    style={{ padding: '8px 10px', fontSize: '13px' }}
+                  />
+                </FormGroup>
+
+                {workplace.feeType === 'variable' && (
+                  <FormGroup style={{ marginBottom: '10px' }}>
+                    <Label style={{ fontSize: '11px', marginBottom: '4px' }}>Porcentaje (%)</Label>
+                    <Input
+                      type="number"
+                      value={currentProcForm.variablePercentage}
+                      onChange={e => setCurrentProcForm({ ...currentProcForm, variablePercentage: e.target.value })}
+                      placeholder="Ej. 25"
+                      style={{ padding: '8px 10px', fontSize: '13px' }}
+                    />
+                  </FormGroup>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
+                  {(proceduresList.length > 0) && (
+                    <Button type="button" onClick={() => { setIsAddingProcedure(false); setEditingProcedureId(null); }} style={{ padding: '6px 12px', fontSize: '12px' }}>Cancelar</Button>
+                  )}
+                  <Button type="button" $primary onClick={handleSaveProcToList} style={{ padding: '6px 12px', fontSize: '12px' }}>Guardar en la lista</Button>
+                </div>
+              </div>
             )}
 
-            <FormGroup>
-              <Label>Tu honorario calculado</Label>
-              <ReadOnlyInput>${calculatedFee.toFixed(2)}</ReadOnlyInput>
+            {!isAddingProcedure && !editingProcedureId && (
+              <Button 
+                type="button" 
+                onClick={() => { setIsAddingProcedure(true); setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' }); }}
+                style={{ width: '100%', marginBottom: '20px', border: '1px dashed var(--accent)', color: 'var(--accent)', background: 'transparent', padding: '8px', marginTop: '8px' }}
+              >
+                <Plus size={14} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+                Agregar un procedimiento
+              </Button>
+            )}
+
+            <FormGroup style={{ marginTop: '16px' }}>
+              <Label>Tu honorario total calculado</Label>
+              <ReadOnlyInput>${totalCalculatedFee.toFixed(2)}</ReadOnlyInput>
             </FormGroup>
 
             <ModalFooter>
-              <Button onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-              <Button $primary onClick={handleSavePayment}>Registrar</Button>
+              <Button onClick={() => setIsModalOpen(false)}>Cerrar</Button>
+              <Button $primary onClick={handleSavePayment}>Registrar Todos</Button>
             </ModalFooter>
           </ModalContent>
         </ModalOverlay>

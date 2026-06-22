@@ -132,16 +132,12 @@ export type MediaLibraryItem = {
 };
 
 export type WorkplaceFeeType = 'fixed_percentage' | 'variable' | 'custom_formula';
-export type WorkplaceCutoffType = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom' | 'weekly_days';
 
 export type WorkplaceRecord = {
   id?: number;
   name: string;
   feeType: WorkplaceFeeType;
   feeValue: string; // Used for fixed % (e.g. "30") or custom formula (e.g. "(costo - insumos) * 0.5")
-  cutoffType: WorkplaceCutoffType;
-  customCutoffDays?: number; // Used if cutoffType is custom
-  cutoffDaysOfWeek?: number[]; // Array of days (0=Sun, 1=Mon, ..., 6=Sat) for weekly_days
 };
 
 export type WorkplacePaymentRecord = {
