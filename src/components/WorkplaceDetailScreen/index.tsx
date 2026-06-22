@@ -425,6 +425,8 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
   const [editingProcedureId, setEditingProcedureId] = useState<number | null>(null);
   const [currentProcForm, setCurrentProcForm] = useState({ procedure: '', cost: '', variablePercentage: '' });
   const [editingGroupId, setEditingGroupId] = useState<number[]>([]);
+  const [modalDateStr, setModalDateStr] = useState<string>('');
+  const [isEditingDate, setIsEditingDate] = useState(false);
   
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -495,13 +497,6 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
   // --- Derived data ---
 
-  // Last 30 days for the slider
-  const sliderDays = useMemo(() => {
-    const days: Date[] = [];
-    for (let i = 29; i >= 0; i--) days.push(addDays(today, -i));
-    return days;
-  }, []);
-
   // Group all payments by day string
   const paymentsByDay = useMemo(() => {
     const map: Record<string, WorkplacePaymentRecord[]> = {};
@@ -512,6 +507,29 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     });
     return map;
   }, [payments]);
+
+  // Slider days (last 30 days filtered by working days OR having payments)
+  const sliderDays = useMemo(() => {
+    const days: Date[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = addDays(today, -i);
+      const str = toDateStr(d);
+      let include = false;
+      
+      if (workplace?.workingDays && workplace.workingDays.length > 0) {
+        if (workplace.workingDays.includes(d.getDay())) include = true;
+      } else {
+        include = true;
+      }
+      
+      if (paymentsByDay[str] && paymentsByDay[str].length > 0) {
+        include = true;
+      }
+      
+      if (include) days.push(d);
+    }
+    return days;
+  }, [workplace, paymentsByDay]);
 
   const selectedDayPayments = useMemo(
     () => paymentsByDay[selectedDayStr] || [],
@@ -613,7 +631,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
       const isNew = p.id > 1000000000000;
       const record: WorkplacePaymentRecord = {
         workplaceId,
-        date: new Date(selectedDayStr + 'T12:00:00').toISOString(),
+        date: new Date(modalDateStr + 'T12:00:00').toISOString(),
         patientName,
         procedure: p.procedure,
         cost: parseFloat(p.cost) || 0,
@@ -631,6 +649,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     setEditingProcedureId(null);
     setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
     setEditingGroupId([]);
+    setIsEditingDate(false);
     loadData();
   };
 
@@ -642,11 +661,14 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     setEditingProcedureId(null);
     setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
     setEditingGroupId([]);
+    setModalDateStr(selectedDayStr);
+    setIsEditingDate(false);
   };
 
   const handleEditPatientGroup = (group: { patientName: string, payments: WorkplacePaymentRecord[] }) => {
     setIsModalOpen(true);
     setPatientName(group.patientName);
+    setModalDateStr(toDateStr(new Date(group.payments[0].date)));
     
     const mappedList = group.payments.map(p => {
       let vp = '';
@@ -666,6 +688,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     setIsAddingProcedure(false);
     setEditingProcedureId(null);
     setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
+    setIsEditingDate(false);
   };
 
 
@@ -819,10 +842,40 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
       {isModalOpen && (
         <ModalOverlay onClick={() => setIsModalOpen(false)}>
           <ModalContent onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 4px 0', color: 'var(--text)' }}>Registrar Procedimiento</h3>
-            <p style={{ margin: '0 0 20px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              Día: {new Date(selectedDayStr + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
+            <h3 style={{ margin: '0 0 4px 0', color: 'var(--text)' }}>
+              {editingGroupId.length > 0 ? 'Editar Paciente' : 'Registrar Procedimiento'}
+            </h3>
+
+            {!isEditingDate ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  Día: {new Date(modalDateStr + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
+                <button 
+                  onClick={() => setIsEditingDate(true)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                >
+                  <Edit2 size={13} />
+                </button>
+              </div>
+            ) : (
+              <FormGroup>
+                <Label>Fecha</Label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Input
+                    type="date"
+                    value={modalDateStr}
+                    onChange={e => setModalDateStr(e.target.value)}
+                  />
+                  <button 
+                    onClick={() => setIsEditingDate(false)}
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)', padding: '0 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                  >
+                    OK
+                  </button>
+                </div>
+              </FormGroup>
+            )}
 
             <FormGroup>
               <Label>Nombre del paciente</Label>

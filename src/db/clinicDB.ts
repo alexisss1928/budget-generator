@@ -133,11 +133,12 @@ export type MediaLibraryItem = {
 
 export type WorkplaceFeeType = 'fixed_percentage' | 'variable' | 'custom_formula';
 
-export type WorkplaceRecord = {
+export interface WorkplaceRecord {
   id?: number;
   name: string;
   feeType: WorkplaceFeeType;
-  feeValue: string; // Used for fixed % (e.g. "30") or custom formula (e.g. "(costo - insumos) * 0.5")
+  feeValue: string; // "30" for percentage, or formula string
+  workingDays?: number[]; // Array of days of the week (0 = Sunday, 1 = Monday, etc.)
 };
 
 export type WorkplacePaymentRecord = {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ChevronLeft, Plus, Briefcase, Trash2, Edit2 } from 'lucide-react';
-import { WorkplaceRecord, getAllWorkplaces, saveWorkplace, deleteWorkplace } from '../../db/clinicDB';
+import { WorkplaceRecord, getAllWorkplaces, saveWorkplace, deleteWorkplace, getPaymentsByWorkplace } from '../../db/clinicDB';
 
 const ScreenContainer = styled.div`
   height: 100%;
@@ -84,7 +84,22 @@ const Card = styled.div`
 const CardHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+`;
+
+const WorkplaceAvatar = styled.div`
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
 `;
 
 const Title = styled.h3`
@@ -92,9 +107,7 @@ const Title = styled.h3`
   font-size: 16px;
   font-weight: 700;
   color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  line-height: 1.2;
 `;
 
 const SubText = styled.div`
@@ -103,6 +116,7 @@ const SubText = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-top: 4px;
 `;
 
 const Actions = styled.div`
@@ -248,13 +262,32 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
     name: '',
     feeType: 'fixed_percentage',
     feeValue: '',
+    workingDays: [],
   };
 
   const [form, setForm] = useState<Omit<WorkplaceRecord, 'id'>>(defaultFormState);
+  const [monthlyTotals, setMonthlyTotals] = useState<Record<number, number>>({});
 
   const loadData = async () => {
     const data = await getAllWorkplaces();
     setWorkplaces(data);
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const totals: Record<number, number> = {};
+    for (const wp of data) {
+      if (wp.id) {
+        const payments = await getPaymentsByWorkplace(wp.id);
+        const monthPayments = payments.filter(p => {
+          const d = new Date(p.date);
+          return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+        totals[wp.id] = monthPayments.reduce((acc, p) => acc + p.feeCalculated, 0);
+      }
+    }
+    setMonthlyTotals(totals);
   };
 
   useEffect(() => {
@@ -268,6 +301,7 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
         name: workplace.name,
         feeType: workplace.feeType,
         feeValue: workplace.feeValue,
+        workingDays: workplace.workingDays || [],
       });
     } else {
       setEditingWorkplace(null);
@@ -311,6 +345,13 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
     return type;
   };
 
+  const getInitials = (name: string) => {
+    const parts = name.split(' ').filter(p => p.trim() !== '');
+    if (parts.length === 0) return 'W';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
+
   return (
     <ScreenContainer>
       <SectionInner>
@@ -334,7 +375,10 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
             {workplaces.map(wp => (
               <Card key={wp.id} onClick={() => wp.id && onNavigateDetail(wp.id)}>
                 <CardHeader>
-                  <Title><Briefcase size={18} /> {wp.name}</Title>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <WorkplaceAvatar>{getInitials(wp.name)}</WorkplaceAvatar>
+                    <Title>{wp.name}</Title>
+                  </div>
                   <Actions>
                     <IconButton onClick={(e) => { e.stopPropagation(); handleOpenModal(wp); }}>
                       <Edit2 size={15} />
@@ -347,6 +391,33 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
                 <SubText>
                   <strong>Honorarios:</strong> {getFeeTypeText(wp.feeType, wp.feeValue)}
                 </SubText>
+                
+                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                  {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
+                    const hasSelection = wp.workingDays && wp.workingDays.length > 0;
+                    const isSelected = hasSelection ? wp.workingDays?.includes(idx) : true;
+                    return (
+                      <div key={idx} style={{ 
+                        width: '20px', height: '20px', borderRadius: '50%', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                        fontSize: '9px', fontWeight: 700,
+                        background: isSelected ? 'var(--accent)' : 'var(--input-bg)',
+                        color: isSelected ? '#fff' : 'var(--text-muted)',
+                        border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                        opacity: isSelected ? 1 : 0.5
+                      }}>
+                        {day}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Ganancia este mes:</span>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: '#10b981' }}>
+                    ${(monthlyTotals[wp.id!] || 0).toFixed(2)}
+                  </span>
+                </div>
               </Card>
             ))}
           </Grid>
@@ -367,6 +438,45 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
                 onChange={e => setForm({...form, name: e.target.value})} 
                 placeholder="Ej. Clínica Santa Sofía" 
               />
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Días de trabajo</Label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
+                  const isSelected = form.workingDays?.includes(idx);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        const current = form.workingDays || [];
+                        if (isSelected) {
+                          setForm({ ...form, workingDays: current.filter(d => d !== idx) });
+                        } else {
+                          setForm({ ...form, workingDays: [...current, idx] });
+                        }
+                      }}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '50%',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                        background: isSelected ? 'var(--accent)' : 'var(--surface)',
+                        color: isSelected ? '#fff' : 'var(--text-secondary)',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
             </FormGroup>
 
             <FormGroup>
