@@ -7,7 +7,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
   Menu, Home, FileText, ClipboardList, Pill,
-  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle, ShoppingCart, Save, BookOpen
+  Settings, Stethoscope, Sun, Moon, FilePlus, ChevronLeft, Database, Download, Share2, CreditCard, LogOut, Users, Crown, Clock, ShieldCheck, MessageSquare, HelpCircle, ShoppingCart, Save, BookOpen, Briefcase
 } from 'lucide-react';
 
 // Context
@@ -40,6 +40,8 @@ import ProUpgradeModal from './components/ProUpgradeModal';
 import ShareModal from './components/ShareModal';
 import ShoppingListScreen from './components/ShoppingListScreen';
 import MediaLibraryScreen from './components/MediaLibraryScreen';
+import WorkplacesScreen from './components/WorkplacesScreen';
+import WorkplaceDetailScreen from './components/WorkplaceDetailScreen';
 import AnalysisLoader from './components/AnalysisLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { usePWA } from './hooks/usePWA';
@@ -544,6 +546,8 @@ const sectionTitle: Record<string, string> = {
   'Datos del doctor': 'Datos del doctor',
   Respaldo: 'Respaldo y Restauración',
   AdminPanel: 'Panel de Administración',
+  Honorarios: 'Honorarios',
+  'Honorarios-Detalle': 'Detalle de Sitio'
 };
 
 // ─── Inner App ────────────────────────────────────────────────────────────────
@@ -561,6 +565,7 @@ function InnerApp() {
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(DEFAULT_DOCTOR_PROFILE);
   const [proModal, setProModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [sidebarShareModalOpen, setSidebarShareModalOpen] = useState(false);
+  const [currentWorkplaceId, setCurrentWorkplaceId] = useState<number | null>(null);
 
   // ── History / Navigation trap ──────────────────────────────────────────────
   // Keep ref in sync so the popstate handler never reads a stale section value
@@ -1083,6 +1088,7 @@ function InnerApp() {
     { label: 'Presupuestos', section: 'Listado-Presupuesto', icon: <FileText size={15} /> },
     { label: 'Informes', section: 'Listado-Informe', icon: <ClipboardList size={15} />, proOnly: true },
     { label: 'Recipes', section: 'Listado-Recipe', icon: <Pill size={15} /> },
+    { label: 'Honorarios', section: 'Honorarios', icon: <Briefcase size={15} /> },
     { label: 'Lista de compras', section: 'Lista de compras', icon: <ShoppingCart size={15} /> },
     { label: 'Recursos Didácticos', section: 'Recursos Didácticos', icon: <BookOpen size={15} />, proOnly: true },
   ];
@@ -1741,6 +1747,27 @@ function InnerApp() {
             <SectionInner>
               <MediaLibraryScreen onBack={() => navigate('Inicio')} />
             </SectionInner>
+          </SectionView>
+        )}
+
+        {section === 'Honorarios' && (
+          <SectionView>
+            <WorkplacesScreen 
+              onBack={() => navigate('Inicio')} 
+              onNavigateDetail={(id) => {
+                setCurrentWorkplaceId(id);
+                navigate('Honorarios-Detalle');
+              }} 
+            />
+          </SectionView>
+        )}
+
+        {section === 'Honorarios-Detalle' && currentWorkplaceId !== null && (
+          <SectionView>
+            <WorkplaceDetailScreen 
+              workplaceId={currentWorkplaceId} 
+              onBack={() => navigate('Honorarios')} 
+            />
           </SectionView>
         )}
       </ContentArea>

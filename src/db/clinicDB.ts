@@ -3,7 +3,7 @@
 // Stores: treatments, medicines, history, doctorProfile
 
 const DB_NAME = 'ClinicManagerDB';
-const DB_VERSION = 6; // bumped to add mediaLibrary store
+const DB_VERSION = 7; // bumped to add workplaces and workplacePayments stores
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -131,6 +131,30 @@ export type MediaLibraryItem = {
   createdAt: string;
 };
 
+export type WorkplaceFeeType = 'fixed_percentage' | 'variable' | 'custom_formula';
+export type WorkplaceCutoffType = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom' | 'weekly_days';
+
+export type WorkplaceRecord = {
+  id?: number;
+  name: string;
+  feeType: WorkplaceFeeType;
+  feeValue: string; // Used for fixed % (e.g. "30") or custom formula (e.g. "(costo - insumos) * 0.5")
+  cutoffType: WorkplaceCutoffType;
+  customCutoffDays?: number; // Used if cutoffType is custom
+  cutoffDaysOfWeek?: number[]; // Array of days (0=Sun, 1=Mon, ..., 6=Sat) for weekly_days
+};
+
+export type WorkplacePaymentRecord = {
+  id?: number;
+  workplaceId: number;
+  date: string; // ISO string
+  patientName: string;
+  procedure: string;
+  cost: number;
+  feeCalculated: number;
+};
+
+
 export const DEFAULT_DOCTOR_PROFILE: DoctorProfile = {
   prefix: 'Dr.',
   nombre: '',
@@ -225,6 +249,18 @@ export function initDB(): Promise<IDBDatabase> {
       // v6: media library
       if (!db.objectStoreNames.contains('mediaLibrary')) {
         db.createObjectStore('mediaLibrary', { keyPath: 'id', autoIncrement: true });
+      }
+
+      // v7: workplaces and payments
+      if (!db.objectStoreNames.contains('workplaces')) {
+        const wpStore = db.createObjectStore('workplaces', { keyPath: 'id', autoIncrement: true });
+        wpStore.createIndex('name', 'name', { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains('workplacePayments')) {
+        const wppStore = db.createObjectStore('workplacePayments', { keyPath: 'id', autoIncrement: true });
+        wppStore.createIndex('workplaceId', 'workplaceId', { unique: false });
+        wppStore.createIndex('date', 'date', { unique: false });
       }
     };
 
@@ -465,11 +501,49 @@ export async function deleteMediaItem(id: number): Promise<void> {
   await promisifyRequest(getStore(db, 'mediaLibrary', 'readwrite').delete(id));
 }
 
+// ─── Workplaces & Honorarios ────────────────────────────────────────────────────────
+
+export async function getAllWorkplaces(): Promise<WorkplaceRecord[]> {
+  const db = await initDB();
+  return getAllFromStore<WorkplaceRecord>(db, 'workplaces');
+}
+
+export async function saveWorkplace(item: WorkplaceRecord): Promise<number> {
+  const db = await initDB();
+  return promisifyRequest<number>(
+    getStore(db, 'workplaces', 'readwrite').put(item) as IDBRequest<number>
+  );
+}
+
+export async function deleteWorkplace(id: number): Promise<void> {
+  const db = await initDB();
+  await promisifyRequest(getStore(db, 'workplaces', 'readwrite').delete(id));
+}
+
+export async function getPaymentsByWorkplace(workplaceId: number): Promise<WorkplacePaymentRecord[]> {
+  const db = await initDB();
+  const store = getStore(db, 'workplacePayments', 'readonly');
+  const index = store.index('workplaceId');
+  return promisifyRequest<WorkplacePaymentRecord[]>(index.getAll(workplaceId));
+}
+
+export async function saveWorkplacePayment(item: WorkplacePaymentRecord): Promise<number> {
+  const db = await initDB();
+  return promisifyRequest<number>(
+    getStore(db, 'workplacePayments', 'readwrite').put(item) as IDBRequest<number>
+  );
+}
+
+export async function deleteWorkplacePayment(id: number): Promise<void> {
+  const db = await initDB();
+  await promisifyRequest(getStore(db, 'workplacePayments', 'readwrite').delete(id));
+}
+
 // ─── Export / Import ──────────────────────────────────────────────────────────
 
 export async function exportDB(): Promise<string> {
   const db = await initDB();
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments'];
   const exportData: Record<string, any> = {};
 
   for (const storeName of stores) {
@@ -489,7 +563,7 @@ export async function exportDB(): Promise<string> {
 export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 'replace'): Promise<void> {
   const db = await initDB();
   const data = JSON.parse(jsonData);
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments'];
 
   for (const storeName of stores) {
     if (data[storeName] && db.objectStoreNames.contains(storeName)) {
@@ -516,7 +590,7 @@ export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 're
 
 export async function clearAllData(): Promise<void> {
   const db = await initDB();
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments'];
 
   for (const storeName of stores) {
     if (db.objectStoreNames.contains(storeName)) {
