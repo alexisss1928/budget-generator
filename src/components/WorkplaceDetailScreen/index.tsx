@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import { ChevronLeft, Plus, DollarSign, Trash2, Filter, Edit2, Share2 } from 'lucide-react';
 import {
   WorkplaceRecord,
@@ -593,10 +593,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     return days;
   }, [workplace, paymentsByDay]);
 
-  const selectedDayPayments = useMemo(
-    () => paymentsByDay[selectedDayStr] || [],
-    [paymentsByDay, selectedDayStr]
-  );
+
 
   const procedureSuggestions = useMemo(() => {
     const map = new Map<string, { procedure: string, cost: string, variablePercentage: string }>();
