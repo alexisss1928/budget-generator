@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
-import { ChevronLeft, Plus, DollarSign, Calendar, Trash2, Filter, Edit2, Share2 } from 'lucide-react';
+import { ChevronLeft, Plus, DollarSign, Trash2, Filter, Edit2, Share2 } from 'lucide-react';
 import {
   WorkplaceRecord,
   WorkplacePaymentRecord,
@@ -312,13 +312,7 @@ const SuggestionItem = styled.div`
   &:hover { background: var(--hover-bg); }
 `;
 
-const TimeText = styled.div`
-  font-size: 11px;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-`;
+
 
 const PaymentAmount = styled.div`
   text-align: right;
@@ -396,6 +390,22 @@ const Input = styled.input`
   &:focus { border-color: var(--accent); }
 `;
 
+const Textarea = styled.textarea`
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  &:focus { border-color: var(--accent); }
+`;
+
 const ReadOnlyInput = styled.div`
   width: 100%;
   padding: 10px 12px;
@@ -449,10 +459,10 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [patientName, setPatientName] = useState('');
   
-  const [proceduresList, setProceduresList] = useState<{ id: number, procedure: string, cost: string, variablePercentage: string }[]>([]);
+  const [proceduresList, setProceduresList] = useState<{ id: number, procedure: string, cost: string, variablePercentage: string, quantity: number, notes?: string }[]>([]);
   const [isAddingProcedure, setIsAddingProcedure] = useState(false);
   const [editingProcedureId, setEditingProcedureId] = useState<number | null>(null);
-  const [currentProcForm, setCurrentProcForm] = useState({ procedure: '', cost: '', variablePercentage: '' });
+  const [currentProcForm, setCurrentProcForm] = useState({ procedure: '', cost: '', variablePercentage: '', quantity: 1, notes: '' });
   const [editingGroupId, setEditingGroupId] = useState<number[]>([]);
   const [modalDateStr, setModalDateStr] = useState<string>('');
   const [isEditingDate, setIsEditingDate] = useState(false);
@@ -502,9 +512,9 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
   }, []);
 
   // Calculation helpers
-  const calculateSingleFee = (p: { cost: string, variablePercentage: string }) => {
+  const calculateSingleFee = (p: { cost: string, variablePercentage: string, quantity?: number }) => {
     if (!workplace) return 0;
-    const costVal = parseFloat(p.cost) || 0;
+    const costVal = (parseFloat(p.cost) || 0) * (p.quantity || 1);
     let fee = 0;
     if (workplace.feeType === 'fixed_percentage') {
       fee = costVal * ((parseFloat(workplace.feeValue) || 0) / 100);
@@ -645,13 +655,13 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
       setProceduresList(prev => [...prev, { id: Date.now(), ...currentProcForm }]);
       setIsAddingProcedure(false);
     }
-    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
+    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '', quantity: 1, notes: '' });
   };
 
   const handleEditProc = (p: any) => {
     setEditingProcedureId(p.id);
     setIsAddingProcedure(false);
-    setCurrentProcForm({ procedure: p.procedure, cost: p.cost, variablePercentage: p.variablePercentage });
+    setCurrentProcForm({ procedure: p.procedure, cost: p.cost, variablePercentage: p.variablePercentage, quantity: p.quantity || 1, notes: p.notes || '' });
   };
 
   const handleDeleteProc = (id: number) => {
@@ -684,13 +694,15 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
     const promises = listToSave.map(p => {
       const isNew = p.id > 1000000000000;
+      const qty = p.quantity || 1;
       const record: WorkplacePaymentRecord = {
         workplaceId,
         date: new Date(modalDateStr + 'T12:00:00').toISOString(),
         patientName,
-        procedure: p.procedure,
-        cost: parseFloat(p.cost) || 0,
-        feeCalculated: calculateSingleFee(p)
+        procedure: qty > 1 ? `${p.procedure} (x${qty})` : p.procedure,
+        cost: (parseFloat(p.cost) || 0) * qty,
+        feeCalculated: calculateSingleFee(p),
+        notes: p.notes
       };
       if (!isNew) record.id = p.id;
       return saveWorkplacePayment(record);
@@ -702,7 +714,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     setProceduresList([]);
     setIsAddingProcedure(false);
     setEditingProcedureId(null);
-    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
+    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '', quantity: 1, notes: '' });
     setEditingGroupId([]);
     setIsEditingDate(false);
     loadData();
@@ -714,7 +726,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     setProceduresList([]);
     setIsAddingProcedure(false);
     setEditingProcedureId(null);
-    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
+    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '', quantity: 1, notes: '' });
     setEditingGroupId([]);
     setModalDateStr(selectedDayStr);
     setIsEditingDate(false);
@@ -734,7 +746,9 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
         id: p.id!,
         procedure: p.procedure,
         cost: p.cost.toString(),
-        variablePercentage: vp
+        variablePercentage: vp,
+        quantity: 1,
+        notes: p.notes || ''
       };
     });
     
@@ -742,7 +756,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     setEditingGroupId(group.payments.map(p => p.id!));
     setIsAddingProcedure(false);
     setEditingProcedureId(null);
-    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' });
+    setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '', quantity: 1, notes: '' });
     setIsEditingDate(false);
   };
 
@@ -884,10 +898,6 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
               <PatientHeader>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <PatientName>{group.patientName}</PatientName>
-                  <TimeText>
-                    <Calendar size={11} />
-                    {new Date(group.payments[0].date).toLocaleTimeString('es-VE', { timeStyle: 'short' })}
-                  </TimeText>
                 </div>
                 <PaymentAmount>
                   <Earned>+${group.totalEarned.toFixed(2)}</Earned>
@@ -900,6 +910,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                   <div>
                     <ProcedureText>{p.procedure}</ProcedureText>
                     <TotalCost>Costo: ${p.cost.toFixed(2)} | Honorario: ${p.feeCalculated.toFixed(2)}</TotalCost>
+                    {p.notes && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic' }}>{p.notes}</div>}
                   </div>
                 </ProcedureRow>
               ))}
@@ -970,10 +981,13 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
             {proceduresList.map(p => (
               <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--hover-bg)', padding: '12px', borderRadius: '10px', marginBottom: '8px', border: '1px solid var(--border)' }}>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{p.procedure}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Costo: ${parseFloat(p.cost).toFixed(2)} | Honorario: ${calculateSingleFee(p).toFixed(2)}
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                    {p.quantity > 1 ? `${p.quantity}x ` : ''}{p.procedure}
                   </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Costo: ${((parseFloat(p.cost) || 0) * (p.quantity || 1)).toFixed(2)} | Honorario: ${calculateSingleFee(p).toFixed(2)}
+                  </div>
+                  {p.notes && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic' }}>Notas: {p.notes}</div>}
                 </div>
                 <div style={{ display: 'flex', gap: '4px' }}>
                   <button onClick={() => handleEditProc(p)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}><Edit2 size={14} /></button>
@@ -1023,16 +1037,42 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                   )}
                 </FormGroup>
 
-                <FormGroup style={{ marginBottom: '10px' }}>
-                  <Label style={{ fontSize: '11px', marginBottom: '4px' }}>Costo cobrado ($)</Label>
-                  <Input
-                    type="number"
-                    value={currentProcForm.cost}
-                    onChange={e => setCurrentProcForm({ ...currentProcForm, cost: e.target.value })}
-                    placeholder="Ej. 100"
-                    style={{ padding: '8px 10px', fontSize: '13px' }}
-                  />
-                </FormGroup>
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '10px' }}>
+                  <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                    <Label style={{ fontSize: '11px', marginBottom: '4px' }}>Costo cobrado ($)</Label>
+                    <Input
+                      type="number"
+                      value={currentProcForm.cost}
+                      onChange={e => setCurrentProcForm({ ...currentProcForm, cost: e.target.value })}
+                      placeholder="Ej. 100"
+                      style={{ padding: '8px 10px', fontSize: '13px' }}
+                    />
+                  </FormGroup>
+
+                  <FormGroup style={{ marginBottom: 0, display: 'flex', flexDirection: 'column' }}>
+                    <Label style={{ fontSize: '11px', marginBottom: '4px' }}>Cantidad</Label>
+                    <div style={{ 
+                      display: 'flex', alignItems: 'center', background: 'var(--input-bg)', 
+                      border: '1px solid var(--border)', borderRadius: '8px', 
+                      padding: '4px 8px', gap: '12px', flex: 1, justifyContent: 'center'
+                    }}>
+                      <button 
+                        type="button"
+                        onClick={() => setCurrentProcForm(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1) }))}
+                        disabled={currentProcForm.quantity <= 1}
+                        style={{ background: 'transparent', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: currentProcForm.quantity <= 1 ? 'not-allowed' : 'pointer', opacity: currentProcForm.quantity <= 1 ? 0.3 : 1, color: 'var(--text)' }}
+                      >−</button>
+                      <span style={{ fontSize: '14px', fontWeight: 600, minWidth: '16px', textAlign: 'center', color: 'var(--text)' }}>
+                        {currentProcForm.quantity}
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => setCurrentProcForm(prev => ({ ...prev, quantity: prev.quantity + 1 }))}
+                        style={{ background: 'transparent', border: 'none', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', color: 'var(--text)' }}
+                      >+</button>
+                    </div>
+                  </FormGroup>
+                </div>
 
                 {workplace.feeType === 'variable' && (
                   <FormGroup style={{ marginBottom: '10px' }}>
@@ -1047,6 +1087,16 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                   </FormGroup>
                 )}
 
+                <FormGroup style={{ marginBottom: '10px' }}>
+                  <Label style={{ fontSize: '11px', marginBottom: '4px' }}>Notas (opcional)</Label>
+                  <Textarea
+                    value={currentProcForm.notes}
+                    onChange={e => setCurrentProcForm({ ...currentProcForm, notes: e.target.value })}
+                    placeholder="Ej. Dientes trabajados, materiales usados..."
+                    style={{ padding: '8px 10px', fontSize: '13px', minHeight: '60px' }}
+                  />
+                </FormGroup>
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
                   {(proceduresList.length > 0) && (
                     <Button type="button" onClick={() => { setIsAddingProcedure(false); setEditingProcedureId(null); }} style={{ padding: '6px 12px', fontSize: '12px' }}>Cancelar</Button>
@@ -1059,7 +1109,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
             {!isAddingProcedure && !editingProcedureId && (
               <Button 
                 type="button" 
-                onClick={() => { setIsAddingProcedure(true); setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '' }); }}
+                onClick={() => { setIsAddingProcedure(true); setCurrentProcForm({ procedure: '', cost: '', variablePercentage: '', quantity: 1, notes: '' }); }}
                 style={{ width: '100%', marginBottom: '20px', border: '1px dashed var(--accent)', color: 'var(--accent)', background: 'transparent', padding: '8px', marginTop: '8px' }}
               >
                 <Plus size={14} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />

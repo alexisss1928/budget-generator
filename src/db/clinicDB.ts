@@ -149,6 +149,7 @@ export type WorkplacePaymentRecord = {
   procedure: string;
   cost: number;
   feeCalculated: number;
+  notes?: string;
 };
 
 
