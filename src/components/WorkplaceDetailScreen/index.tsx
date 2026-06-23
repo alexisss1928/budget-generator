@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { ChevronLeft, Plus, DollarSign, Trash2, Filter, Edit2, Share2 } from 'lucide-react';
 import {
   WorkplaceRecord,
@@ -439,6 +439,28 @@ const Button = styled.button<{ $primary?: boolean }>`
   &:hover { opacity: 0.9; transform: translateY(-1px); }
 `;
 
+const SliderContainer = styled.div`
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  min-height: 300px;
+`;
+
+const SliderTrack = styled.div<{ $currentIndex: number, $isDragging: boolean, $touchOffset: number }>`
+  display: flex;
+  width: 100%;
+  transition: ${p => p.$isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)'};
+  transform: translateX(calc(-${p => p.$currentIndex * 100}% + ${p => p.$touchOffset}px));
+  align-items: flex-start;
+`;
+
+const SlidePanel = styled.div`
+  flex: 0 0 100%;
+  width: 100%;
+  padding: 0 2px;
+  box-sizing: border-box;
+`;
+
 // --- Helpers ---
 
 const toDateStr = (d: Date) =>
@@ -601,22 +623,37 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     s.procedure.toLowerCase() !== currentProcForm.procedure.trim().toLowerCase()
   );
 
-  const groupedPayments = useMemo(() => {
-    const groups: Record<string, typeof selectedDayPayments> = {};
-    selectedDayPayments.forEach(p => {
-      const k = p.patientName;
-      if (!groups[k]) groups[k] = [];
-      groups[k].push(p);
+  const allDaysData = useMemo(() => {
+    return sliderDays.map(d => {
+      const str = toDateStr(d);
+      const dayPayments = paymentsByDay[str] || [];
+      const total = dayPayments.reduce((a, p) => a + p.feeCalculated, 0);
+      
+      const groups: Record<string, typeof dayPayments> = {};
+      dayPayments.forEach(p => {
+        const k = p.patientName;
+        if (!groups[k]) groups[k] = [];
+        groups[k].push(p);
+      });
+      const grouped = Object.entries(groups).map(([patientName, payments]) => ({
+        patientName,
+        payments,
+        totalEarned: payments.reduce((acc, p) => acc + p.feeCalculated, 0),
+        totalCost: payments.reduce((acc, p) => acc + p.cost, 0),
+      }));
+      
+      return {
+        dateStr: str,
+        total,
+        grouped
+      };
     });
-    return Object.entries(groups).map(([patientName, payments]) => ({
-      patientName,
-      payments,
-      totalEarned: payments.reduce((acc, p) => acc + p.feeCalculated, 0),
-      totalCost: payments.reduce((acc, p) => acc + p.cost, 0),
-    }));
-  }, [selectedDayPayments]);
+  }, [sliderDays, paymentsByDay]);
 
-  const selectedDayTotal = selectedDayPayments.reduce((a, p) => a + p.feeCalculated, 0);
+  const activeIndex = useMemo(() => {
+    const idx = sliderDays.findIndex(d => toDateStr(d) === selectedDayStr);
+    return idx === -1 ? 0 : idx;
+  }, [sliderDays, selectedDayStr]);
 
   // Filter range total
   const filterFromDate = useMemo(() => {
@@ -760,7 +797,51 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     setIsEditingDate(false);
   };
 
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchOffset, setTouchOffset] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState(false);
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+    setTouchOffset(0);
+    setIsDragging(true);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+    const currentX = e.targetTouches[0].clientX;
+    const diff = currentX - touchStart;
+    
+    const currentIndex = sliderDays.findIndex(d => toDateStr(d) === selectedDayStr);
+    let offset = diff;
+    if (currentIndex === 0 && diff > 0) offset = diff * 0.3; // Resistance
+    if (currentIndex === sliderDays.length - 1 && diff < 0) offset = diff * 0.3; // Resistance
+    
+    setTouchOffset(offset);
+  };
+
+  const onTouchEndEvent = () => {
+    setIsDragging(false);
+    if (!touchStart) return;
+    
+    const isLeftSwipe = touchOffset < -50;
+    const isRightSwipe = touchOffset > 50;
+
+    if (isLeftSwipe) {
+      const currentIndex = sliderDays.findIndex(d => toDateStr(d) === selectedDayStr);
+      if (currentIndex !== -1 && currentIndex < sliderDays.length - 1) {
+        setSelectedDayStr(toDateStr(sliderDays[currentIndex + 1]));
+      }
+    } else if (isRightSwipe) {
+      const currentIndex = sliderDays.findIndex(d => toDateStr(d) === selectedDayStr);
+      if (currentIndex > 0) {
+        setSelectedDayStr(toDateStr(sliderDays[currentIndex - 1]));
+      }
+    }
+    
+    setTouchOffset(0);
+    setTouchStart(null);
+  };
 
   if (!workplace) return null;
 
@@ -883,49 +964,65 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
         </DaySliderContainer>
 
         {/* Day detail */}
-        <DayHeader>
-          <DayTitle>
-            {new Date(selectedDayStr + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </DayTitle>
-          <DayTotal>${selectedDayTotal.toFixed(2)}</DayTotal>
-        </DayHeader>
+        <SliderContainer
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEndEvent}
+        >
+          <SliderTrack 
+            $currentIndex={activeIndex}
+            $isDragging={isDragging}
+            $touchOffset={touchOffset}
+          >
+            {allDaysData.map(dayData => (
+              <SlidePanel key={dayData.dateStr}>
+                <DayHeader>
+                  <DayTitle>
+                    {new Date(dayData.dateStr + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </DayTitle>
+                  <DayTotal>${dayData.total.toFixed(2)}</DayTotal>
+                </DayHeader>
 
-        {groupedPayments.length === 0 ? (
-          <EmptyDayState>Sin procedimientos registrados este día.</EmptyDayState>
-        ) : (
-          groupedPayments.map(group => (
-            <PatientGroupCard key={group.patientName}>
-              <PatientHeader>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <PatientName>{group.patientName}</PatientName>
-                </div>
-                <PaymentAmount>
-                  <Earned>+${group.totalEarned.toFixed(2)}</Earned>
-                  <TotalCost>Total cobrado: ${group.totalCost.toFixed(2)}</TotalCost>
-                </PaymentAmount>
-              </PatientHeader>
-              
-              {group.payments.map(p => (
-                <ProcedureRow key={p.id}>
-                  <div>
-                    <ProcedureText>{p.procedure}</ProcedureText>
-                    <TotalCost>Costo: ${p.cost.toFixed(2)} | Honorario: ${p.feeCalculated.toFixed(2)}</TotalCost>
-                    {p.notes && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic' }}>{p.notes}</div>}
-                  </div>
-                </ProcedureRow>
-              ))}
+                {dayData.grouped.length === 0 ? (
+                  <EmptyDayState>Sin procedimientos registrados este día.</EmptyDayState>
+                ) : (
+                  dayData.grouped.map(group => (
+                    <PatientGroupCard key={group.patientName}>
+                      <PatientHeader>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <PatientName>{group.patientName}</PatientName>
+                        </div>
+                        <PaymentAmount>
+                          <Earned>+${group.totalEarned.toFixed(2)}</Earned>
+                          <TotalCost>Total cobrado: ${group.totalCost.toFixed(2)}</TotalCost>
+                        </PaymentAmount>
+                      </PatientHeader>
+                      
+                      {group.payments.map(p => (
+                        <ProcedureRow key={p.id}>
+                          <div>
+                            <ProcedureText>{p.procedure}</ProcedureText>
+                            <TotalCost>Costo: ${p.cost.toFixed(2)} | Honorario: ${p.feeCalculated.toFixed(2)}</TotalCost>
+                            {p.notes && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic' }}>{p.notes}</div>}
+                          </div>
+                        </ProcedureRow>
+                      ))}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px', paddingTop: '12px', borderTop: '1px dashed var(--border)' }}>
-                <button
-                  onClick={() => handleEditPatientGroup(group)}
-                  style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <Edit2 size={13} /> Editar paciente
-                </button>
-              </div>
-            </PatientGroupCard>
-          ))
-        )}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px', paddingTop: '12px', borderTop: '1px dashed var(--border)' }}>
+                        <button
+                          onClick={() => handleEditPatientGroup(group)}
+                          style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <Edit2 size={13} /> Editar paciente
+                        </button>
+                      </div>
+                    </PatientGroupCard>
+                  ))
+                )}
+              </SlidePanel>
+            ))}
+          </SliderTrack>
+        </SliderContainer>
       </SectionInner>
 
       {/* Modal */}
