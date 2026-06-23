@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
-import { ChevronLeft, Plus, DollarSign, Calendar, Trash2, Filter, Edit2 } from 'lucide-react';
+import { ChevronLeft, Plus, DollarSign, Calendar, Trash2, Filter, Edit2, Share2 } from 'lucide-react';
 import {
   WorkplaceRecord,
   WorkplacePaymentRecord,
@@ -279,8 +279,37 @@ const PatientName = styled.div`
 `;
 
 const ProcedureText = styled.div`
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 2px;
+`;
+
+const SuggestionsDropdown = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 10;
+  margin-top: 4px;
+`;
+
+const SuggestionItem = styled.div`
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  &:last-child { border-bottom: none; }
+  &:hover { background: var(--hover-bg); }
 `;
 
 const TimeText = styled.div`
@@ -427,6 +456,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
   const [editingGroupId, setEditingGroupId] = useState<number[]>([]);
   const [modalDateStr, setModalDateStr] = useState<string>('');
   const [isEditingDate, setIsEditingDate] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -534,6 +564,31 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
   const selectedDayPayments = useMemo(
     () => paymentsByDay[selectedDayStr] || [],
     [paymentsByDay, selectedDayStr]
+  );
+
+  const procedureSuggestions = useMemo(() => {
+    const map = new Map<string, { procedure: string, cost: string, variablePercentage: string }>();
+    for (const p of payments) {
+      const key = p.procedure.trim().toLowerCase();
+      if (!map.has(key)) {
+         let vp = '';
+         if (workplace?.feeType === 'variable' && p.cost > 0) {
+           vp = ((p.feeCalculated / p.cost) * 100).toFixed(2);
+           if (vp.endsWith('.00')) vp = vp.replace('.00', '');
+         }
+         map.set(key, {
+           procedure: p.procedure,
+           cost: p.cost.toString(),
+           variablePercentage: vp
+         });
+      }
+    }
+    return Array.from(map.values());
+  }, [payments, workplace]);
+
+  const filteredSuggestions = procedureSuggestions.filter(s => 
+    s.procedure.toLowerCase().includes(currentProcForm.procedure.toLowerCase()) &&
+    s.procedure.toLowerCase() !== currentProcForm.procedure.trim().toLowerCase()
   );
 
   const groupedPayments = useMemo(() => {
@@ -711,6 +766,30 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
         {/* Stats card for filter range */}
         <StatsCard>
+          <button 
+            onClick={() => {
+              const period = isFilterActive ? `${filterFrom} al ${filterTo}` : 'Este mes';
+              const text = `Resumen de Ganancias en ${workplace.name}\nPeríodo: ${period}\nProcedimientos: ${filteredPayments.length}\nTotal: $${filteredTotal.toFixed(2)}`;
+              if (navigator.share) {
+                navigator.share({ title: 'Resumen de Ganancias', text }).catch(console.error);
+              } else {
+                navigator.clipboard.writeText(text);
+                alert('Resumen copiado al portapapeles');
+              }
+            }}
+            title="Compartir resumen"
+            style={{ 
+              position: 'absolute', top: '16px', right: '16px', 
+              background: 'transparent', border: 'none', 
+              color: '#fff', cursor: 'pointer', padding: '6px', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              transition: 'opacity 0.2s', zIndex: 2, opacity: 0.7
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+          >
+            <Share2 size={16} />
+          </button>
           <StatLabel>
             {workplace.name} · {isFilterActive ? `${filterFrom} → ${filterTo}` : 'Este mes'}
           </StatLabel>
@@ -908,14 +987,40 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                 <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--text)' }}>
                   {editingProcedureId ? 'Editar procedimiento' : 'Nuevo procedimiento'}
                 </h4>
-                <FormGroup style={{ marginBottom: '10px' }}>
+                <FormGroup style={{ marginBottom: '10px', position: 'relative' }}>
                   <Label style={{ fontSize: '11px', marginBottom: '4px' }}>Procedimiento realizado</Label>
                   <Input
                     value={currentProcForm.procedure}
-                    onChange={e => setCurrentProcForm({ ...currentProcForm, procedure: e.target.value })}
+                    onChange={e => {
+                      setCurrentProcForm({ ...currentProcForm, procedure: e.target.value });
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     placeholder="Ej. Consulta Especialista"
                     style={{ padding: '8px 10px', fontSize: '13px' }}
                   />
+                  {showSuggestions && filteredSuggestions.length > 0 && (
+                    <SuggestionsDropdown>
+                      {filteredSuggestions.map(s => (
+                        <SuggestionItem 
+                          key={s.procedure}
+                          onClick={() => {
+                            setCurrentProcForm({
+                              ...currentProcForm,
+                              procedure: s.procedure,
+                              cost: s.cost,
+                              variablePercentage: workplace?.feeType === 'variable' ? s.variablePercentage : currentProcForm.variablePercentage
+                            });
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          <span>{s.procedure}</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>${s.cost}</span>
+                        </SuggestionItem>
+                      ))}
+                    </SuggestionsDropdown>
+                  )}
                 </FormGroup>
 
                 <FormGroup style={{ marginBottom: '10px' }}>

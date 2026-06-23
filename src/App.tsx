@@ -1088,7 +1088,7 @@ function InnerApp() {
     { label: 'Presupuestos', section: 'Listado-Presupuesto', icon: <FileText size={15} /> },
     { label: 'Informes', section: 'Listado-Informe', icon: <ClipboardList size={15} />, proOnly: true },
     { label: 'Recipes', section: 'Listado-Recipe', icon: <Pill size={15} /> },
-    { label: 'Honorarios', section: 'Honorarios', icon: <Briefcase size={15} /> },
+    { label: 'Honorarios', section: 'Honorarios', icon: <Briefcase size={15} />, proOnly: true },
     { label: 'Lista de compras', section: 'Lista de compras', icon: <ShoppingCart size={15} /> },
     { label: 'Recursos Didácticos', section: 'Recursos Didácticos', icon: <BookOpen size={15} />, proOnly: true },
   ];
@@ -1429,6 +1429,10 @@ function InnerApp() {
         {section === 'Inicio' && (
           <HomeScreen
             onNavigate={navigate}
+            onNavigateWorkplace={(id) => {
+              setCurrentWorkplaceId(id);
+              navigate('Honorarios-Detalle');
+            }}
             onNewDoc={navigateNewDoc}
             doctorProfile={doctorProfile}
             onLoadRecord={handleLoadRecord}

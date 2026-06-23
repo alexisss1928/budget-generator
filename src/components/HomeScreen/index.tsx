@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight, Edit2,
   Share2, Download, Trash2, AlertTriangle, Calculator, Monitor, ShoppingCart, Plus, DollarSign, Users, BookOpen
 } from 'lucide-react';
-import { DoctorProfile, HistoryRecord, PaymentMethodRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods, getAllShoppingItems, saveShoppingItem } from '../../db/clinicDB';
+import { DoctorProfile, HistoryRecord, PaymentMethodRecord, WorkplaceRecord, getAllHistory, deleteHistoryRecord, getAllPaymentMethods, getAllShoppingItems, saveShoppingItem, getAllWorkplaces } from '../../db/clinicDB';
 import PresupuestoDetail from '../PresupuestoDetail';
 import WhatsAppModal from '../WhatsAppModal';
 import ShareModal from '../ShareModal';
@@ -833,6 +833,7 @@ const TYPE_META: Record<string, { label: string; section: string }> = {
 
 interface HomeScreenProps {
   onNavigate: (section: string) => void;
+  onNavigateWorkplace?: (id: number) => void;
   onNewDoc: (type: 'presupuesto' | 'recipe' | 'informe') => void;
   doctorProfile: DoctorProfile;
   onLoadRecord: (record: HistoryRecord) => void;
@@ -842,9 +843,10 @@ interface HomeScreenProps {
   onProRequired: () => void;
 }
 
-const HomeScreen = ({ onNavigate, onNewDoc, doctorProfile, onLoadRecord, onDownloadRecord, onSharePdf, isFullAccess, onProRequired }: HomeScreenProps) => {
+const HomeScreen = ({ onNavigate, onNavigateWorkplace, onNewDoc, doctorProfile, onLoadRecord, onDownloadRecord, onSharePdf, isFullAccess, onProRequired }: HomeScreenProps) => {
   const { isTrial } = useAuth();
   const [recent, setRecent] = useState<HistoryRecord[]>([]);
+  const [workplaces, setWorkplaces] = useState<WorkplaceRecord[]>([]);
   const [openId, setOpenId] = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<{ id: number; name: string } | null>(null);
   const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
@@ -943,6 +945,7 @@ const HomeScreen = ({ onNavigate, onNewDoc, doctorProfile, onLoadRecord, onDownl
   useEffect(() => {
     refreshRecent();
     getAllPaymentMethods().then(setPaymentMethods);
+    getAllWorkplaces().then(setWorkplaces);
   }, []);
 
   return (
@@ -1124,6 +1127,35 @@ const HomeScreen = ({ onNavigate, onNewDoc, doctorProfile, onLoadRecord, onDownl
               </SectionLabel>
 
               <ActionGrid>
+                {workplaces.map((wp, i) => {
+                  const locked = !isFullAccess;
+                  return (
+                    <ActionCard
+                      key={`wp-${wp.id}`}
+                      $locked={locked}
+                      onClick={() => {
+                        if (locked) return onProRequired();
+                        if (onNavigateWorkplace && wp.id) {
+                          onNavigateWorkplace(wp.id);
+                        }
+                      }}
+                      style={{ animationDelay: `${i * 0.05}s` }}
+                    >
+                      {locked && <ActionCountDot $color="#fff" style={{ background: '#eab308', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>PRO</ActionCountDot>}
+                      {!locked && isTrial && <ActionCountDot $color="#fff" style={{ background: '#3b82f6', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>TRIAL</ActionCountDot>}
+                      <IconBadge $color="#3b82f6">
+                        <span style={{ fontSize: '18px', fontWeight: 800 }}>
+                          {wp.name.substring(0, 2).toUpperCase()}
+                        </span>
+                      </IconBadge>
+                      <ActionContent>
+                        <h4 style={{ whiteSpace: 'pre-line' }}>{wp.name}</h4>
+                        <ActionSubtext>Lugar de trabajo</ActionSubtext>
+                      </ActionContent>
+                    </ActionCard>
+                  );
+                })}
+                
                 {actions.filter(a => a.type !== 'calc_dosis' && a.type !== 'negatoscopio' && a.type !== 'conversor_bcv' && (!isFullAccess || !hiddenActions.includes(a.type))).map((a, i) => {
 
                   const locked = a.proOnly && !isFullAccess;
@@ -1155,7 +1187,7 @@ const HomeScreen = ({ onNavigate, onNewDoc, doctorProfile, onLoadRecord, onDownl
                         }
                       }}
                       id={`home-card-${a.section.toLowerCase()}`}
-                      style={{ animationDelay: `${i * 0.07}s` }}
+                      style={{ animationDelay: `${(workplaces.length + i) * 0.07}s` }}
                     >
                       {locked && <ActionCountDot $color="#fff" style={{ background: '#eab308', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>PRO</ActionCountDot>}
                       {!locked && isTrial && a.proOnly && <ActionCountDot $color="#fff" style={{ background: '#3b82f6', padding: '2px 6px', fontSize: '9px', letterSpacing: '0.5px' }}>TRIAL</ActionCountDot>}
