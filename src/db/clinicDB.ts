@@ -2,8 +2,17 @@
 // DB: ClinicManagerDB v2
 // Stores: treatments, medicines, history, doctorProfile
 
-const DB_NAME = 'ClinicManagerDB';
+const LEGACY_DB_NAME = 'ClinicManagerDB';
+let currentDBName = 'ClinicManagerDB';
 const DB_VERSION = 7; // bumped to add workplaces and workplacePayments stores
+
+export function setDatabaseUser(userId?: string) {
+  if (dbInstance) {
+    dbInstance.close();
+    dbInstance = null;
+  }
+  currentDBName = userId ? `ClinicManagerDB_${userId}` : 'ClinicManagerDB';
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -180,7 +189,7 @@ export function initDB(): Promise<IDBDatabase> {
   if (dbInstance) return Promise.resolve(dbInstance);
 
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(currentDBName, DB_VERSION);
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
@@ -601,5 +610,77 @@ export async function clearAllData(): Promise<void> {
     const store = db.transaction('doctorProfile', 'readwrite').objectStore('doctorProfile');
     await promisifyRequest(store.clear());
   }
+}
+
+export async function migrateFromLegacyDB(userId: string): Promise<void> {
+  const newName = `ClinicManagerDB_${userId}`;
+
+  const legacyDB = await new Promise<IDBDatabase | null>((resolve) => {
+    const req = indexedDB.open(LEGACY_DB_NAME);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+
+  if (!legacyDB || !legacyDB.objectStoreNames.contains('doctorProfile')) {
+    if (legacyDB) legacyDB.close();
+    return;
+  }
+
+  const profileReq = legacyDB.transaction('doctorProfile', 'readonly').objectStore('doctorProfile').get('profile');
+  const legacyProfile = await promisifyRequest<DoctorProfile | undefined>(profileReq);
+
+  if (!legacyProfile) {
+    legacyDB.close();
+    return;
+  }
+
+  const newDB = await new Promise<IDBDatabase | null>((resolve) => {
+    const req = indexedDB.open(newName);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+
+  if (newDB && newDB.objectStoreNames.contains('doctorProfile')) {
+    const newProfile = await promisifyRequest<DoctorProfile | undefined>(newDB.transaction('doctorProfile', 'readonly').objectStore('doctorProfile').get('profile'));
+    if (newProfile) {
+      newDB.close();
+      legacyDB.close();
+      return;
+    }
+  }
+  if (newDB) newDB.close();
+
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments'];
+  const exportData: Record<string, any> = {};
+
+  for (const storeName of stores) {
+    if (legacyDB.objectStoreNames.contains(storeName)) {
+      exportData[storeName] = await promisifyRequest<any[]>(legacyDB.transaction(storeName, 'readonly').objectStore(storeName).getAll());
+    }
+  }
+
+  legacyDB.close();
+
+  setDatabaseUser(userId);
+  const db = await initDB();
+
+  for (const storeName of stores) {
+    if (exportData[storeName] && exportData[storeName].length > 0 && db.objectStoreNames.contains(storeName)) {
+      const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+      for (const item of exportData[storeName]) {
+        await promisifyRequest(store.put(item));
+      }
+    }
+  }
+
+  if (legacyProfile) {
+    const store = db.transaction('doctorProfile', 'readwrite').objectStore('doctorProfile');
+    await promisifyRequest(store.put(legacyProfile, 'profile'));
+  }
+
+  indexedDB.deleteDatabase(LEGACY_DB_NAME);
+  
+  // Reload the app to fetch the migrated data
+  window.location.reload();
 }
 

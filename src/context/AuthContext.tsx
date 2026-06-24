@@ -7,6 +7,7 @@ import {
   ReactNode,
 } from 'react';
 import api from '../services/api';
+import { setDatabaseUser, migrateFromLegacyDB } from '../db/clinicDB';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,8 +59,21 @@ function clearStorage() {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, _setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const setUser = useCallback((newUser: AuthUser | null) => {
+    if (newUser) {
+      setDatabaseUser(newUser.id);
+      // Run migration async in background
+      migrateFromLegacyDB(newUser.id).catch(err => {
+        console.error('Migration error:', err);
+      });
+    } else {
+      setDatabaseUser();
+    }
+    _setUser(newUser);
+  }, []);
 
   // ── Initialize from localStorage ─────────────────────────────────────────
   const initialize = useCallback(async () => {
