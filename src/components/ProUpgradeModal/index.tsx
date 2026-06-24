@@ -400,11 +400,11 @@ const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ isOpen, onClose, mess
           <TimelineWrap>
             <TLine />
             <TNode>
-              <TCircle $active>$15</TCircle>
+              <TCircle $active>$20</TCircle>
               <TLabel $active>AHORA</TLabel>
             </TNode>
             <TNode>
-              <TCircle>$25</TCircle>
+              <TCircle>$30</TCircle>
               <TLabel>LUEGO</TLabel>
             </TNode>
             <TNode>

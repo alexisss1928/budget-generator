@@ -4,7 +4,7 @@
 
 const LEGACY_DB_NAME = 'ClinicManagerDB';
 let currentDBName = 'ClinicManagerDB';
-const DB_VERSION = 7; // bumped to add workplaces and workplacePayments stores
+const DB_VERSION = 8; // bumped to add patients store
 
 export function setDatabaseUser(userId?: string) {
   if (dbInstance) {
@@ -36,6 +36,49 @@ export type MedicineRecord = {
   presentacion?: string;      // tipo de presentación
 };
 
+export type PatientRecord = {
+  id?: number;
+  name: string;
+  identification: string;
+  phone?: string;
+  email?: string;
+  gender?: string;
+  birthDate?: string;
+  isMinor?: boolean;
+  guardianName?: string;
+  guardianId?: string;
+  guardianRelationship?: string;
+  motivoConsulta?: string;
+  hasAlergias?: boolean;
+  alergias?: string;
+  hasEnfermedades?: boolean;
+  enfermedades?: string;
+  hasMedicamentos?: boolean;
+  medicamentos?: string;
+  embarazo?: boolean;
+  createdAt?: string;
+};
+
+export const DEFAULT_PERSONAL_DATA = {
+  name: '',
+  identification: '',
+  phone: '',
+  email: '',
+  gender: '',
+  birthDate: '',
+  isMinor: false,
+  guardianName: '',
+  guardianId: '',
+  guardianRelationship: '',
+  motivoConsulta: '',
+  hasAlergias: false,
+  alergias: '',
+  hasEnfermedades: false,
+  enfermedades: '',
+  hasMedicamentos: false,
+  medicamentos: '',
+  embarazo: false
+};
 
 export type HistoryType = 'recipe' | 'presupuesto' | 'informe';
 
@@ -269,6 +312,46 @@ export function initDB(): Promise<IDBDatabase> {
         wppStore.createIndex('workplaceId', 'workplaceId', { unique: false });
         wppStore.createIndex('date', 'date', { unique: false });
       }
+
+      // v8: patients store
+      if (!db.objectStoreNames.contains('patients')) {
+        const patStore = db.createObjectStore('patients', { keyPath: 'id', autoIncrement: true });
+        patStore.createIndex('name', 'name', { unique: false });
+        patStore.createIndex('identification', 'identification', { unique: false });
+
+        if (event.oldVersion > 0 && event.oldVersion < 8 && db.objectStoreNames.contains('history')) {
+          // Migrate unique patients from history to new patients store
+          const tx = (event.target as IDBOpenDBRequest).transaction!;
+          const histStore = tx.objectStore('history');
+          const cursorReq = histStore.openCursor();
+          const uniqueMap = new Map();
+
+          cursorReq.onsuccess = (e) => {
+            const cursor = (e.target as IDBRequest<IDBCursorWithValue>).result;
+            if (cursor) {
+              const r = cursor.value;
+              if (r.patientId) {
+                const key = r.patientId.trim().toLowerCase();
+                if (!uniqueMap.has(key)) {
+                  uniqueMap.set(key, {
+                    name: r.patientName,
+                    identification: r.patientId.trim(),
+                    phone: r.patientPhone || '',
+                    email: r.patientEmail || '',
+                    isMinor: false,
+                    createdAt: r.date || new Date().toISOString(),
+                  });
+                }
+              }
+              cursor.continue();
+            } else {
+              for (const pat of uniqueMap.values()) {
+                patStore.add(pat);
+              }
+            }
+          };
+        }
+      }
     };
 
     request.onsuccess = (event) => {
@@ -413,6 +496,44 @@ export async function getUniquePatients(): Promise<PatientData[]> {
   return Array.from(map.values());
 }
 
+// ─── Patients ─────────────────────────────────────────────────────────────────
+
+export async function getAllPatients(): Promise<PatientRecord[]> {
+  const db = await initDB();
+  const patients = await getAllFromStore<PatientRecord>(db, 'patients');
+  return patients.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function savePatient(patient: PatientRecord): Promise<number> {
+  const db = await initDB();
+  return promisifyRequest<number>(
+    getStore(db, 'patients', 'readwrite').put(patient) as IDBRequest<number>
+  );
+}
+
+export async function deletePatient(id: number): Promise<void> {
+  const db = await initDB();
+  await promisifyRequest(getStore(db, 'patients', 'readwrite').delete(id));
+}
+
+export async function upsertPatient(patient: PatientRecord): Promise<void> {
+  if (!patient.identification) return;
+  const db = await initDB();
+  const tx = db.transaction('patients', 'readwrite');
+  const store = tx.objectStore('patients');
+  const index = store.index('identification');
+  const existingReq = index.get(patient.identification);
+  
+  const existing = await promisifyRequest<PatientRecord | undefined>(existingReq);
+  if (existing) {
+    // Update existing
+    await promisifyRequest(store.put({ ...existing, ...patient, id: existing.id }));
+  } else {
+    // Add new
+    await promisifyRequest(store.add(patient));
+  }
+}
+
 // ─── Doctor Profile ───────────────────────────────────────────────────────────
 
 const PROFILE_KEY = 'profile';
@@ -550,7 +671,7 @@ export async function deleteWorkplacePayment(id: number): Promise<void> {
 
 export async function exportDB(): Promise<string> {
   const db = await initDB();
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments', 'patients'];
   const exportData: Record<string, any> = {};
 
   for (const storeName of stores) {
@@ -570,7 +691,7 @@ export async function exportDB(): Promise<string> {
 export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 'replace'): Promise<void> {
   const db = await initDB();
   const data = JSON.parse(jsonData);
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments', 'patients'];
 
   for (const storeName of stores) {
     if (data[storeName] && db.objectStoreNames.contains(storeName)) {
@@ -597,7 +718,7 @@ export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 're
 
 export async function clearAllData(): Promise<void> {
   const db = await initDB();
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments', 'patients'];
 
   for (const storeName of stores) {
     if (db.objectStoreNames.contains(storeName)) {
@@ -650,7 +771,7 @@ export async function migrateFromLegacyDB(userId: string): Promise<void> {
   }
   if (newDB) newDB.close();
 
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments'];
+  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments', 'patients'];
   const exportData: Record<string, any> = {};
 
   for (const storeName of stores) {

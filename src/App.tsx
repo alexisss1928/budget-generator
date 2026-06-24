@@ -61,7 +61,10 @@ import {
   DoctorProfile,
   DEFAULT_DOCTOR_PROFILE,
   HistoryRecord,
-  getAllHistory
+  getAllHistory,
+  upsertPatient,
+  PatientRecord,
+  DEFAULT_PERSONAL_DATA
 } from './db/clinicDB';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -674,7 +677,7 @@ function InnerApp() {
     const allowed = await checkFreeLimits('presupuesto');
     if (!allowed) return;
     setTreatmentsList([]);
-    setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
+    setPersonalData(DEFAULT_PERSONAL_DATA);
     setDocumentDate(getLocalDateString());
   };
 
@@ -693,7 +696,7 @@ function InnerApp() {
   };
 
   // ── Patient ────────────────────────────────────────────────────────────────
-  const [personalData, setPersonalData] = useState({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
+  const [personalData, setPersonalData] = useState(DEFAULT_PERSONAL_DATA);
 
   const handlePersonalData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -701,16 +704,13 @@ function InnerApp() {
   };
 
   const handleLoadRecord = useCallback((record: HistoryRecord) => {
-    setPersonalData({
-      name: record.patientName,
-      identification: record.patientId,
-      phone: '',
-      email: '',
-      isMinor: false,
-      guardianName: '',
-      guardianId: '',
-      guardianRelationship: '',
-    });
+      setPersonalData({
+        ...DEFAULT_PERSONAL_DATA,
+        name: record.patientName,
+        identification: record.patientId,
+        phone: record.patientPhone || '',
+        email: record.patientEmail || '',
+      });
 
     if (record.type === 'recipe') {
       setCurrentRecipe(record.data.medicines || []);
@@ -770,8 +770,8 @@ function InnerApp() {
   const newRecipe = async () => {
     const allowed = await checkFreeLimits('recipe');
     if (!allowed) return;
-    setCurrentRecipe([]);
-    setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
+    setReport('');
+    setPersonalData(DEFAULT_PERSONAL_DATA);
     setDocumentDate(getLocalDateString());
   };
 
@@ -804,7 +804,19 @@ function InnerApp() {
       } else if (section === 'Informe' && report !== '') {
         await saveToHistory({ type: 'informe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, ...contactData, data: { report } });
       }
-    } catch (err) { console.error('Error guardando historial:', err); }
+
+      await upsertPatient({
+        name: personalData.name,
+        identification: personalData.identification,
+        phone: personalData.phone,
+        email: personalData.email,
+        isMinor: personalData.isMinor,
+        guardianName: personalData.guardianName,
+        guardianId: personalData.guardianId,
+        guardianRelationship: personalData.guardianRelationship,
+      });
+
+    } catch (err) { console.error('Error guardando historial o paciente:', err); }
 
     const filename = `${section}_${personalData.name || 'paciente'}.pdf`;
 
@@ -846,12 +858,24 @@ function InnerApp() {
       } else if (section === 'Informe' && report !== '') {
         await saveToHistory({ type: 'informe', date: new Date().toISOString(), patientName: personalData.name, patientId: personalData.identification, ...contactData, data: { report } });
       }
+
+      await upsertPatient({
+        name: personalData.name,
+        identification: personalData.identification,
+        phone: personalData.phone,
+        email: personalData.email,
+        isMinor: personalData.isMinor,
+        guardianName: personalData.guardianName,
+        guardianId: personalData.guardianId,
+        guardianRelationship: personalData.guardianRelationship,
+      });
+
       toast.success('Información guardada exitosamente.');
       if (section === 'Recipes') navigate('Listado-Recipe');
       if (section === 'Presupuesto') navigate('Listado-Presupuesto');
       if (section === 'Informe') navigate('Listado-Informe');
     } catch (err) { 
-      console.error('Error guardando historial:', err);
+      console.error('Error guardando historial o paciente:', err);
       toast.error('Hubo un error al guardar la información.');
     }
   }, [section, currentRecipe, treatmentsList, report, personalData]);
@@ -933,6 +957,16 @@ function InnerApp() {
         patientEmail: personalData.email || undefined,
         data: { treatments: treatmentsList }
       });
+      await upsertPatient({
+        name: personalData.name,
+        identification: personalData.identification,
+        phone: personalData.phone,
+        email: personalData.email,
+        isMinor: personalData.isMinor,
+        guardianName: personalData.guardianName,
+        guardianId: personalData.guardianId,
+        guardianRelationship: personalData.guardianRelationship,
+      });
     } catch (err) { console.error(err); }
 
     const fecha = new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -974,6 +1008,16 @@ function InnerApp() {
         patientPhone: personalData.phone || undefined,
         patientEmail: personalData.email || undefined,
         data: { medicines: currentRecipe }
+      });
+      await upsertPatient({
+        name: personalData.name,
+        identification: personalData.identification,
+        phone: personalData.phone,
+        email: personalData.email,
+        isMinor: personalData.isMinor,
+        guardianName: personalData.guardianName,
+        guardianId: personalData.guardianId,
+        guardianRelationship: personalData.guardianRelationship,
       });
     } catch (err) { console.error(err); }
 
@@ -1021,6 +1065,16 @@ function InnerApp() {
         patientPhone: personalData.phone || undefined,
         patientEmail: personalData.email || undefined,
         data: { report }
+      });
+      await upsertPatient({
+        name: personalData.name,
+        identification: personalData.identification,
+        phone: personalData.phone,
+        email: personalData.email,
+        isMinor: personalData.isMinor,
+        guardianName: personalData.guardianName,
+        guardianId: personalData.guardianId,
+        guardianRelationship: personalData.guardianRelationship,
       });
     } catch (err) { console.error(err); }
 
@@ -1117,7 +1171,7 @@ function InnerApp() {
     window.history.pushState({ section: s }, '', '/');
     historyDepthRef.current++;
     if (s === 'Inicio') {
-      setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
+      setPersonalData(DEFAULT_PERSONAL_DATA);
       setTreatmentsList([]);
       setCurrentBudget({ nombre: '', precio: '', insuranceCoverage: '', quantity: '', observations: '' });
       setCurrentRecipe([]);
@@ -1133,7 +1187,7 @@ function InnerApp() {
     const allowed = await checkFreeLimits(docType);
     if (!allowed) return;
     // Clean state
-    setPersonalData({ name: '', identification: '', phone: '', email: '', isMinor: false, guardianName: '', guardianId: '', guardianRelationship: '' });
+    setPersonalData(DEFAULT_PERSONAL_DATA);
     setDocumentDate(getLocalDateString());
     if (docType === 'presupuesto') {
       setTreatmentsList([]);
@@ -1148,6 +1202,43 @@ function InnerApp() {
     sectionRef.current = sectionMap[docType];
     setDrawerOpen(false);
     window.history.pushState({ section: sectionMap[docType] }, '', '/');
+    historyDepthRef.current++;
+  };
+
+  const handleStartDocumentForPatient = async (patient: PatientRecord, type: 'presupuesto' | 'recipe' | 'informe') => {
+    const allowed = await checkFreeLimits(type);
+    if (!allowed) return;
+    
+    if (type === 'presupuesto') {
+      setTreatmentsList([]);
+      setCurrentBudget({ nombre: '', precio: '', insuranceCoverage: '', quantity: '', observations: '' });
+    } else if (type === 'recipe') {
+      setCurrentRecipe([]);
+      setCurrentMedicineSelected({ nombre: '', indicaciones: '', presentacion: '' });
+    } else if (type === 'informe') {
+      setReport('');
+    }
+
+    setPersonalData({
+      ...DEFAULT_PERSONAL_DATA,
+      name: patient.name,
+      identification: patient.identification,
+      phone: patient.phone || '',
+      email: patient.email || '',
+      gender: patient.gender || '',
+      birthDate: patient.birthDate || '',
+      isMinor: patient.isMinor || false,
+      guardianName: patient.guardianName || '',
+      guardianId: patient.guardianId || '',
+      guardianRelationship: patient.guardianRelationship || ''
+    });
+    setDocumentDate(getLocalDateString());
+
+    const sectionMap = { presupuesto: 'Presupuesto', recipe: 'Recipes', informe: 'Informe' } as const;
+    setSection(sectionMap[type]);
+    sectionRef.current = sectionMap[type];
+    setDrawerOpen(false);
+    window.history.pushState({ section: sectionMap[type] }, '', '/');
     historyDepthRef.current++;
   };
 
@@ -1583,6 +1674,7 @@ function InnerApp() {
               onLoadRecord={handleLoadRecord}
               onDownloadRecord={handleDownloadHistoryRecord}
               onSharePdf={handleShareHistoryRecordPdf}
+              onCreateDocument={handleStartDocumentForPatient}
             />
           </SectionView>
         )}

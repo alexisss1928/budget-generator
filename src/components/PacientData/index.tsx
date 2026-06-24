@@ -21,7 +21,8 @@ const FieldRow = styled.div`
 
   input[type='text'],
   input[type='tel'],
-  input[type='email'] {
+  input[type='email'],
+  input[type='date'] {
     flex: 1;
     min-width: 0;
     box-sizing: border-box;
@@ -64,48 +65,6 @@ const FieldRow = styled.div`
     &:focus {
       box-shadow: 0 0 0 2px var(--accent);
     }
-  }
-`;
-
-const CheckboxRow = styled.div<{ $open?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: ${p => p.$open ? 'none' : '1px solid var(--border)'};
-  cursor: pointer;
-  user-select: none;
-
-  label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    flex: 1;
-  }
-`;
-
-const StyledCheckbox = styled.div<{ $checked: boolean }>`
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  border: 2px solid ${p => p.$checked ? 'var(--accent)' : 'var(--border)'};
-  background: ${p => p.$checked ? 'var(--accent)' : 'var(--input-bg)'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s;
-
-  &::after {
-    content: '';
-    display: ${p => p.$checked ? 'block' : 'none'};
-    width: 5px;
-    height: 9px;
-    border: 2px solid #fff;
-    border-top: none;
-    border-left: none;
-    transform: rotate(45deg) translateY(-1px);
   }
 `;
 
@@ -207,6 +166,8 @@ type PersonalDataType = {
   identification: string;
   phone?: string;
   email?: string;
+  gender?: string;
+  birthDate?: string;
   isMinor?: boolean;
   guardianName?: string;
   guardianId?: string;
@@ -277,15 +238,34 @@ const PacientData = ({
     setShowDropdown(false);
   };
 
-  const toggleMinor = () => {
+  const calculateAge = (dateString: string) => {
+    if (!dateString) return null;
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const age = calculateAge(value);
+    const isMinor = age !== null && age < 18;
+    
     if (setPersonalData) {
       setPersonalData((prev: any) => ({
         ...prev,
-        isMinor: !prev.isMinor,
-        guardianName: !prev.isMinor ? prev.guardianName : '',
-        guardianId: !prev.isMinor ? prev.guardianId : '',
-        guardianRelationship: !prev.isMinor ? prev.guardianRelationship : '',
+        birthDate: value,
+        isMinor: isMinor,
+        guardianName: !isMinor ? '' : prev.guardianName,
+        guardianId: !isMinor ? '' : prev.guardianId,
+        guardianRelationship: !isMinor ? '' : prev.guardianRelationship,
       }));
+    } else {
+      handlePersonalData(e);
     }
   };
 
@@ -327,11 +307,50 @@ const PacientData = ({
         </AutocompleteWrapper>
       </FieldRow>
 
-      {/* Menor de edad */}
-      <CheckboxRow $open={!!personalData.isMinor} onClick={toggleMinor}>
-        <StyledCheckbox $checked={!!personalData.isMinor} />
-        <label>Paciente menor de edad</label>
-      </CheckboxRow>
+      <FieldRow>
+        <label htmlFor="name">Nombre</label>
+        <input
+          id="name"
+          type="text"
+          name="name"
+          value={personalData.name}
+          onChange={handlePersonalData}
+          autoComplete="off"
+          placeholder="Nombre o razón social del paciente"
+        />
+      </FieldRow>
+
+      <FieldRow>
+        <label htmlFor="gender">Género</label>
+        <select
+          id="gender"
+          name="gender"
+          value={personalData.gender ?? ''}
+          onChange={handlePersonalData}
+          style={{ cursor: 'pointer' }}
+        >
+          <option value="">Seleccionar...</option>
+          <option value="Masculino">Masculino</option>
+          <option value="Femenino">Femenino</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </FieldRow>
+
+      <FieldRow>
+        <label htmlFor="birthDate">Nacimiento</label>
+        <input
+          id="birthDate"
+          type="date"
+          name="birthDate"
+          value={personalData.birthDate ?? ''}
+          onChange={handleDateChange}
+          style={{ 
+            fontFamily: 'inherit',
+            color: personalData.birthDate ? 'var(--text)' : 'var(--text-muted)',
+            cursor: 'pointer'
+          }}
+        />
+      </FieldRow>
 
       {personalData.isMinor && (
         <GuardianSection>
@@ -378,19 +397,6 @@ const PacientData = ({
           </FieldRow>
         </GuardianSection>
       )}
-
-      <FieldRow>
-        <label htmlFor="name">Nombre</label>
-        <input
-          id="name"
-          type="text"
-          name="name"
-          value={personalData.name}
-          onChange={handlePersonalData}
-          autoComplete="off"
-          placeholder="Nombre o razón social del paciente"
-        />
-      </FieldRow>
 
       {showContactFields && (
         <>

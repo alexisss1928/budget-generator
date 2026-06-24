@@ -1,20 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
-  ChevronLeft, ChevronDown,
+  ChevronLeft, ChevronRight, ChevronDown,
   FileText, ClipboardList, Pill,
-  Share2, Download, Edit2, Trash2, AlertTriangle, Search, User
+  Share2, Download, Edit2, Trash2, AlertTriangle, Search, User, UserPlus, FilePlus, X, Activity, Baby
 } from 'lucide-react';
 import {
   getAllHistory,
   searchHistory,
   deleteHistoryRecord,
+  getAllPatients,
+  upsertPatient,
+  PatientRecord,
   HistoryRecord,
   HistoryType,
   DoctorProfile,
+  DEFAULT_PERSONAL_DATA,
 } from '../../db/clinicDB';
 import PresupuestoDetail from '../PresupuestoDetail';
 import WhatsAppModal from '../WhatsAppModal';
+import PacientData from '../PacientData';
 
 // ─── Animations ───────────────────────────────────────────────────────────────
 
@@ -52,24 +57,28 @@ const TopRow = styled.div`
   gap: 10px;
 `;
 
-const BackBtn = styled.button`
+const HeaderBtn = styled.button<{ $primary?: boolean }>`
   display: flex;
   align-items: center;
   gap: 5px;
-  background: var(--surface);
+  background: ${(p) => p.$primary ? 'var(--accent)' : 'var(--surface)'};
+  color: ${(p) => p.$primary ? '#fff' : 'var(--text-secondary)'};
   border: none;
   border-radius: 10px;
   padding: 7px 12px 7px 8px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s;
   box-shadow: var(--shadow-card);
   font-family: inherit;
   flex-shrink: 0;
 
-  &:hover { background: var(--accent-bg); color: var(--accent); }
+  &:hover {
+    background: ${(p) => p.$primary ? 'var(--accent)' : 'var(--accent-bg)'};
+    color: ${(p) => p.$primary ? '#fff' : 'var(--accent)'};
+    opacity: ${(p) => p.$primary ? 0.9 : 1};
+  }
 `;
 
 
@@ -243,6 +252,144 @@ const CountBadge = styled.span<{ $color: string }>`
   font-weight: 700;
 `;
 
+const TabsContainer = styled.div<{ $activeTab: 'documentos' | 'historia' }>`
+  display: flex;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  background: var(--surface-alt, rgba(0, 0, 0, 0.04));
+  border-radius: 8px;
+  padding: 4px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: ${(p) => p.$activeTab === 'historia' ? '4px' : 'calc(4px + (100% - 8px) / 2)'};
+    width: calc((100% - 8px) / 2);
+    background: var(--surface);
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
+  }
+`;
+
+const TabBtn = styled.button<{ $active: boolean }>`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: transparent;
+  color: ${(p) => p.$active ? 'var(--text)' : 'var(--text-muted)'};
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.3s;
+  position: relative;
+  z-index: 2;
+
+  &:hover {
+    color: var(--text);
+  }
+`;
+
+const ClinicalForm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+  animation: ${slideUp} 0.25s ease;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--input-bg);
+    color: var(--text);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    outline: none;
+    resize: vertical;
+    min-height: 70px;
+    font-family: inherit;
+    transition: box-shadow 0.15s;
+
+    &:focus {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+  }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+
+    input[type='checkbox'] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+  }
+`;
+
+const AllergyBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 4px;
+`;
+
+const ToggleGroup = styled.div`
+  display: inline-flex;
+  background: var(--input-bg);
+  border-radius: 20px;
+  padding: 3px;
+  gap: 2px;
+  margin-bottom: 8px;
+`;
+
+const ToggleBtn = styled.button<{ $active: boolean; $isYes?: boolean }>`
+  background: ${p => p.$active ? (p.$isYes ? 'var(--accent)' : 'var(--surface)') : 'transparent'};
+  color: ${p => p.$active ? (p.$isYes ? '#fff' : 'var(--text)') : 'var(--text-muted)'};
+  border: none;
+  border-radius: 16px;
+  padding: 5px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: ${p => p.$active && !p.$isYes ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
+
+  &:hover {
+    color: ${p => !p.$active ? 'var(--text)' : ''};
+  }
+`;
+
 const ChevronIcon = styled.span<{ $open: boolean }>`
   color: var(--text-muted);
   display: inline-flex;
@@ -250,10 +397,36 @@ const ChevronIcon = styled.span<{ $open: boolean }>`
   transform: ${(p) => (p.$open ? 'rotate(180deg)' : 'rotate(0deg)')};
 `;
 
-const PatientBody = styled.div<{ $open: boolean }>`
-  display: ${(p) => (p.$open ? 'block' : 'none')};
-  border-top: 1px solid var(--border);
-  padding: 16px;
+
+
+const GlassDocBtn = styled.button`
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: var(--surface);
+  background-color: color-mix(in srgb, var(--surface) 60%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+    background-color: var(--accent-bg);
+    border-color: var(--accent);
+  }
 `;
 
 // ─── Document group inside patient ───────────────────────────────────────────
@@ -446,26 +619,36 @@ function getInitials(name: string) {
   return name.substring(0, 2).toUpperCase();
 }
 
-interface Patient {
-  key: string; // name + id
-  name: string;
-  id: string;
-  phone?: string;
+interface Patient extends PatientRecord {
+  key: string;
   records: HistoryRecord[];
 }
 
-function groupByPatient(records: HistoryRecord[]): Patient[] {
+function mergePatientsAndHistory(dbPatients: PatientRecord[], history: HistoryRecord[]): Patient[] {
   const map = new Map<string, Patient>();
-  for (const r of records) {
-    const name = r.patientName?.trim() || 'Sin nombre';
-    const id   = r.patientId?.trim()   || '';
-    const key  = `${name}||${id}`;
-    if (!map.has(key)) {
-      map.set(key, { key, name, id, phone: r.patientPhone || undefined, records: [] });
-    }
-    map.get(key)!.records.push(r);
+
+  for (const p of dbPatients) {
+    const key = p.identification.trim().toLowerCase();
+    map.set(key, { ...p, key, records: [] });
   }
-  // Sort patients by name, then records by date desc
+
+  for (const r of history) {
+    if (r.patientId) {
+      const key = r.patientId.trim().toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          name: r.patientName,
+          identification: r.patientId.trim(),
+          phone: r.patientPhone,
+          email: r.patientEmail,
+          records: []
+        });
+      }
+      map.get(key)!.records.push(r);
+    }
+  }
+
   const patients = Array.from(map.values());
   patients.sort((a, b) => a.name.localeCompare(b.name));
   patients.forEach((p) => p.records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -583,6 +766,7 @@ interface Props {
   onLoadRecord: (record: HistoryRecord) => void;
   onDownloadRecord: (record: HistoryRecord) => void;
   onSharePdf: (record: HistoryRecord) => Promise<void>;
+  onCreateDocument?: (patient: PatientRecord, type: 'presupuesto' | 'informe' | 'recipe') => void;
 }
 
 export default function PatientsScreen({
@@ -591,36 +775,133 @@ export default function PatientsScreen({
   onLoadRecord,
   onDownloadRecord,
   onSharePdf,
+  onCreateDocument,
 }: Props) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'az' | 'za'>('recent');
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
   const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
   const [waRecord, setWaRecord] = useState<HistoryRecord | null>(null);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [personalData, setPersonalData] = useState(DEFAULT_PERSONAL_DATA);
+
+  const [activeTab, setActiveTab] = useState<'documentos' | 'historia'>('historia');
+  const [isEditingHistory, setIsEditingHistory] = useState(false);
+  const [clinicalData, setClinicalData] = useState({
+    motivoConsulta: '',
+    hasAlergias: false,
+    alergias: '',
+    hasEnfermedades: false,
+    enfermedades: '',
+    hasMedicamentos: false,
+    medicamentos: '',
+    embarazo: false,
+  });
+
+  const handleClinicalDataChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setClinicalData(prev => ({ ...prev, [name]: checked }));
+    } else if (type === 'radio') {
+      const isYes = value === 'yes';
+      setClinicalData(prev => ({ ...prev, [name]: isYes }));
+    } else {
+      setClinicalData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSaveClinicalHistory = async () => {
+    if (!selectedPatient) return;
+    const updated = {
+      ...DEFAULT_PERSONAL_DATA,
+      name: selectedPatient.name,
+      identification: selectedPatient.identification,
+      phone: selectedPatient.phone,
+      email: selectedPatient.email,
+      gender: selectedPatient.gender,
+      birthDate: selectedPatient.birthDate,
+      isMinor: selectedPatient.isMinor,
+      guardianName: selectedPatient.guardianName,
+      guardianId: selectedPatient.guardianId,
+      guardianRelationship: selectedPatient.guardianRelationship,
+      ...clinicalData,
+    };
+    await upsertPatient(updated);
+    setSelectedPatient(prev => prev ? { ...prev, ...clinicalData } : null);
+    setIsEditingHistory(false);
+    load();
+  };
+
+  const calculateAge = (dateString: string) => {
+    if (!dateString) return null;
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const handlePersonalData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPersonalData({ ...personalData, [name]: value });
+  };
+
+  const handleSavePatient = async () => {
+    if (!personalData.name || !personalData.identification) {
+      alert('Nombre y cédula son obligatorios');
+      return;
+    }
+    await upsertPatient(personalData);
+    setIsModalOpen(false);
+    load();
+  };
+
+  const openNewPatientModal = () => {
+    setPersonalData(DEFAULT_PERSONAL_DATA);
+    setIsModalOpen(true);
+  };
 
   const load = useCallback(async () => {
-    const all = query ? await searchHistory(query) : await getAllHistory();
-    const grouped = groupByPatient(all);
+    const allHistory = query ? await searchHistory(query) : await getAllHistory();
+    const dbPatients = await getAllPatients();
+    let merged = mergePatientsAndHistory(dbPatients, allHistory);
+
+    if (query) {
+      const q = query.toLowerCase();
+      merged = merged.filter(p => p.name.toLowerCase().includes(q) || p.identification.toLowerCase().includes(q));
+    }
+
     if (sortBy === 'recent') {
-      grouped.sort((a, b) => {
+      merged.sort((a, b) => {
         const d1 = b.records[0] ? new Date(b.records[0].date).getTime() : 0;
         const d2 = a.records[0] ? new Date(a.records[0].date).getTime() : 0;
         return d1 - d2;
       });
     } else if (sortBy === 'oldest') {
-      grouped.sort((a, b) => {
+      merged.sort((a, b) => {
         const d1 = a.records[0] ? new Date(a.records[0].date).getTime() : 0;
         const d2 = b.records[0] ? new Date(b.records[0].date).getTime() : 0;
         return d1 - d2;
       });
     } else if (sortBy === 'az') {
-      grouped.sort((a, b) => a.name.localeCompare(b.name));
+      merged.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sortBy === 'za') {
-      grouped.sort((a, b) => b.name.localeCompare(a.name));
+      merged.sort((a, b) => b.name.localeCompare(a.name));
     }
-    setPatients(grouped);
+    setPatients(merged);
+
+    setSelectedPatient(curr => {
+      if (!curr) return null;
+      const updated = merged.find(p => p.key === curr.key);
+      return updated || curr;
+    });
   }, [query, sortBy]);
 
   useEffect(() => { load(); }, [load]);
@@ -673,122 +954,370 @@ export default function PatientsScreen({
       )}
 
       <Wrapper>
-        <TopBar>
-          <TopRow>
-            <BackBtn onClick={onBack}>
-              <ChevronLeft size={14} /> Inicio
-            </BackBtn>
-            {totalPatients > 0 && (
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginLeft: 'auto' }}>
-                {totalPatients} paciente{totalPatients !== 1 ? 's' : ''} · {totalDocs} doc{totalDocs !== 1 ? 's' : ''}
+        {selectedPatient ? (
+          <>
+            <TopBar style={{ paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
+              <TopRow>
+                <HeaderBtn onClick={() => setSelectedPatient(null)}>
+                  <ChevronLeft size={14} /> Volver
+                </HeaderBtn>
+                <div style={{ flex: 1 }} />
+              </TopRow>
+            </TopBar>
+            <ListArea>
+              <PatientCard style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', margin: '0', position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+                  <PatientAvatar style={{ width: 50, height: 50, fontSize: '20px', marginTop: '2px' }} $bg={getAvatarColor(selectedPatient.name).bg} $color={getAvatarColor(selectedPatient.name).color}>
+                    {selectedPatient.name !== 'Sin nombre' ? getInitials(selectedPatient.name) : '?'}
+                  </PatientAvatar>
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <h2 style={{ margin: '0 0 4px', fontSize: '18px', color: 'var(--text)', paddingRight: '24px' }}>{selectedPatient.name}</h2>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '13px', display: 'flex', flexWrap: 'wrap', gap: '2px 12px' }}>
+                      <span>{selectedPatient.identification ? `C.I. ${selectedPatient.identification}` : 'Sin cédula'}</span>
+                      {selectedPatient.birthDate && <span>Edad: {calculateAge(selectedPatient.birthDate)} años</span>}
+                      {selectedPatient.gender && <span>{selectedPatient.gender}</span>}
+                      {selectedPatient.phone && <span>Tel: {selectedPatient.phone}</span>}
+                      {selectedPatient.email && <span>Correo: {selectedPatient.email}</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                      {selectedPatient.hasAlergias && (
+                        <AllergyBadge style={{ padding: '4px' }} title="Alergias"><AlertTriangle size={12} /></AllergyBadge>
+                      )}
+                      {selectedPatient.hasEnfermedades && (
+                        <AllergyBadge style={{ background: '#e3f2fd', color: '#1565c0', borderColor: '#bbdefb', padding: '4px' }} title="Enfermedades"><Activity size={12} /></AllergyBadge>
+                      )}
+                      {selectedPatient.hasMedicamentos && (
+                        <AllergyBadge style={{ background: '#f3e5f5', color: '#6a1b9a', borderColor: '#e1bee7', padding: '4px' }} title="Medicamentos"><Pill size={12} /></AllergyBadge>
+                      )}
+                      {selectedPatient.embarazo && (
+                        <AllergyBadge style={{ background: '#fce4ec', color: '#c2185b', borderColor: '#f8bbd0', padding: '4px' }} title="Embarazo"><Baby size={12} /></AllergyBadge>
+                      )}
+                    </div>
+                  </div>
+                  <button 
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', position: 'absolute', top: '16px', right: '16px' }}
+                    title="Editar paciente"
+                    onClick={() => {
+                      setPersonalData({
+                        ...DEFAULT_PERSONAL_DATA,
+                        name: selectedPatient.name,
+                        identification: selectedPatient.identification,
+                        phone: selectedPatient.phone || '',
+                        email: selectedPatient.email || '',
+                        gender: selectedPatient.gender || '',
+                        birthDate: selectedPatient.birthDate || '',
+                        isMinor: selectedPatient.isMinor || false,
+                        guardianName: selectedPatient.guardianName || '',
+                        guardianId: selectedPatient.guardianId || '',
+                        guardianRelationship: selectedPatient.guardianRelationship || ''
+                      });
+                      setIsModalOpen(true);
+                    }}>
+                    <Edit2 size={16} />
+                  </button>
+                </div>
+              </PatientCard>
+              
+              <div style={{ display: 'flex', gap: '12px', marginTop: '16px', overflowX: 'auto', paddingBottom: '4px' }}>
+                <GlassDocBtn onClick={() => onCreateDocument?.(selectedPatient, 'presupuesto')}>
+                  <FilePlus size={20} /> Presupuesto
+                </GlassDocBtn>
+                <GlassDocBtn onClick={() => onCreateDocument?.(selectedPatient, 'informe')}>
+                  <FilePlus size={20} /> Informe
+                </GlassDocBtn>
+                <GlassDocBtn onClick={() => onCreateDocument?.(selectedPatient, 'recipe')}>
+                  <FilePlus size={20} /> Recipe
+                </GlassDocBtn>
               </div>
-            )}
-          </TopRow>
 
-          <SearchWrap>
-            <Search size={14} />
-            <input
-              type="text"
-              placeholder="Buscar por nombre o cédula..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              id="patients-search"
-            />
-          </SearchWrap>
-          
-          <FilterBar>
-            <FilterBtn $active={sortBy === 'recent'} onClick={() => setSortBy('recent')}>
-              Más recientes
-            </FilterBtn>
-            <FilterBtn $active={sortBy === 'oldest'} onClick={() => setSortBy('oldest')}>
-              Más antiguos
-            </FilterBtn>
-            <FilterBtn $active={sortBy === 'az'} onClick={() => setSortBy('az')}>
-              Alfabético (A-Z)
-            </FilterBtn>
-            <FilterBtn $active={sortBy === 'za'} onClick={() => setSortBy('za')}>
-              Alfabético (Z-A)
-            </FilterBtn>
-          </FilterBar>
-        </TopBar>
+              <TabsContainer $activeTab={activeTab}>
+                <TabBtn $active={activeTab === 'historia'} onClick={() => setActiveTab('historia')}>
+                  Historia Clínica
+                </TabBtn>
+                <TabBtn $active={activeTab === 'documentos'} onClick={() => setActiveTab('documentos')}>
+                  Documentos
+                </TabBtn>
+              </TabsContainer>
 
-        <ListArea>
-          {patients.length === 0 ? (
-            <EmptyState>
-              <div className="icon"><User size={52} strokeWidth={1.2} /></div>
-              <p>
-                {query
-                  ? 'No se encontraron pacientes para tu búsqueda.'
-                  : 'Aún no hay pacientes registrados.\nLos pacientes aparecerán aquí al crear documentos.'}
-              </p>
-            </EmptyState>
-          ) : (
-            patients.map((patient) => {
-              const isOpen = openKey === patient.key;
-              const initials = patient.name !== 'Sin nombre' ? getInitials(patient.name) : '?';
+              {activeTab === 'documentos' && (
+                <>
+                  {selectedPatient.records.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+                      {(['presupuesto', 'informe', 'recipe'] as HistoryType[]).map((type) => {
+                        const typeRecords = selectedPatient.records.filter((r) => r.type === type);
+                        return typeRecords.length > 0 ? (
+                          <DocGroupSection
+                            key={type}
+                            type={type}
+                            records={typeRecords}
+                            onLoad={onLoadRecord}
+                            onDownload={onDownloadRecord}
+                            onShare={handleShare}
+                            onDelete={(r) => setPendingDelete({ id: r.id!, name: selectedPatient.name })}
+                            onUpdate={load}
+                          />
+                        ) : null;
+                      })}
+                    </div>
+                  ) : (
+                    <EmptyState style={{ marginTop: '20px' }}>
+                      <div className="icon"><FileText size={42} strokeWidth={1.2} /></div>
+                      <p>Este paciente aún no tiene documentos en su historial.</p>
+                    </EmptyState>
+                  )}
+                </>
+              )}
 
-              const colors = getAvatarColor(patient.name);
-
-              const byType = {
-                presupuesto: patient.records.filter((r) => r.type === 'presupuesto'),
-                informe:     patient.records.filter((r) => r.type === 'informe'),
-                recipe:      patient.records.filter((r) => r.type === 'recipe'),
-              } as Record<HistoryType, HistoryRecord[]>;
-
-              return (
-                <PatientCard key={patient.key}>
-                  <PatientHeader onClick={() => setOpenKey(isOpen ? null : patient.key)}>
-                    <PatientAvatar $bg={colors.bg} $color={colors.color}>{initials}</PatientAvatar>
-                    <PatientInfo>
-                      <PatientName>{patient.name}</PatientName>
-                      <PatientMeta>
-                        {patient.id ? `C.I. ${patient.id}` : 'Sin cédula'}
-                        {patient.phone ? ` · ${patient.phone}` : ''}
-                      </PatientMeta>
-                    </PatientInfo>
-                    <DocCount>
-                      {byType.presupuesto.length > 0 && (
-                        <CountBadge $color="#719e81">
-                          <FileText size={9} /> {byType.presupuesto.length}
-                        </CountBadge>
-                      )}
-                      {byType.informe.length > 0 && (
-                        <CountBadge $color="#4a90d9">
-                          <ClipboardList size={9} /> {byType.informe.length}
-                        </CountBadge>
-                      )}
-                      {byType.recipe.length > 0 && (
-                        <CountBadge $color="#9b59b6">
-                          <Pill size={9} /> {byType.recipe.length}
-                        </CountBadge>
-                      )}
-                    </DocCount>
-                    <ChevronIcon $open={isOpen}>
-                      <ChevronDown size={16} />
-                    </ChevronIcon>
-                  </PatientHeader>
-
-                  <PatientBody $open={isOpen}>
-                    {(['presupuesto', 'informe', 'recipe'] as HistoryType[]).map((type) =>
-                      byType[type].length > 0 ? (
-                        <DocGroupSection
-                          key={type}
-                          type={type}
-                          records={byType[type]}
-                          onLoad={onLoadRecord}
-                          onDownload={onDownloadRecord}
-                          onShare={handleShare}
-                          onDelete={(r) => setPendingDelete({ id: r.id!, name: patient.name })}
-                          onUpdate={load}
-                        />
-                      ) : null
+              {activeTab === 'historia' && (
+                <ClinicalForm>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-10px' }}>
+                    {!isEditingHistory ? (
+                      <button onClick={() => setIsEditingHistory(true)} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--accent)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                        <Edit2 size={14} /> Editar
+                      </button>
+                    ) : (
+                      <button onClick={() => {
+                        // Reset changes on cancel
+                        setIsEditingHistory(false);
+                        setClinicalData({
+                          motivoConsulta: selectedPatient.motivoConsulta || '',
+                          hasAlergias: selectedPatient.hasAlergias || false,
+                          alergias: selectedPatient.alergias || '',
+                          hasEnfermedades: selectedPatient.hasEnfermedades || false,
+                          enfermedades: selectedPatient.enfermedades || '',
+                          hasMedicamentos: selectedPatient.hasMedicamentos || false,
+                          medicamentos: selectedPatient.medicamentos || '',
+                          embarazo: selectedPatient.embarazo || false,
+                        });
+                      }} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                        <X size={14} /> Cancelar
+                      </button>
                     )}
-                  </PatientBody>
-                </PatientCard>
-              );
-            })
-          )}
-        </ListArea>
+                  </div>
+
+                  <div>
+                    <label>Motivo de consulta</label>
+                    {isEditingHistory ? (
+                      <textarea 
+                        name="motivoConsulta" 
+                        value={clinicalData.motivoConsulta} 
+                        onChange={handleClinicalDataChange} 
+                        placeholder="Describa el motivo de la consulta..."
+                      />
+                    ) : (
+                      <div style={{ fontSize: '13px', color: clinicalData.motivoConsulta ? 'var(--text)' : 'var(--text-muted)', background: 'var(--input-bg)', padding: '10px 12px', borderRadius: '8px' }}>
+                        {clinicalData.motivoConsulta || 'No refiere'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label>Alergias</label>
+                    {isEditingHistory ? (
+                      <>
+                        <ToggleGroup>
+                          <ToggleBtn type="button" $active={clinicalData.hasAlergias} $isYes onClick={() => setClinicalData(p => ({...p, hasAlergias: true}))}>Sí</ToggleBtn>
+                          <ToggleBtn type="button" $active={!clinicalData.hasAlergias} onClick={() => setClinicalData(p => ({...p, hasAlergias: false}))}>No</ToggleBtn>
+                        </ToggleGroup>
+                        {clinicalData.hasAlergias && (
+                          <textarea 
+                            name="alergias" 
+                            value={clinicalData.alergias} 
+                            onChange={handleClinicalDataChange} 
+                            placeholder="Indique alergias a medicamentos, alimentos, etc..."
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: '13px', color: clinicalData.hasAlergias && clinicalData.alergias ? 'var(--text)' : 'var(--text-muted)', background: 'var(--input-bg)', padding: '10px 12px', borderRadius: '8px' }}>
+                        {clinicalData.hasAlergias && clinicalData.alergias ? clinicalData.alergias : 'No refiere'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label>Enfermedades preexistentes</label>
+                    {isEditingHistory ? (
+                      <>
+                        <ToggleGroup>
+                          <ToggleBtn type="button" $active={clinicalData.hasEnfermedades} $isYes onClick={() => setClinicalData(p => ({...p, hasEnfermedades: true}))}>Sí</ToggleBtn>
+                          <ToggleBtn type="button" $active={!clinicalData.hasEnfermedades} onClick={() => setClinicalData(p => ({...p, hasEnfermedades: false}))}>No</ToggleBtn>
+                        </ToggleGroup>
+                        {clinicalData.hasEnfermedades && (
+                          <textarea 
+                            name="enfermedades" 
+                            value={clinicalData.enfermedades} 
+                            onChange={handleClinicalDataChange} 
+                            placeholder="Condiciones médicas relevantes..."
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: '13px', color: clinicalData.hasEnfermedades && clinicalData.enfermedades ? 'var(--text)' : 'var(--text-muted)', background: 'var(--input-bg)', padding: '10px 12px', borderRadius: '8px' }}>
+                        {clinicalData.hasEnfermedades && clinicalData.enfermedades ? clinicalData.enfermedades : 'No refiere'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label>Medicamentos habituales</label>
+                    {isEditingHistory ? (
+                      <>
+                        <ToggleGroup>
+                          <ToggleBtn type="button" $active={clinicalData.hasMedicamentos} $isYes onClick={() => setClinicalData(p => ({...p, hasMedicamentos: true}))}>Sí</ToggleBtn>
+                          <ToggleBtn type="button" $active={!clinicalData.hasMedicamentos} onClick={() => setClinicalData(p => ({...p, hasMedicamentos: false}))}>No</ToggleBtn>
+                        </ToggleGroup>
+                        {clinicalData.hasMedicamentos && (
+                          <textarea 
+                            name="medicamentos" 
+                            value={clinicalData.medicamentos} 
+                            onChange={handleClinicalDataChange} 
+                            placeholder="Medicación que toma el paciente actualmente..."
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: '13px', color: clinicalData.hasMedicamentos && clinicalData.medicamentos ? 'var(--text)' : 'var(--text-muted)', background: 'var(--input-bg)', padding: '10px 12px', borderRadius: '8px' }}>
+                        {clinicalData.hasMedicamentos && clinicalData.medicamentos ? clinicalData.medicamentos : 'No refiere'}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedPatient.gender === 'Femenino' && (
+                    <div style={{ marginTop: '4px' }}>
+                      {isEditingHistory ? (
+                        <label className="checkbox-row">
+                          <input 
+                            type="checkbox" 
+                            name="embarazo" 
+                            checked={clinicalData.embarazo} 
+                            onChange={handleClinicalDataChange} 
+                          />
+                          <span>Alerta de embarazo</span>
+                        </label>
+                      ) : (
+                        clinicalData.embarazo && (
+                          <AllergyBadge style={{ background: '#fce4ec', color: '#c2185b', borderColor: '#f8bbd0' }}><Baby size={10} style={{ marginRight: '4px' }} /> Alerta de embarazo</AllergyBadge>
+                        )
+                      )}
+                    </div>
+                  )}
+                  
+                  {isEditingHistory && (
+                    <button
+                      onClick={handleSaveClinicalHistory}
+                      style={{ marginTop: '8px', padding: '10px', border: 'none', borderRadius: '10px', background: 'var(--accent)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Guardar Cambios
+                    </button>
+                  )}
+                </ClinicalForm>
+              )}
+            </ListArea>
+          </>
+        ) : (
+          <>
+            <TopBar>
+              <TopRow>
+                <HeaderBtn onClick={onBack}>
+                  <ChevronLeft size={14} /> Inicio
+                </HeaderBtn>
+                <div style={{ flex: 1 }} />
+                {totalPatients > 0 && (
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    {totalPatients} pac. · {totalDocs} doc.
+                  </div>
+                )}
+                <HeaderBtn $primary onClick={openNewPatientModal}>
+                  <UserPlus size={14} /> Nuevo
+                </HeaderBtn>
+              </TopRow>
+              <SearchWrap>
+                <Search size={14} />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre o cédula..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  id="patients-search"
+                />
+              </SearchWrap>
+              <FilterBar>
+                <FilterBtn $active={sortBy === 'recent'} onClick={() => setSortBy('recent')}>Más recientes</FilterBtn>
+                <FilterBtn $active={sortBy === 'oldest'} onClick={() => setSortBy('oldest')}>Más antiguos</FilterBtn>
+                <FilterBtn $active={sortBy === 'az'} onClick={() => setSortBy('az')}>Alfabético (A-Z)</FilterBtn>
+                <FilterBtn $active={sortBy === 'za'} onClick={() => setSortBy('za')}>Alfabético (Z-A)</FilterBtn>
+              </FilterBar>
+            </TopBar>
+            <ListArea>
+              {patients.length === 0 ? (
+                <EmptyState>
+                  <div className="icon"><User size={52} strokeWidth={1.2} /></div>
+                  <p>{query ? 'No se encontraron pacientes para tu búsqueda.' : 'Aún no hay pacientes registrados.\nLos pacientes aparecerán aquí al crear documentos.'}</p>
+                </EmptyState>
+              ) : (
+                patients.map((patient) => {
+                  const initials = patient.name !== 'Sin nombre' ? getInitials(patient.name) : '?';
+                  const colors = getAvatarColor(patient.name);
+                  const byType = {
+                    presupuesto: patient.records.filter((r) => r.type === 'presupuesto'),
+                    informe:     patient.records.filter((r) => r.type === 'informe'),
+                    recipe:      patient.records.filter((r) => r.type === 'recipe'),
+                  } as Record<HistoryType, HistoryRecord[]>;
+
+                  return (
+                    <PatientCard key={patient.key}>
+                      <PatientHeader onClick={() => {
+                        setSelectedPatient(patient);
+                        setActiveTab('historia');
+                        setIsEditingHistory(false);
+                        setClinicalData({
+                          motivoConsulta: patient.motivoConsulta || '',
+                          hasAlergias: patient.hasAlergias || false,
+                          alergias: patient.alergias || '',
+                          hasEnfermedades: patient.hasEnfermedades || false,
+                          enfermedades: patient.enfermedades || '',
+                          hasMedicamentos: patient.hasMedicamentos || false,
+                          medicamentos: patient.medicamentos || '',
+                          embarazo: patient.embarazo || false,
+                        });
+                      }}>
+                        <PatientAvatar $bg={colors.bg} $color={colors.color}>{initials}</PatientAvatar>
+                        <PatientInfo>
+                          <PatientName>{patient.name}</PatientName>
+                          <PatientMeta>
+                            {patient.identification ? `C.I. ${patient.identification}` : 'Sin cédula'}
+                            {patient.phone ? ` · ${patient.phone}` : ''}
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+                              {patient.hasAlergias && <AllergyBadge style={{ padding: '4px' }} title="Alergias"><AlertTriangle size={12} /></AllergyBadge>}
+                              {patient.hasEnfermedades && <AllergyBadge style={{ background: '#e3f2fd', color: '#1565c0', borderColor: '#bbdefb', padding: '4px' }} title="Enfermedades"><Activity size={12} /></AllergyBadge>}
+                              {patient.hasMedicamentos && <AllergyBadge style={{ background: '#f3e5f5', color: '#6a1b9a', borderColor: '#e1bee7', padding: '4px' }} title="Medicamentos"><Pill size={12} /></AllergyBadge>}
+                              {patient.embarazo && <AllergyBadge style={{ background: '#fce4ec', color: '#c2185b', borderColor: '#f8bbd0', padding: '4px' }} title="Embarazo"><Baby size={12} /></AllergyBadge>}
+                            </div>
+                          </PatientMeta>
+                        </PatientInfo>
+                        <DocCount>
+                          {byType.presupuesto.length > 0 && (
+                            <CountBadge $color="#719e81"><FileText size={9} /> {byType.presupuesto.length}</CountBadge>
+                          )}
+                          {byType.informe.length > 0 && (
+                            <CountBadge $color="#4a90d9"><ClipboardList size={9} /> {byType.informe.length}</CountBadge>
+                          )}
+                          {byType.recipe.length > 0 && (
+                            <CountBadge $color="#9b59b6"><Pill size={9} /> {byType.recipe.length}</CountBadge>
+                          )}
+                        </DocCount>
+                        <ChevronIcon $open={false}>
+                          <ChevronRight size={16} color="var(--text-muted)" />
+                        </ChevronIcon>
+                      </PatientHeader>
+                    </PatientCard>
+                  );
+                })
+              )}
+            </ListArea>
+          </>
+        )}
       </Wrapper>
 
       {pendingDelete !== null && (
@@ -806,6 +1335,34 @@ export default function PatientsScreen({
                 Eliminar
               </ConfirmDeleteBtn>
             </ConfirmBtns>
+          </ConfirmBox>
+        </ConfirmOverlay>
+      )}
+
+      {isModalOpen && (
+        <ConfirmOverlay onClick={() => setIsModalOpen(false)}>
+          <ConfirmBox onClick={(e) => e.stopPropagation()} style={{ padding: '20px', maxWidth: '420px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text)' }}>Paciente</h3>
+              <button onClick={() => setIsModalOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <PacientData
+              personalData={personalData}
+              setPersonalData={setPersonalData}
+              handlePersonalData={handlePersonalData}
+              showContactFields={true}
+            />
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <ConfirmCancelBtn onClick={() => setIsModalOpen(false)}>Cancelar</ConfirmCancelBtn>
+              <button
+                onClick={handleSavePatient}
+                style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '10px', background: 'var(--accent)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Guardar Paciente
+              </button>
+            </div>
           </ConfirmBox>
         </ConfirmOverlay>
       )}
