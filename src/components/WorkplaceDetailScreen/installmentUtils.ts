@@ -7,6 +7,15 @@ export interface BuildInstallmentPlanArgs {
   installmentCount: number;
   baseDate: Date;
   procedureLabel: string;
+  items?: { procedure: string; cost: number }[];
+}
+
+export interface InstallmentPlanEntry {
+  date: string;
+  cost: number;
+  procedure: string;
+  isPendingInstallment?: boolean;
+  proceduresIncluded?: { procedure: string; cost: number }[];
 }
 
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
@@ -18,7 +27,8 @@ export function buildInstallmentPlan({
   installmentCount,
   baseDate,
   procedureLabel,
-}: BuildInstallmentPlanArgs) {
+  items,
+}: BuildInstallmentPlanArgs): InstallmentPlanEntry[] {
   const total = Math.max(0, roundCurrency(totalAmount));
   const count = Math.max(1, Math.floor(installmentCount || 1));
   if (count <= 1 || total <= 0) {
@@ -27,6 +37,10 @@ export function buildInstallmentPlan({
         date: baseDate.toISOString(),
         cost: total,
         procedure: procedureLabel,
+        proceduresIncluded: items?.map((it) => ({
+          procedure: it.procedure,
+          cost: roundCurrency(it.cost),
+        })),
       },
     ];
   }
@@ -60,9 +74,38 @@ export function buildInstallmentPlan({
     }
   }
 
-  return amounts.map((cost, index) => ({
-    date: new Date(baseDate.getTime() + index * 14 * 86400000).toISOString(),
-    cost: roundCurrency(cost),
-    procedure: `${procedureLabel} (cuota ${index + 1}/${count})`,
+  // Precompute item totals
+  const itemTotals = (items || []).map((it) => ({
+    procedure: it.procedure,
+    cost: roundCurrency(it.cost),
   }));
+
+  return amounts.map((cost, index) => {
+    const installmentCost = roundCurrency(cost);
+
+    // Distribute installmentCost proportionally to items
+    const proceduresIncluded: { procedure: string; cost: number }[] = [];
+    let remainingToAssign = installmentCost;
+    for (let i = 0; i < itemTotals.length; i += 1) {
+      const it = itemTotals[i];
+      if (i === itemTotals.length - 1) {
+        proceduresIncluded.push({
+          procedure: it.procedure,
+          cost: roundCurrency(remainingToAssign),
+        });
+      } else {
+        const share = roundCurrency((it.cost / total) * installmentCost);
+        proceduresIncluded.push({ procedure: it.procedure, cost: share });
+        remainingToAssign = roundCurrency(remainingToAssign - share);
+      }
+    }
+
+    return {
+      date: new Date(baseDate.getTime() + index * 14 * 86400000).toISOString(),
+      cost: installmentCost,
+      procedure: `${procedureLabel} (cuota ${index + 1}/${count})`,
+      isPendingInstallment: index > 0,
+      proceduresIncluded,
+    };
+  });
 }

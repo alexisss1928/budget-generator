@@ -569,6 +569,14 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isInstallmentsEnabled, setIsInstallmentsEnabled] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    group: {
+      patientName: string;
+      payments: WorkplacePaymentRecord[];
+    } | null;
+  }>({ group: null });
+  const [currentView, setCurrentView] = useState<'main' | 'pending'>('main');
+  const [pendingSearch, setPendingSearch] = useState('');
   const [installmentInitialType, setInstallmentInitialType] = useState<
     'amount' | 'percentage'
   >('amount');
@@ -692,16 +700,41 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
   // --- Derived data ---
 
-  // Group all payments by day string
+  const activePayments = useMemo(
+    () => payments.filter((p) => !p.isPendingInstallment),
+    [payments],
+  );
+
+  const pendingInstallments = useMemo(() => {
+    const filtered = payments.filter((p) => p.isPendingInstallment);
+    return filtered
+      .filter((p) =>
+        p.patientName.toLowerCase().includes(pendingSearch.toLowerCase()),
+      )
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [payments, pendingSearch]);
+
+  const pendingInstallmentsSummary = useMemo(() => {
+    const dueToday = pendingInstallments.filter(
+      (p) => toDateStr(new Date(p.date)) === toDateStr(today),
+    ).length;
+    const overdue = pendingInstallments.filter(
+      (p) => new Date(p.date).getTime() < today.getTime(),
+    ).length;
+
+    return { dueToday, overdue };
+  }, [pendingInstallments, today]);
+
+  // Group all active payments by day string
   const paymentsByDay = useMemo(() => {
     const map: Record<string, WorkplacePaymentRecord[]> = {};
-    payments.forEach((p) => {
+    activePayments.forEach((p) => {
       const k = toDateStr(new Date(p.date));
       if (!map[k]) map[k] = [];
       map[k].push(p);
     });
     return map;
-  }, [payments]);
+  }, [activePayments]);
 
   // Slider days (from 30 days before today and including future dates with payments)
   const sliderDays = useMemo(() => {
@@ -741,7 +774,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
       string,
       { procedure: string; cost: string; variablePercentage: string }
     >();
-    for (const p of payments) {
+    for (const p of activePayments) {
       const key = p.procedure.trim().toLowerCase();
       if (!map.has(key)) {
         let vp = '';
@@ -757,7 +790,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
       }
     }
     return Array.from(map.values());
-  }, [payments, workplace]);
+  }, [activePayments, workplace]);
 
   const filteredSuggestions = procedureSuggestions.filter(
     (s) =>
@@ -812,12 +845,12 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
   }, [filterTo]);
 
   const filteredPayments = useMemo(() => {
-    if (!filterFromDate || !filterToDate) return payments;
-    return payments.filter((p) => {
+    if (!filterFromDate || !filterToDate) return activePayments;
+    return activePayments.filter((p) => {
       const t = new Date(p.date).getTime();
       return t >= filterFromDate.getTime() && t <= filterToDate.getTime();
     });
-  }, [payments, filterFromDate, filterToDate]);
+  }, [activePayments, filterFromDate, filterToDate]);
 
   const filteredTotal = filteredPayments.reduce(
     (a, p) => a + p.feeCalculated,
@@ -915,48 +948,98 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     const baseDate = new Date(modalDateStr + 'T12:00:00');
     const recordsToSave: WorkplacePaymentRecord[] = [];
 
-    listToSave.forEach((p) => {
+    // Calculate total amount across all procedures (installments apply to total)
+    const totalAmount = listToSave.reduce((acc, p) => {
       const qty = p.quantity || 1;
-      const procedureLabel = qty > 1 ? `${p.procedure} (x${qty})` : p.procedure;
-      const totalAmount = (parseFloat(p.cost) || 0) * qty;
-      const plannedInstallments =
-        isInstallmentsEnabled && installmentCountValue > 1
-          ? buildInstallmentPlan({
-              totalAmount,
-              initialType: installmentInitialType,
-              initialValue: installmentInitialValue,
-              installmentCount: installmentCountValue,
-              baseDate,
-              procedureLabel,
-            })
-          : [
-              {
-                date: baseDate.toISOString(),
-                cost: totalAmount,
-                procedure: procedureLabel,
-              },
-            ];
+      return acc + (parseFloat(p.cost) || 0) * qty;
+    }, 0);
 
-      plannedInstallments.forEach((entry) => {
-        const record: WorkplacePaymentRecord = {
-          workplaceId,
-          date: entry.date,
-          patientName,
-          procedure: entry.procedure,
-          cost: entry.cost,
-          feeCalculated: calculateFeeForAmount(
-            entry.cost,
-            p.variablePercentage,
-          ),
-          notes: p.notes,
-        };
+    // Compute weighted variable percentage across procedures when needed
+    let weightedVariablePercentage = '';
+    if (workplace?.feeType === 'variable' && totalAmount > 0) {
+      const weighted = listToSave.reduce((acc, p) => {
+        const qty = p.quantity || 1;
+        const cost = (parseFloat(p.cost) || 0) * qty;
+        const vp = parseFloat(p.variablePercentage || '0') || 0;
+        return acc + vp * cost;
+      }, 0);
+      weightedVariablePercentage = String(
+        Math.round((weighted / totalAmount) * 100) / 100,
+      );
+    }
 
-        if (!isInstallmentsEnabled && p.id < 1000000000000) {
-          record.id = p.id;
-        }
+    const procedureLabel =
+      listToSave.length === 1
+        ? (listToSave[0].quantity || 1) > 1
+          ? `${listToSave[0].procedure} (x${listToSave[0].quantity})`
+          : listToSave[0].procedure
+        : `Pago total (${listToSave.length} procedimientos)`;
 
-        recordsToSave.push(record);
-      });
+    const itemsForPlan = listToSave.map((p) => {
+      const qty = p.quantity || 1;
+      return {
+        procedure: qty > 1 ? `${p.procedure} (x${qty})` : p.procedure,
+        cost: (parseFloat(p.cost) || 0) * qty,
+      };
+    });
+
+    const plannedInstallments =
+      isInstallmentsEnabled && installmentCountValue > 1
+        ? buildInstallmentPlan({
+            totalAmount,
+            initialType: installmentInitialType,
+            initialValue: installmentInitialValue,
+            installmentCount: installmentCountValue,
+            baseDate,
+            procedureLabel,
+            items: itemsForPlan,
+          })
+        : [
+            {
+              date: baseDate.toISOString(),
+              cost: totalAmount,
+              procedure: procedureLabel,
+              isPendingInstallment: false,
+              proceduresIncluded: itemsForPlan.map((it) => ({
+                procedure: it.procedure,
+                cost: Math.round(it.cost * 100) / 100,
+              })),
+            },
+          ];
+
+    plannedInstallments.forEach((entry) => {
+      const breakdown = entry.proceduresIncluded
+        ? entry.proceduresIncluded
+            .map((it) => `${it.procedure}: $${it.cost.toFixed(2)}`)
+            .join(' | ')
+        : '';
+
+      const record: WorkplacePaymentRecord = {
+        workplaceId,
+        date: entry.date,
+        patientName,
+        procedure: entry.procedure,
+        cost: entry.cost,
+        feeCalculated: calculateFeeForAmount(
+          entry.cost,
+          weightedVariablePercentage || listToSave[0].variablePercentage,
+        ),
+        notes: [
+          listToSave
+            .map((p) => p.notes || '')
+            .filter(Boolean)
+            .join(' | '),
+          breakdown,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        isPendingInstallment:
+          isInstallmentsEnabled &&
+          installmentCountValue > 1 &&
+          entry.isPendingInstallment,
+      };
+
+      recordsToSave.push(record);
     });
 
     const promises = recordsToSave.map((record) =>
@@ -982,6 +1065,29 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     setInstallmentInitialType('amount');
     setInstallmentInitialValue('');
     setInstallmentCount('4');
+    loadData();
+  };
+
+  const handleAddPendingInstallment = async (item: WorkplacePaymentRecord) => {
+    const todayDate = new Date();
+    await saveWorkplacePayment({
+      ...item,
+      date: todayDate.toISOString(),
+      isPendingInstallment: false,
+    });
+    setSelectedDayStr(toDateStr(todayDate));
+    setCurrentView('main');
+    loadData();
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!deleteTarget.group) return;
+
+    const promises = deleteTarget.group.payments.map((payment) =>
+      deleteWorkplacePayment(payment.id!),
+    );
+    await Promise.all(promises);
+    setDeleteTarget({ group: null });
     loadData();
   };
 
@@ -1100,6 +1206,196 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
   const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
+  if (currentView === 'pending') {
+    return (
+      <ScreenContainer>
+        <SectionInner>
+          <SectionHeader>
+            <BackBtn onClick={() => setCurrentView('main')}>
+              <ChevronLeft size={15} /> Volver
+            </BackBtn>
+          </SectionHeader>
+
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '14px',
+              padding: '16px',
+              boxShadow: 'var(--shadow-card)',
+              marginBottom: '16px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '13px',
+                fontWeight: 700,
+                color: 'var(--text)',
+                marginBottom: '6px',
+              }}
+            >
+              Pagos pendientes
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              {pendingInstallments.length} cuotas pendientes ·{' '}
+              {pendingInstallmentsSummary.dueToday} para hoy ·{' '}
+              {pendingInstallmentsSummary.overdue} vencidas
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              marginBottom: '12px',
+            }}
+          >
+            <label
+              style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+              }}
+            >
+              Buscar por paciente
+            </label>
+            <input
+              type="text"
+              value={pendingSearch}
+              onChange={(e) => setPendingSearch(e.target.value)}
+              placeholder="Ej. Juan Pérez"
+              style={{
+                padding: '8px 10px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'var(--input-bg)',
+                color: 'var(--text)',
+                fontSize: '13px',
+              }}
+            />
+          </div>
+
+          {pendingInstallments.length === 0 ? (
+            <div
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '16px',
+                textAlign: 'center',
+                color: 'var(--text-secondary)',
+                fontSize: '13px',
+              }}
+            >
+              No hay cuotas pendientes.
+            </div>
+          ) : (
+            pendingInstallments.map((item) => {
+              const isDueToday =
+                toDateStr(new Date(item.date)) === toDateStr(today);
+              const isOverdue = new Date(item.date).getTime() < today.getTime();
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: '10px',
+                    padding: '12px',
+                    marginBottom: '10px',
+                    background: 'var(--hover-bg)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, color: 'var(--text)' }}>
+                        {item.patientName}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--text-secondary)',
+                          marginTop: '4px',
+                        }}
+                      >
+                        {new Date(item.date).toLocaleDateString('es-VE', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--text-secondary)',
+                          marginTop: '2px',
+                        }}
+                      >
+                        {item.procedure}
+                      </div>
+                      {item.notes && (
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            color: 'var(--text-secondary)',
+                            marginTop: '6px',
+                          }}
+                        >
+                          {item.notes}
+                        </div>
+                      )}
+                      {(isDueToday || isOverdue) && (
+                        <div
+                          style={{
+                            marginTop: '6px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: isOverdue ? '#ef4444' : '#f59e0b',
+                          }}
+                        >
+                          {isOverdue ? 'Vencida' : 'Para hoy'}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, color: 'var(--accent)' }}>
+                        ${item.cost.toFixed(2)}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAddPendingInstallment(item)}
+                        style={{
+                          marginTop: '8px',
+                          background: 'var(--accent)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Agregar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </SectionInner>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer>
       <SectionInner>
@@ -1164,6 +1460,31 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
             {filteredPayments.length !== 1 ? 's' : ''} en el período
           </div>
         </StatsCard>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: '12px',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setCurrentView('pending')}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--accent)',
+              color: 'var(--accent)',
+              borderRadius: '999px',
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Ver cuotas pendientes
+          </button>
+        </div>
 
         {/* Filter panel */}
         <div
@@ -1328,7 +1649,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
                       {group.payments.map((p) => (
                         <ProcedureRow key={p.id}>
-                          <div>
+                          <div style={{ flex: 1 }}>
                             <ProcedureText>{p.procedure}</ProcedureText>
                             <TotalCost>
                               Costo: ${p.cost.toFixed(2)} | Honorario: $
@@ -1354,11 +1675,30 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                         style={{
                           display: 'flex',
                           justifyContent: 'flex-end',
+                          gap: '8px',
                           marginTop: '8px',
                           paddingTop: '12px',
                           borderTop: '1px dashed var(--border)',
                         }}
                       >
+                        <button
+                          onClick={() => setDeleteTarget({ group })}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #ef4444',
+                            color: '#ef4444',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          <Trash2 size={13} /> Eliminar registro
+                        </button>
                         <button
                           onClick={() => handleEditPatientGroup(group)}
                           style={{
@@ -1386,6 +1726,68 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
           </SliderTrack>
         </SliderContainer>
       </SectionInner>
+
+      {deleteTarget.group && (
+        <ModalOverlay onClick={() => setDeleteTarget({ group: null })}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 8px 0', color: 'var(--text)' }}>
+              Eliminar tarjeta
+            </h3>
+            <p
+              style={{
+                margin: '0 0 16px 0',
+                color: 'var(--text-secondary)',
+                fontSize: '13px',
+              }}
+            >
+              Se eliminará toda la tarjeta de{' '}
+              <strong>{deleteTarget.group.patientName}</strong> con{' '}
+              {deleteTarget.group.payments.length} registro
+              {deleteTarget.group.payments.length !== 1 ? 's' : ''}.
+            </p>
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setDeleteTarget({ group: null })}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteGroup}
+                style={{
+                  background: '#ef4444',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                }}
+              >
+                Eliminar
+              </button>
+            </div>
+          </ModalContent>
+        </ModalOverlay>
+      )}
 
       {/* Modal */}
       {isModalOpen && (

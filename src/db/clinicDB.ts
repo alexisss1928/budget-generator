@@ -29,11 +29,11 @@ export type MedicineRecord = {
   indicaciones: string;
   // Pediatric fields (only set for pediatric medicines)
   isPediatric?: boolean;
-  concentracionMg?: number;   // mg por unidad de volumen
-  concentracionMl?: number;   // ml por unidad (ej: 5ml)
-  dosisPorKg?: number;        // mg/kg/día
-  dosisAlDia?: number;        // número de tomas al día
-  presentacion?: string;      // tipo de presentación
+  concentracionMg?: number; // mg por unidad de volumen
+  concentracionMl?: number; // ml por unidad (ej: 5ml)
+  dosisPorKg?: number; // mg/kg/día
+  dosisAlDia?: number; // número de tomas al día
+  presentacion?: string; // tipo de presentación
 };
 
 export type PatientRecord = {
@@ -77,7 +77,7 @@ export const DEFAULT_PERSONAL_DATA = {
   enfermedades: '',
   hasMedicamentos: false,
   medicamentos: '',
-  embarazo: false
+  embarazo: false,
 };
 
 export type HistoryType = 'recipe' | 'presupuesto' | 'informe';
@@ -100,9 +100,9 @@ export type PaymentRecord = {
   date: string;
   currency: 'USD' | 'VES';
   method: string;
-  amount: number;         // Monto original (en USD o VES)
-  exchangeRate?: number;  // Tasa de cambio usada si la moneda fue VES y hubo conversión
-  amountUSD: number;      // Monto equivalente en dólares para restar del total
+  amount: number; // Monto original (en USD o VES)
+  exchangeRate?: number; // Tasa de cambio usada si la moneda fue VES y hubo conversión
+  amountUSD: number; // Monto equivalente en dólares para restar del total
   reference: string;
 };
 
@@ -155,7 +155,13 @@ export type ReportTemplate = {
   content: string;
 };
 
-export type PaymentMethodType = 'Pago Móvil' | 'Zelle' | 'Transferencia Bancaria' | 'Transferencia Internacional' | 'PayPal' | 'Otro';
+export type PaymentMethodType =
+  | 'Pago Móvil'
+  | 'Zelle'
+  | 'Transferencia Bancaria'
+  | 'Transferencia Internacional'
+  | 'PayPal'
+  | 'Otro';
 
 export type PaymentMethodRecord = {
   id?: number;
@@ -183,7 +189,10 @@ export type MediaLibraryItem = {
   createdAt: string;
 };
 
-export type WorkplaceFeeType = 'fixed_percentage' | 'variable' | 'custom_formula';
+export type WorkplaceFeeType =
+  | 'fixed_percentage'
+  | 'variable'
+  | 'custom_formula';
 
 export interface WorkplaceRecord {
   id?: number;
@@ -191,7 +200,7 @@ export interface WorkplaceRecord {
   feeType: WorkplaceFeeType;
   feeValue: string; // "30" for percentage, or formula string
   workingDays?: number[]; // Array of days of the week (0 = Sunday, 1 = Monday, etc.)
-};
+}
 
 export type WorkplacePaymentRecord = {
   id?: number;
@@ -202,8 +211,8 @@ export type WorkplacePaymentRecord = {
   cost: number;
   feeCalculated: number;
   notes?: string;
+  isPendingInstallment?: boolean;
 };
-
 
 export const DEFAULT_DOCTOR_PROFILE: DoctorProfile = {
   prefix: 'Dr.',
@@ -298,28 +307,46 @@ export function initDB(): Promise<IDBDatabase> {
 
       // v6: media library
       if (!db.objectStoreNames.contains('mediaLibrary')) {
-        db.createObjectStore('mediaLibrary', { keyPath: 'id', autoIncrement: true });
+        db.createObjectStore('mediaLibrary', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
       }
 
       // v7: workplaces and payments
       if (!db.objectStoreNames.contains('workplaces')) {
-        const wpStore = db.createObjectStore('workplaces', { keyPath: 'id', autoIncrement: true });
+        const wpStore = db.createObjectStore('workplaces', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
         wpStore.createIndex('name', 'name', { unique: false });
       }
 
       if (!db.objectStoreNames.contains('workplacePayments')) {
-        const wppStore = db.createObjectStore('workplacePayments', { keyPath: 'id', autoIncrement: true });
+        const wppStore = db.createObjectStore('workplacePayments', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
         wppStore.createIndex('workplaceId', 'workplaceId', { unique: false });
         wppStore.createIndex('date', 'date', { unique: false });
       }
 
       // v8: patients store
       if (!db.objectStoreNames.contains('patients')) {
-        const patStore = db.createObjectStore('patients', { keyPath: 'id', autoIncrement: true });
+        const patStore = db.createObjectStore('patients', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
         patStore.createIndex('name', 'name', { unique: false });
-        patStore.createIndex('identification', 'identification', { unique: false });
+        patStore.createIndex('identification', 'identification', {
+          unique: false,
+        });
 
-        if (event.oldVersion > 0 && event.oldVersion < 8 && db.objectStoreNames.contains('history')) {
+        if (
+          event.oldVersion > 0 &&
+          event.oldVersion < 8 &&
+          db.objectStoreNames.contains('history')
+        ) {
           // Migrate unique patients from history to new patients store
           const tx = (event.target as IDBOpenDBRequest).transaction!;
           const histStore = tx.objectStore('history');
@@ -370,7 +397,7 @@ export function initDB(): Promise<IDBDatabase> {
 function getStore(
   db: IDBDatabase,
   storeName: string,
-  mode: IDBTransactionMode
+  mode: IDBTransactionMode,
 ): IDBObjectStore {
   return db.transaction(storeName, mode).objectStore(storeName);
 }
@@ -393,10 +420,14 @@ export async function getAllTreatments(): Promise<TreatmentRecord[]> {
   return getAllFromStore<TreatmentRecord>(db, 'treatments');
 }
 
-export async function saveTreatment(treatment: TreatmentRecord): Promise<number> {
+export async function saveTreatment(
+  treatment: TreatmentRecord,
+): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'treatments', 'readwrite').add(treatment) as IDBRequest<number>
+    getStore(db, 'treatments', 'readwrite').add(
+      treatment,
+    ) as IDBRequest<number>,
   );
 }
 
@@ -405,9 +436,13 @@ export async function deleteTreatment(id: number): Promise<void> {
   await promisifyRequest(getStore(db, 'treatments', 'readwrite').delete(id));
 }
 
-export async function saveAllTreatments(treatments: TreatmentRecord[]): Promise<void> {
+export async function saveAllTreatments(
+  treatments: TreatmentRecord[],
+): Promise<void> {
   const db = await initDB();
-  const store = db.transaction('treatments', 'readwrite').objectStore('treatments');
+  const store = db
+    .transaction('treatments', 'readwrite')
+    .objectStore('treatments');
   store.clear();
   treatments.forEach((t) => store.add(t));
 }
@@ -422,7 +457,7 @@ export async function getAllMedicines(): Promise<MedicineRecord[]> {
 export async function saveMedicine(medicine: MedicineRecord): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'medicines', 'readwrite').add(medicine) as IDBRequest<number>
+    getStore(db, 'medicines', 'readwrite').add(medicine) as IDBRequest<number>,
   );
 }
 
@@ -431,9 +466,13 @@ export async function deleteMedicine(id: number): Promise<void> {
   await promisifyRequest(getStore(db, 'medicines', 'readwrite').delete(id));
 }
 
-export async function saveAllMedicines(medicines: MedicineRecord[]): Promise<void> {
+export async function saveAllMedicines(
+  medicines: MedicineRecord[],
+): Promise<void> {
   const db = await initDB();
-  const store = db.transaction('medicines', 'readwrite').objectStore('medicines');
+  const store = db
+    .transaction('medicines', 'readwrite')
+    .objectStore('medicines');
   store.clear();
   medicines.forEach((m) => store.add(m));
 }
@@ -443,7 +482,7 @@ export async function saveAllMedicines(medicines: MedicineRecord[]): Promise<voi
 export async function saveToHistory(record: HistoryRecord): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'history', 'readwrite').put(record) as IDBRequest<number>
+    getStore(db, 'history', 'readwrite').put(record) as IDBRequest<number>,
   );
 }
 
@@ -451,7 +490,7 @@ export async function getAllHistory(): Promise<HistoryRecord[]> {
   const db = await initDB();
   const records = await getAllFromStore<HistoryRecord>(db, 'history');
   return records.sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 }
 
@@ -462,7 +501,7 @@ export async function searchHistory(query: string): Promise<HistoryRecord[]> {
   return all.filter(
     (r) =>
       r.patientName.toLowerCase().includes(q) ||
-      r.patientId.toLowerCase().includes(q)
+      r.patientId.toLowerCase().includes(q),
   );
 }
 
@@ -507,7 +546,7 @@ export async function getAllPatients(): Promise<PatientRecord[]> {
 export async function savePatient(patient: PatientRecord): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'patients', 'readwrite').put(patient) as IDBRequest<number>
+    getStore(db, 'patients', 'readwrite').put(patient) as IDBRequest<number>,
   );
 }
 
@@ -523,11 +562,15 @@ export async function upsertPatient(patient: PatientRecord): Promise<void> {
   const store = tx.objectStore('patients');
   const index = store.index('identification');
   const existingReq = index.get(patient.identification);
-  
-  const existing = await promisifyRequest<PatientRecord | undefined>(existingReq);
+
+  const existing = await promisifyRequest<PatientRecord | undefined>(
+    existingReq,
+  );
   if (existing) {
     // Update existing
-    await promisifyRequest(store.put({ ...existing, ...patient, id: existing.id }));
+    await promisifyRequest(
+      store.put({ ...existing, ...patient, id: existing.id }),
+    );
   } else {
     // Add new
     await promisifyRequest(store.add(patient));
@@ -540,15 +583,19 @@ const PROFILE_KEY = 'profile';
 
 export async function getDoctorProfile(): Promise<DoctorProfile | null> {
   const db = await initDB();
-  const store = db.transaction('doctorProfile', 'readonly').objectStore('doctorProfile');
+  const store = db
+    .transaction('doctorProfile', 'readonly')
+    .objectStore('doctorProfile');
   return promisifyRequest<DoctorProfile | null>(
-    store.get(PROFILE_KEY) as IDBRequest<DoctorProfile | null>
+    store.get(PROFILE_KEY) as IDBRequest<DoctorProfile | null>,
   );
 }
 
 export async function saveDoctorProfile(profile: DoctorProfile): Promise<void> {
   const db = await initDB();
-  const store = db.transaction('doctorProfile', 'readwrite').objectStore('doctorProfile');
+  const store = db
+    .transaction('doctorProfile', 'readwrite')
+    .objectStore('doctorProfile');
   await promisifyRequest(store.put(profile, PROFILE_KEY));
 }
 
@@ -559,16 +606,22 @@ export async function getAllReportTemplates(): Promise<ReportTemplate[]> {
   return getAllFromStore<ReportTemplate>(db, 'reportTemplates');
 }
 
-export async function saveReportTemplate(template: ReportTemplate): Promise<number> {
+export async function saveReportTemplate(
+  template: ReportTemplate,
+): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'reportTemplates', 'readwrite').add(template) as IDBRequest<number>
+    getStore(db, 'reportTemplates', 'readwrite').add(
+      template,
+    ) as IDBRequest<number>,
   );
 }
 
 export async function deleteReportTemplate(id: number): Promise<void> {
   const db = await initDB();
-  await promisifyRequest(getStore(db, 'reportTemplates', 'readwrite').delete(id));
+  await promisifyRequest(
+    getStore(db, 'reportTemplates', 'readwrite').delete(id),
+  );
 }
 
 // ─── Payment Methods ──────────────────────────────────────────────────────────
@@ -578,16 +631,22 @@ export async function getAllPaymentMethods(): Promise<PaymentMethodRecord[]> {
   return getAllFromStore<PaymentMethodRecord>(db, 'paymentMethods');
 }
 
-export async function savePaymentMethod(method: PaymentMethodRecord): Promise<number> {
+export async function savePaymentMethod(
+  method: PaymentMethodRecord,
+): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'paymentMethods', 'readwrite').put(method) as IDBRequest<number>
+    getStore(db, 'paymentMethods', 'readwrite').put(
+      method,
+    ) as IDBRequest<number>,
   );
 }
 
 export async function deletePaymentMethod(id: number): Promise<void> {
   const db = await initDB();
-  await promisifyRequest(getStore(db, 'paymentMethods', 'readwrite').delete(id));
+  await promisifyRequest(
+    getStore(db, 'paymentMethods', 'readwrite').delete(id),
+  );
 }
 
 // ─── Shopping List ────────────────────────────────────────────────────────────
@@ -597,10 +656,12 @@ export async function getAllShoppingItems(): Promise<ShoppingItemRecord[]> {
   return getAllFromStore<ShoppingItemRecord>(db, 'shoppingList');
 }
 
-export async function saveShoppingItem(item: ShoppingItemRecord): Promise<number> {
+export async function saveShoppingItem(
+  item: ShoppingItemRecord,
+): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'shoppingList', 'readwrite').put(item) as IDBRequest<number>
+    getStore(db, 'shoppingList', 'readwrite').put(item) as IDBRequest<number>,
   );
 }
 
@@ -614,13 +675,15 @@ export async function deleteShoppingItem(id: number): Promise<void> {
 export async function getAllMediaItems(): Promise<MediaLibraryItem[]> {
   const db = await initDB();
   const items = await getAllFromStore<MediaLibraryItem>(db, 'mediaLibrary');
-  return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return items.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 }
 
 export async function saveMediaItem(item: MediaLibraryItem): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'mediaLibrary', 'readwrite').add(item) as IDBRequest<number>
+    getStore(db, 'mediaLibrary', 'readwrite').add(item) as IDBRequest<number>,
   );
 }
 
@@ -639,7 +702,7 @@ export async function getAllWorkplaces(): Promise<WorkplaceRecord[]> {
 export async function saveWorkplace(item: WorkplaceRecord): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'workplaces', 'readwrite').put(item) as IDBRequest<number>
+    getStore(db, 'workplaces', 'readwrite').put(item) as IDBRequest<number>,
   );
 }
 
@@ -648,30 +711,49 @@ export async function deleteWorkplace(id: number): Promise<void> {
   await promisifyRequest(getStore(db, 'workplaces', 'readwrite').delete(id));
 }
 
-export async function getPaymentsByWorkplace(workplaceId: number): Promise<WorkplacePaymentRecord[]> {
+export async function getPaymentsByWorkplace(
+  workplaceId: number,
+): Promise<WorkplacePaymentRecord[]> {
   const db = await initDB();
   const store = getStore(db, 'workplacePayments', 'readonly');
   const index = store.index('workplaceId');
   return promisifyRequest<WorkplacePaymentRecord[]>(index.getAll(workplaceId));
 }
 
-export async function saveWorkplacePayment(item: WorkplacePaymentRecord): Promise<number> {
+export async function saveWorkplacePayment(
+  item: WorkplacePaymentRecord,
+): Promise<number> {
   const db = await initDB();
   return promisifyRequest<number>(
-    getStore(db, 'workplacePayments', 'readwrite').put(item) as IDBRequest<number>
+    getStore(db, 'workplacePayments', 'readwrite').put(
+      item,
+    ) as IDBRequest<number>,
   );
 }
 
 export async function deleteWorkplacePayment(id: number): Promise<void> {
   const db = await initDB();
-  await promisifyRequest(getStore(db, 'workplacePayments', 'readwrite').delete(id));
+  await promisifyRequest(
+    getStore(db, 'workplacePayments', 'readwrite').delete(id),
+  );
 }
 
 // ─── Export / Import ──────────────────────────────────────────────────────────
 
 export async function exportDB(): Promise<string> {
   const db = await initDB();
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments', 'patients'];
+  const stores = [
+    'treatments',
+    'medicines',
+    'history',
+    'reportTemplates',
+    'paymentMethods',
+    'shoppingList',
+    'mediaLibrary',
+    'workplaces',
+    'workplacePayments',
+    'patients',
+  ];
   const exportData: Record<string, any> = {};
 
   for (const storeName of stores) {
@@ -688,47 +770,78 @@ export async function exportDB(): Promise<string> {
   return JSON.stringify(exportData);
 }
 
-export async function importDB(jsonData: string, mode: 'replace' | 'merge' = 'replace'): Promise<void> {
+export async function importDB(
+  jsonData: string,
+  mode: 'replace' | 'merge' = 'replace',
+): Promise<void> {
   const db = await initDB();
   const data = JSON.parse(jsonData);
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments', 'patients'];
+  const stores = [
+    'treatments',
+    'medicines',
+    'history',
+    'reportTemplates',
+    'paymentMethods',
+    'shoppingList',
+    'mediaLibrary',
+    'workplaces',
+    'workplacePayments',
+    'patients',
+  ];
 
   for (const storeName of stores) {
     if (data[storeName] && db.objectStoreNames.contains(storeName)) {
-      const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
-      
+      const store = db
+        .transaction(storeName, 'readwrite')
+        .objectStore(storeName);
+
       if (mode === 'replace') {
         await promisifyRequest(store.clear());
       }
-      
+
       for (const item of data[storeName]) {
         if (mode === 'merge') {
           // Remove id so autoIncrement generates a new one, avoiding conflicts
           delete item.id;
         }
-        await promisifyRequest(store.put(item)); 
+        await promisifyRequest(store.put(item));
       }
     }
   }
 
-    if (data['doctorProfile']) {
-      await saveDoctorProfile(data['doctorProfile']);
-    }
+  if (data['doctorProfile']) {
+    await saveDoctorProfile(data['doctorProfile']);
+  }
 }
 
 export async function clearAllData(): Promise<void> {
   const db = await initDB();
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments', 'patients'];
+  const stores = [
+    'treatments',
+    'medicines',
+    'history',
+    'reportTemplates',
+    'paymentMethods',
+    'shoppingList',
+    'mediaLibrary',
+    'workplaces',
+    'workplacePayments',
+    'patients',
+  ];
 
   for (const storeName of stores) {
     if (db.objectStoreNames.contains(storeName)) {
-      const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+      const store = db
+        .transaction(storeName, 'readwrite')
+        .objectStore(storeName);
       await promisifyRequest(store.clear());
     }
   }
 
   if (db.objectStoreNames.contains('doctorProfile')) {
-    const store = db.transaction('doctorProfile', 'readwrite').objectStore('doctorProfile');
+    const store = db
+      .transaction('doctorProfile', 'readwrite')
+      .objectStore('doctorProfile');
     await promisifyRequest(store.clear());
   }
 }
@@ -747,8 +860,13 @@ export async function migrateFromLegacyDB(userId: string): Promise<void> {
     return;
   }
 
-  const profileReq = legacyDB.transaction('doctorProfile', 'readonly').objectStore('doctorProfile').get('profile');
-  const legacyProfile = await promisifyRequest<DoctorProfile | undefined>(profileReq);
+  const profileReq = legacyDB
+    .transaction('doctorProfile', 'readonly')
+    .objectStore('doctorProfile')
+    .get('profile');
+  const legacyProfile = await promisifyRequest<DoctorProfile | undefined>(
+    profileReq,
+  );
 
   if (!legacyProfile) {
     legacyDB.close();
@@ -762,7 +880,12 @@ export async function migrateFromLegacyDB(userId: string): Promise<void> {
   });
 
   if (newDB && newDB.objectStoreNames.contains('doctorProfile')) {
-    const newProfile = await promisifyRequest<DoctorProfile | undefined>(newDB.transaction('doctorProfile', 'readonly').objectStore('doctorProfile').get('profile'));
+    const newProfile = await promisifyRequest<DoctorProfile | undefined>(
+      newDB
+        .transaction('doctorProfile', 'readonly')
+        .objectStore('doctorProfile')
+        .get('profile'),
+    );
     if (newProfile) {
       newDB.close();
       legacyDB.close();
@@ -771,12 +894,28 @@ export async function migrateFromLegacyDB(userId: string): Promise<void> {
   }
   if (newDB) newDB.close();
 
-  const stores = ['treatments', 'medicines', 'history', 'reportTemplates', 'paymentMethods', 'shoppingList', 'mediaLibrary', 'workplaces', 'workplacePayments', 'patients'];
+  const stores = [
+    'treatments',
+    'medicines',
+    'history',
+    'reportTemplates',
+    'paymentMethods',
+    'shoppingList',
+    'mediaLibrary',
+    'workplaces',
+    'workplacePayments',
+    'patients',
+  ];
   const exportData: Record<string, any> = {};
 
   for (const storeName of stores) {
     if (legacyDB.objectStoreNames.contains(storeName)) {
-      exportData[storeName] = await promisifyRequest<any[]>(legacyDB.transaction(storeName, 'readonly').objectStore(storeName).getAll());
+      exportData[storeName] = await promisifyRequest<any[]>(
+        legacyDB
+          .transaction(storeName, 'readonly')
+          .objectStore(storeName)
+          .getAll(),
+      );
     }
   }
 
@@ -786,8 +925,14 @@ export async function migrateFromLegacyDB(userId: string): Promise<void> {
   const db = await initDB();
 
   for (const storeName of stores) {
-    if (exportData[storeName] && exportData[storeName].length > 0 && db.objectStoreNames.contains(storeName)) {
-      const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+    if (
+      exportData[storeName] &&
+      exportData[storeName].length > 0 &&
+      db.objectStoreNames.contains(storeName)
+    ) {
+      const store = db
+        .transaction(storeName, 'readwrite')
+        .objectStore(storeName);
       for (const item of exportData[storeName]) {
         await promisifyRequest(store.put(item));
       }
@@ -795,13 +940,14 @@ export async function migrateFromLegacyDB(userId: string): Promise<void> {
   }
 
   if (legacyProfile) {
-    const store = db.transaction('doctorProfile', 'readwrite').objectStore('doctorProfile');
+    const store = db
+      .transaction('doctorProfile', 'readwrite')
+      .objectStore('doctorProfile');
     await promisifyRequest(store.put(legacyProfile, 'profile'));
   }
 
   indexedDB.deleteDatabase(LEGACY_DB_NAME);
-  
+
   // Reload the app to fetch the migrated data
   window.location.reload();
 }
-
