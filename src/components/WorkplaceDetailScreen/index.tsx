@@ -59,19 +59,13 @@ const BackBtn = styled.button`
   align-items: center;
   gap: 6px;
   background: var(--surface);
-  border: none;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 8px 14px 8px 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
   cursor: pointer;
-  transition: all 0.15s;
-  box-shadow: var(--shadow-card);
-  &:hover {
-    background: var(--accent-bg);
-    color: var(--accent);
-  }
 `;
 
 const NewBtn = styled.button`
@@ -738,6 +732,46 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     return { dueToday, overdue };
   }, [pendingInstallments, today]);
 
+  const pendingByMonth = useMemo(() => {
+    const map: Record<string, WorkplacePaymentRecord[]> = {};
+    const fmt = new Intl.DateTimeFormat('es-ES', {
+      month: 'long',
+      year: 'numeric',
+    });
+    for (const p of pendingInstallments) {
+      const d = new Date(p.date);
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`; // stable key
+      if (!map[key]) map[key] = [];
+      map[key].push(p);
+    }
+    // Preserve chronological order of months
+    const ordered: Record<string, WorkplacePaymentRecord[]> = {};
+    Object.keys(map)
+      .sort((a, b) => {
+        const [ay, am] = a.split('-').map(Number);
+        const [by, bm] = b.split('-').map(Number);
+        return ay === by ? am - bm : ay - by;
+      })
+      .forEach((k) => {
+        ordered[k] = map[k].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        );
+      });
+
+    // Map keys to labels when rendering
+    return {
+      map: ordered,
+      labelFor: (k: string) => {
+        const [y, m] = k.split('-').map(Number);
+        const date = new Date(y, m - 1, 1);
+        return fmt.format(date);
+      },
+    } as {
+      map: Record<string, WorkplacePaymentRecord[]>;
+      labelFor: (k: string) => string;
+    };
+  }, [pendingInstallments]);
+
   // Group all active payments by day string
   const paymentsByDay = useMemo(() => {
     const map: Record<string, WorkplacePaymentRecord[]> = {};
@@ -828,12 +862,21 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
       const groups: Record<
         string,
-        { payments: typeof dayPayments; patientName: string; isFromInstallmentPlan: boolean }
+        {
+          payments: typeof dayPayments;
+          patientName: string;
+          isFromInstallmentPlan: boolean;
+        }
       > = {};
       dayPayments.forEach((p) => {
         const flag = p.isFromInstallmentPlan ? 'inst' : 'single';
         const k = `${p.patientName}__${flag}`;
-        if (!groups[k]) groups[k] = { payments: [], patientName: p.patientName, isFromInstallmentPlan: !!p.isFromInstallmentPlan };
+        if (!groups[k])
+          groups[k] = {
+            payments: [],
+            patientName: p.patientName,
+            isFromInstallmentPlan: !!p.isFromInstallmentPlan,
+          };
         groups[k].payments.push(p);
       });
       const grouped = Object.entries(groups).map(([, obj]) => ({
@@ -1032,7 +1075,9 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
           ];
 
     const planId: number | undefined =
-      isInstallmentsEnabled && installmentCountValue > 1 ? Date.now() : undefined;
+      isInstallmentsEnabled && installmentCountValue > 1
+        ? Date.now()
+        : undefined;
 
     plannedInstallments.forEach((entry) => {
       const breakdown = entry.proceduresIncluded
@@ -1356,105 +1401,125 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
               No hay cuotas pendientes.
             </div>
           ) : (
-            pendingInstallments.map((item) => {
-              const isDueToday =
-                toDateStr(new Date(item.date)) === toDateStr(today);
-              const isOverdue = new Date(item.date).getTime() < today.getTime();
-              return (
+            Object.entries(pendingByMonth.map).map(([monthKey, items]) => (
+              <div key={monthKey} style={{ marginBottom: '18px' }}>
                 <div
-                  key={item.id}
                   style={{
-                    border: '1px solid var(--border)',
-                    borderRadius: '10px',
-                    padding: '12px',
-                    marginBottom: '10px',
-                    background: 'var(--hover-bg)',
+                    fontSize: '14px',
+                    fontWeight: 800,
+                    color: 'var(--text)',
+                    margin: '8px 0 10px',
+                    textTransform: 'capitalize',
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: '10px',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700, color: 'var(--text)' }}>
-                        {item.patientName}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          color: 'var(--text-secondary)',
-                          marginTop: '4px',
-                        }}
-                      >
-                        {new Date(item.date).toLocaleDateString('es-VE', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          color: 'var(--text-secondary)',
-                          marginTop: '2px',
-                        }}
-                      >
-                        {item.procedure}
-                      </div>
-                      {item.notes && (
-                        <div
-                          style={{
-                            fontSize: '12px',
-                            color: 'var(--text-secondary)',
-                            marginTop: '6px',
-                          }}
-                        >
-                          {item.notes}
-                        </div>
-                      )}
-                      {(isDueToday || isOverdue) && (
-                        <div
-                          style={{
-                            marginTop: '6px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            color: isOverdue ? '#ef4444' : '#f59e0b',
-                          }}
-                        >
-                          {isOverdue ? 'Vencida' : 'Para hoy'}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--accent)' }}>
-                        ${item.cost.toFixed(2)}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAddPendingInstallment(item)}
-                        style={{
-                          marginTop: '8px',
-                          background: 'var(--accent)',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '8px',
-                          padding: '6px 10px',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Agregar
-                      </button>
-                    </div>
-                  </div>
+                  {pendingByMonth.labelFor(monthKey)}
                 </div>
-              );
-            })
+                {items.map((item) => {
+                  const isDueToday =
+                    toDateStr(new Date(item.date)) === toDateStr(today);
+                  const isOverdue =
+                    new Date(item.date).getTime() < today.getTime();
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: '10px',
+                        padding: '12px',
+                        marginBottom: '10px',
+                        background: 'var(--hover-bg)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{ fontWeight: 700, color: 'var(--text)' }}
+                          >
+                            {item.patientName}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '12px',
+                              color: 'var(--text-secondary)',
+                              marginTop: '4px',
+                            }}
+                          >
+                            {new Date(item.date).toLocaleDateString('es-VE', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '12px',
+                              color: 'var(--text-secondary)',
+                              marginTop: '2px',
+                            }}
+                          >
+                            {item.procedure}
+                          </div>
+                          {item.notes && (
+                            <div
+                              style={{
+                                fontSize: '12px',
+                                color: 'var(--text-secondary)',
+                                marginTop: '6px',
+                              }}
+                            >
+                              {item.notes}
+                            </div>
+                          )}
+                          {(isDueToday || isOverdue) && (
+                            <div
+                              style={{
+                                marginTop: '6px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: isOverdue ? '#ef4444' : '#f59e0b',
+                              }}
+                            >
+                              {isOverdue ? 'Vencida' : 'Para hoy'}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div
+                            style={{ fontWeight: 700, color: 'var(--accent)' }}
+                          >
+                            ${item.cost.toFixed(2)}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleAddPendingInstallment(item)}
+                            style={{
+                              marginTop: '8px',
+                              background: 'var(--accent)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Agregar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))
           )}
         </SectionInner>
       </ScreenContainer>
