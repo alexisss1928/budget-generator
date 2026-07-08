@@ -8,6 +8,7 @@ import {
   Filter,
   Edit2,
   Share2,
+  Clock3,
 } from 'lucide-react';
 import {
   WorkplaceRecord,
@@ -763,16 +764,22 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
     for (let d = new Date(startDate); d <= lastDate; d = addDays(d, 1)) {
       const str = toDateStr(d);
+      const dayHasPayments = Boolean(paymentsByDay[str]?.length);
+      const isFutureDay = d.getTime() > today.getTime();
       let include = false;
 
-      if (workplace?.workingDays && workplace.workingDays.length > 0) {
-        if (workplace.workingDays.includes(d.getDay())) include = true;
+      if (isFutureDay) {
+        include = dayHasPayments;
       } else {
-        include = true;
-      }
+        if (workplace?.workingDays && workplace.workingDays.length > 0) {
+          if (workplace.workingDays.includes(d.getDay())) include = true;
+        } else {
+          include = true;
+        }
 
-      if (paymentsByDay[str] && paymentsByDay[str].length > 0) {
-        include = true;
+        if (dayHasPayments) {
+          include = true;
+        }
       }
 
       if (include) days.push(new Date(d));
@@ -1519,27 +1526,28 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
           </div>
         </StatsCard>
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: '12px',
-          }}
-        >
+        <div style={{ marginBottom: '12px' }}>
           <button
             type="button"
             onClick={() => setCurrentView('pending')}
             style={{
-              background: 'transparent',
-              border: '1px solid var(--accent)',
-              color: 'var(--accent)',
-              borderRadius: '999px',
-              padding: '6px 12px',
-              fontSize: '12px',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              background: 'linear-gradient(135deg, var(--accent), #1f6f5b)',
+              border: 'none',
+              color: '#fff',
+              borderRadius: '12px',
+              padding: '12px 14px',
+              fontSize: '14px',
               fontWeight: 700,
               cursor: 'pointer',
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.16)',
             }}
           >
+            <Clock3 size={16} />
             Ver cuotas pendientes
           </button>
         </div>
@@ -1563,9 +1571,9 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
               background: 'transparent',
               border: '1px solid var(--accent)',
               color: 'var(--accent)',
-              borderRadius: '999px',
-              height: '40px',
-              minHeight: '40px',
+              borderRadius: '10px',
+              height: '50px',
+              minHeight: '50px',
               padding: '0 12px',
               fontSize: '12px',
               fontWeight: 700,
