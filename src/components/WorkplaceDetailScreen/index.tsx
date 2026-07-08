@@ -328,6 +328,18 @@ const ProcedureText = styled.div`
   margin-bottom: 2px;
 `;
 
+const InstallmentBadge = styled.span`
+  display: inline-block;
+  background: #f59e0b20;
+  color: #f59e0b;
+  border: 1px solid #f59e0b33;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+`;
+
 const SuggestionsDropdown = styled.div`
   position: absolute;
   top: 100%;
@@ -807,17 +819,22 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
       const dayPayments = paymentsByDay[str] || [];
       const total = dayPayments.reduce((a, p) => a + p.feeCalculated, 0);
 
-      const groups: Record<string, typeof dayPayments> = {};
+      const groups: Record<
+        string,
+        { payments: typeof dayPayments; patientName: string; isFromInstallmentPlan: boolean }
+      > = {};
       dayPayments.forEach((p) => {
-        const k = p.patientName;
-        if (!groups[k]) groups[k] = [];
-        groups[k].push(p);
+        const flag = p.isFromInstallmentPlan ? 'inst' : 'single';
+        const k = `${p.patientName}__${flag}`;
+        if (!groups[k]) groups[k] = { payments: [], patientName: p.patientName, isFromInstallmentPlan: !!p.isFromInstallmentPlan };
+        groups[k].payments.push(p);
       });
-      const grouped = Object.entries(groups).map(([patientName, payments]) => ({
-        patientName,
-        payments,
-        totalEarned: payments.reduce((acc, p) => acc + p.feeCalculated, 0),
-        totalCost: payments.reduce((acc, p) => acc + p.cost, 0),
+      const grouped = Object.entries(groups).map(([, obj]) => ({
+        patientName: obj.patientName,
+        isFromInstallmentPlan: obj.isFromInstallmentPlan,
+        payments: obj.payments,
+        totalEarned: obj.payments.reduce((acc, p) => acc + p.feeCalculated, 0),
+        totalCost: obj.payments.reduce((acc, p) => acc + p.cost, 0),
       }));
 
       return {
@@ -1007,6 +1024,9 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
             },
           ];
 
+    const planId: number | undefined =
+      isInstallmentsEnabled && installmentCountValue > 1 ? Date.now() : undefined;
+
     plannedInstallments.forEach((entry) => {
       const breakdown = entry.proceduresIncluded
         ? entry.proceduresIncluded
@@ -1037,6 +1057,9 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
           isInstallmentsEnabled &&
           installmentCountValue > 1 &&
           entry.isPendingInstallment,
+        isFromInstallmentPlan:
+          isInstallmentsEnabled && installmentCountValue > 1,
+        installmentPlanId: planId,
       };
 
       recordsToSave.push(record);
@@ -1082,10 +1105,45 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
   const handleDeleteGroup = async () => {
     if (!deleteTarget.group) return;
+    const name = deleteTarget.group.patientName;
 
-    const promises = deleteTarget.group.payments.map((payment) =>
-      deleteWorkplacePayment(payment.id!),
+    // Prefer deleting by installment plan id when available; fallback to previous behavior.
+    const allPayments = await getPaymentsByWorkplace(workplaceId);
+    const planIds = Array.from(
+      new Set(
+        deleteTarget.group.payments
+          .map((p) => p.installmentPlanId)
+          .filter((id): id is number => typeof id === 'number'),
+      ),
     );
+
+    const toDelete: number[] = [];
+
+    if (planIds.length > 0) {
+      for (const pid of planIds) {
+        allPayments
+          .filter((p) => p.installmentPlanId === pid)
+          .forEach((p) => {
+            if (p.id && !toDelete.includes(p.id)) toDelete.push(p.id);
+          });
+      }
+    } else {
+      // Fallback: delete by patient name + installment flag
+      allPayments
+        .filter((p) => p.patientName === name && p.isFromInstallmentPlan)
+        .map((p) => p.id!)
+        .filter(Boolean)
+        .forEach((id) => {
+          if (!toDelete.includes(id)) toDelete.push(id);
+        });
+    }
+
+    // Also include any payments in the current group (safety)
+    deleteTarget.group.payments.forEach((p) => {
+      if (p.id && !toDelete.includes(p.id)) toDelete.push(p.id);
+    });
+
+    const promises = toDelete.map((id) => deleteWorkplacePayment(id));
     await Promise.all(promises);
     setDeleteTarget({ group: null });
     loadData();
@@ -1628,7 +1686,17 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                   </EmptyDayState>
                 ) : (
                   dayData.grouped.map((group) => (
-                    <PatientGroupCard key={group.patientName}>
+                    <PatientGroupCard
+                      key={`${group.patientName}__${group.isFromInstallmentPlan ? 'inst' : 'single'}`}
+                      style={
+                        group.isFromInstallmentPlan
+                          ? {
+                              background: '#fff7ed',
+                              border: '1px solid #f59e0b33',
+                            }
+                          : undefined
+                      }
+                    >
                       <PatientHeader>
                         <div
                           style={{
@@ -1637,7 +1705,14 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                             gap: '8px',
                           }}
                         >
-                          <PatientName>{group.patientName}</PatientName>
+                          <PatientName>
+                            {group.patientName}
+                            {group.isFromInstallmentPlan && (
+                              <>
+                                <InstallmentBadge>Cuotas</InstallmentBadge>
+                              </>
+                            )}
+                          </PatientName>
                         </div>
                         <PaymentAmount>
                           <Earned>+${group.totalEarned.toFixed(2)}</Earned>
@@ -1699,24 +1774,26 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                         >
                           <Trash2 size={13} /> Eliminar registro
                         </button>
-                        <button
-                          onClick={() => handleEditPatientGroup(group)}
-                          style={{
-                            background: 'transparent',
-                            border: '1px solid var(--accent)',
-                            color: 'var(--accent)',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <Edit2 size={13} /> Editar paciente
-                        </button>
+                        {!group.isFromInstallmentPlan && (
+                          <button
+                            onClick={() => handleEditPatientGroup(group)}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid var(--accent)',
+                              color: 'var(--accent)',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <Edit2 size={13} /> Editar paciente
+                          </button>
+                        )}
                       </div>
                     </PatientGroupCard>
                   ))
@@ -1731,7 +1808,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
         <ModalOverlay onClick={() => setDeleteTarget({ group: null })}>
           <ModalContent onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 8px 0', color: 'var(--text)' }}>
-              Eliminar tarjeta
+              Eliminar registro
             </h3>
             <p
               style={{
@@ -1740,10 +1817,8 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                 fontSize: '13px',
               }}
             >
-              Se eliminará toda la tarjeta de{' '}
-              <strong>{deleteTarget.group.patientName}</strong> con{' '}
-              {deleteTarget.group.payments.length} registro
-              {deleteTarget.group.payments.length !== 1 ? 's' : ''}.
+              Se eliminará este registro y todas las cuotas asociadas a{' '}
+              <strong>{deleteTarget.group.patientName}</strong>.
             </p>
             <div
               style={{

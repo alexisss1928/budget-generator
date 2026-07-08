@@ -212,6 +212,8 @@ export type WorkplacePaymentRecord = {
   feeCalculated: number;
   notes?: string;
   isPendingInstallment?: boolean;
+  isFromInstallmentPlan?: boolean;
+  installmentPlanId?: number;
 };
 
 export const DEFAULT_DOCTOR_PROFILE: DoctorProfile = {
