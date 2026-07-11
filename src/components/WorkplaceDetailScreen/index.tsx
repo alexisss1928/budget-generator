@@ -9,6 +9,8 @@ import {
   Edit2,
   Share2,
   Clock3,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   WorkplaceRecord,
@@ -587,6 +589,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     useState<WorkplacePaymentRecord | null>(null);
   const [installmentPayDateStr, setInstallmentPayDateStr] =
     useState<string>('');
+  const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
 
   const [currentView, setCurrentView] = useState<'main' | 'pending'>('main');
   const [pendingSearch, setPendingSearch] = useState('');
@@ -777,6 +780,23 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
       labelFor: (k: string) => string;
     };
   }, [pendingInstallments]);
+
+  const defaultExpandedMonth = useMemo(() => {
+    if (!pendingByMonth || Object.keys(pendingByMonth.map).length === 0) return null;
+    const currentKey = `${today.getFullYear()}-${today.getMonth() + 1}`;
+    if (pendingByMonth.map[currentKey]) return currentKey;
+
+    for (const key of Object.keys(pendingByMonth.map)) {
+      const [y, m] = key.split('-').map(Number);
+      if (
+        y > today.getFullYear() ||
+        (y === today.getFullYear() && m > today.getMonth() + 1)
+      ) {
+        return key;
+      }
+    }
+    return Object.keys(pendingByMonth.map)[0];
+  }, [pendingByMonth, today]);
 
   // Group all active payments by day string
   const paymentsByDay = useMemo(() => {
@@ -1446,128 +1466,189 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
               No hay cuotas pendientes.
             </div>
           ) : (
-            Object.entries(pendingByMonth.map).map(([monthKey, items]) => (
-              <div key={monthKey} style={{ marginBottom: '18px' }}>
+            Object.entries(pendingByMonth.map).map(([monthKey, items]) => {
+              const isCollapsed =
+                collapsedMonths[monthKey] !== undefined
+                  ? collapsedMonths[monthKey]
+                  : monthKey !== defaultExpandedMonth;
+
+              return (
                 <div
+                  key={monthKey}
                   style={{
-                    fontSize: '14px',
-                    fontWeight: 800,
-                    color: 'var(--text)',
-                    margin: '8px 0 10px',
-                    textTransform: 'capitalize',
+                    marginBottom: '16px',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    background: 'var(--bg)',
+                    overflow: 'hidden',
                   }}
                 >
-                  {pendingByMonth.labelFor(monthKey)}
-                </div>
-                {items.map((item) => {
-                  const isDueToday =
-                    toDateStr(new Date(item.date)) === toDateStr(today);
-                  const isOverdue =
-                    new Date(item.date).getTime() < today.getTime();
-                  return (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '16px',
+                      background: 'var(--accent)',
+                      cursor: 'pointer',
+                      borderBottom: isCollapsed ? 'none' : '1px solid var(--border)',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onClick={() =>
+                      setCollapsedMonths((prev) => ({
+                        ...prev,
+                        [monthKey]: !isCollapsed,
+                      }))
+                    }
+                  >
                     <div
-                      key={item.id}
                       style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: '10px',
-                        padding: '12px',
-                        marginBottom: '10px',
-                        background: 'var(--hover-bg)',
+                        fontSize: '14px',
+                        fontWeight: 800,
+                        color: '#ffffff',
+                        textTransform: 'capitalize',
                       }}
                     >
+                      {pendingByMonth.labelFor(monthKey)}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <div
                         style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          gap: '10px',
-                          alignItems: 'flex-start',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: 'var(--accent)',
+                          background: '#ffffff',
+                          borderRadius: '20px',
+                          padding: '2px 8px',
+                          lineHeight: '1.6',
                         }}
                       >
-                        <div>
-                          <div
-                            style={{ fontWeight: 700, color: 'var(--text)' }}
-                          >
-                            {item.patientName}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: '12px',
-                              color: 'var(--text-secondary)',
-                              marginTop: '4px',
-                            }}
-                          >
-                            {new Date(item.date).toLocaleDateString('es-VE', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: '12px',
-                              color: 'var(--text-secondary)',
-                              marginTop: '2px',
-                            }}
-                          >
-                            {item.procedure}
-                          </div>
-                          {item.notes && (
-                            <div
-                              style={{
-                                fontSize: '12px',
-                                color: 'var(--text-secondary)',
-                                marginTop: '6px',
-                              }}
-                            >
-                              {item.notes}
-                            </div>
-                          )}
-                          {(isDueToday || isOverdue) && (
-                            <div
-                              style={{
-                                marginTop: '6px',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                color: isOverdue ? '#ef4444' : '#f59e0b',
-                              }}
-                            >
-                              {isOverdue ? 'Vencida' : 'Para hoy'}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div
-                            style={{ fontWeight: 700, color: 'var(--accent)' }}
-                          >
-                            ${item.feeCalculated.toFixed(2)}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setInstallmentToPay(item);
-                              setInstallmentPayDateStr(toDateStr(new Date()));
-                            }}
-                            style={{
-                              marginTop: '8px',
-                              background: 'var(--accent)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '8px',
-                              padding: '6px 10px',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Agregar
-                          </button>
-                        </div>
+                        {items.length} cuota{items.length !== 1 ? 's' : ''}
                       </div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
+                        ${items.reduce((acc, it) => acc + it.feeCalculated, 0).toFixed(2)}
+                      </div>
+                      {isCollapsed ? (
+                        <ChevronDown size={18} color="#ffffff" />
+                      ) : (
+                        <ChevronUp size={18} color="#ffffff" />
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            ))
+                  </div>
+                  {!isCollapsed && (
+                    <div style={{ padding: '0 16px' }}>
+                      {items.map((item, index) => {
+                        const isDueToday =
+                          toDateStr(new Date(item.date)) === toDateStr(today);
+                        const isOverdue =
+                          new Date(item.date).getTime() < today.getTime();
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '16px 0',
+                              borderBottom:
+                                index < items.length - 1
+                                  ? '1px solid var(--border)'
+                                  : 'none',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: '10px',
+                                alignItems: 'flex-start',
+                              }}
+                            >
+                              <div>
+                                <div
+                                  style={{ fontWeight: 700, color: 'var(--text)' }}
+                                >
+                                  {item.patientName}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: '12px',
+                                    color: 'var(--text-secondary)',
+                                    marginTop: '4px',
+                                  }}
+                                >
+                                  {new Date(item.date).toLocaleDateString('es-VE', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                  })}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: '12px',
+                                    color: 'var(--text-secondary)',
+                                    marginTop: '2px',
+                                  }}
+                                >
+                                  {item.procedure}
+                                </div>
+                                {item.notes && (
+                                  <div
+                                    style={{
+                                      fontSize: '12px',
+                                      color: 'var(--text-secondary)',
+                                      marginTop: '6px',
+                                    }}
+                                  >
+                                    {item.notes}
+                                  </div>
+                                )}
+                                {(isDueToday || isOverdue) && (
+                                  <div
+                                    style={{
+                                      marginTop: '6px',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      color: isOverdue ? '#ef4444' : '#f59e0b',
+                                    }}
+                                  >
+                                    {isOverdue ? 'Vencida' : 'Para hoy'}
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div
+                                  style={{ fontWeight: 700, color: 'var(--accent)' }}
+                                >
+                                  ${item.feeCalculated.toFixed(2)}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setInstallmentToPay(item);
+                                    setInstallmentPayDateStr(toDateStr(new Date()));
+                                  }}
+                                  style={{
+                                    marginTop: '8px',
+                                    background: 'var(--accent)',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    padding: '6px 10px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Agregar
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </SectionInner>
 
