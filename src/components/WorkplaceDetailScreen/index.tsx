@@ -1389,7 +1389,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
 
   if (!workplace) return null;
 
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
 
   if (currentView === 'pending') {
     return (
