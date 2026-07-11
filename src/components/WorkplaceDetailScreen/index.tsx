@@ -228,7 +228,7 @@ const DaySliderContainer = styled.div`
 `;
 
 const DaySlide = styled.div<{ $active?: boolean; $hasData?: boolean }>`
-  min-width: 58px;
+  min-width: 62px;
   padding: 10px 6px;
   border-radius: 12px;
   background: ${(p) => (p.$active ? 'var(--accent)' : 'var(--surface)')};
@@ -237,6 +237,7 @@ const DaySlide = styled.div<{ $active?: boolean; $hasData?: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-evenly;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
@@ -258,6 +259,15 @@ const DayName = styled.div`
 const DayNumber = styled.div`
   font-size: 18px;
   font-weight: 700;
+`;
+
+const DayMonth = styled.div`
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: 600;
+  opacity: 0.75;
+  margin-top: 2px;
+  letter-spacing: 0.03em;
 `;
 
 const DayDot = styled.div`
@@ -694,8 +704,8 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
         const initialAmount =
           installmentInitialType === 'percentage'
             ? (displayAmount *
-                (isNaN(parsedInitialValue) ? 0 : parsedInitialValue)) /
-              100
+              (isNaN(parsedInitialValue) ? 0 : parsedInitialValue)) /
+            100
             : isNaN(parsedInitialValue)
               ? 0
               : parsedInitialValue;
@@ -914,7 +924,7 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
         .toLowerCase()
         .includes(currentProcForm.procedure.toLowerCase()) &&
       s.procedure.toLowerCase() !==
-        currentProcForm.procedure.trim().toLowerCase(),
+      currentProcForm.procedure.trim().toLowerCase(),
   );
 
   const allDaysData = useMemo(() => {
@@ -1116,26 +1126,26 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     const plannedInstallments =
       isInstallmentsEnabled && installmentCountValue > 1
         ? buildInstallmentPlan({
-            totalAmount,
-            initialType: installmentInitialType,
-            initialValue: installmentInitialValue,
-            installmentCount: installmentCountValue,
-            baseDate,
-            procedureLabel,
-            items: itemsForPlan,
-          })
+          totalAmount,
+          initialType: installmentInitialType,
+          initialValue: installmentInitialValue,
+          installmentCount: installmentCountValue,
+          baseDate,
+          procedureLabel,
+          items: itemsForPlan,
+        })
         : [
-            {
-              date: baseDate.toISOString(),
-              cost: totalAmount,
-              procedure: procedureLabel,
-              isPendingInstallment: false,
-              proceduresIncluded: itemsForPlan.map((it) => ({
-                procedure: it.procedure,
-                cost: Math.round(it.cost * 100) / 100,
-              })),
-            },
-          ];
+          {
+            date: baseDate.toISOString(),
+            cost: totalAmount,
+            procedure: procedureLabel,
+            isPendingInstallment: false,
+            proceduresIncluded: itemsForPlan.map((it) => ({
+              procedure: it.procedure,
+              cost: Math.round(it.cost * 100) / 100,
+            })),
+          },
+        ];
 
     const planId: number | undefined =
       isInstallmentsEnabled && installmentCountValue > 1
@@ -1145,8 +1155,8 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     plannedInstallments.forEach((entry) => {
       const breakdown = entry.proceduresIncluded
         ? entry.proceduresIncluded
-            .map((it) => `${it.procedure}: $${it.cost.toFixed(2)}`)
-            .join(' | ')
+          .map((it) => `${it.procedure}: $${it.cost.toFixed(2)}`)
+          .join(' | ')
         : '';
 
       const record: WorkplacePaymentRecord = {
@@ -1903,8 +1913,9 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                 data-active={isActive}
                 onClick={() => setSelectedDayStr(str)}
               >
-                <DayName>{dayNames[d.getDay()]}</DayName>
+                <DayName>{d.toLocaleDateString('es-VE', { weekday: 'short' })}</DayName>
                 <DayNumber>{d.getDate()}</DayNumber>
+                <DayMonth>{d.toLocaleDateString('es-VE', { month: 'short' }).replace('.', '')}</DayMonth>
                 {hasData && <DayDot />}
               </DaySlide>
             );
@@ -1945,9 +1956,9 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                       style={
                         group.isFromInstallmentPlan
                           ? {
-                              background: '#fff7ed',
-                              border: '1px solid #f59e0b33',
-                            }
+                            background: '#fff7ed',
+                            border: '1px solid #f59e0b33',
+                          }
                           : undefined
                       }
                     >
