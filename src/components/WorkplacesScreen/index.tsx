@@ -281,6 +281,7 @@ export default function WorkplacesScreen({ onBack, onNavigateDetail }: Props) {
       if (wp.id) {
         const payments = await getPaymentsByWorkplace(wp.id);
         const monthPayments = payments.filter(p => {
+          if (p.isPendingInstallment) return false;
           const d = new Date(p.date);
           return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         });

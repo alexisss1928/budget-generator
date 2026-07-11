@@ -582,6 +582,12 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
       payments: WorkplacePaymentRecord[];
     } | null;
   }>({ group: null });
+
+  const [installmentToPay, setInstallmentToPay] =
+    useState<WorkplacePaymentRecord | null>(null);
+  const [installmentPayDateStr, setInstallmentPayDateStr] =
+    useState<string>('');
+
   const [currentView, setCurrentView] = useState<'main' | 'pending'>('main');
   const [pendingSearch, setPendingSearch] = useState('');
   const [installmentInitialType, setInstallmentInitialType] = useState<
@@ -827,23 +833,60 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
       string,
       { procedure: string; cost: string; variablePercentage: string }
     >();
-    for (const p of activePayments) {
-      const key = p.procedure.trim().toLowerCase();
+
+    const planTotals = new Map<
+      number,
+      { cost: number; feeCalculated: number; procedure: string }
+    >();
+
+    for (const p of payments) {
+      if (p.isFromInstallmentPlan && p.installmentPlanId) {
+        const planId = p.installmentPlanId;
+        const current = planTotals.get(planId) || {
+          cost: 0,
+          feeCalculated: 0,
+          procedure: p.procedure.replace(/ \(cuota \d+\/\d+\)$/i, ''),
+        };
+        current.cost += p.cost;
+        current.feeCalculated += p.feeCalculated;
+        planTotals.set(planId, current);
+      }
+    }
+
+    const processedPlans = new Set<number>();
+
+    for (const p of payments) {
+      let key = p.procedure.trim().toLowerCase();
+      let cost = p.cost;
+      let feeCalculated = p.feeCalculated;
+      let procedureName = p.procedure;
+
+      if (p.isFromInstallmentPlan && p.installmentPlanId) {
+        if (processedPlans.has(p.installmentPlanId)) continue;
+        processedPlans.add(p.installmentPlanId);
+
+        const totals = planTotals.get(p.installmentPlanId)!;
+        cost = totals.cost;
+        feeCalculated = totals.feeCalculated;
+        procedureName = totals.procedure;
+        key = procedureName.trim().toLowerCase();
+      }
+
       if (!map.has(key)) {
         let vp = '';
-        if (workplace?.feeType === 'variable' && p.cost > 0) {
-          vp = ((p.feeCalculated / p.cost) * 100).toFixed(2);
+        if (workplace?.feeType === 'variable' && cost > 0) {
+          vp = ((feeCalculated / cost) * 100).toFixed(2);
           if (vp.endsWith('.00')) vp = vp.replace('.00', '');
         }
         map.set(key, {
-          procedure: p.procedure,
-          cost: p.cost.toString(),
+          procedure: procedureName,
+          cost: (Math.round(cost * 100) / 100).toString(),
           variablePercentage: vp,
         });
       }
     }
     return Array.from(map.values());
-  }, [activePayments, workplace]);
+  }, [payments, workplace]);
 
   const filteredSuggestions = procedureSuggestions.filter(
     (s) =>
@@ -1143,14 +1186,16 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
     loadData();
   };
 
-  const handleAddPendingInstallment = async (item: WorkplacePaymentRecord) => {
-    const todayDate = new Date();
+  const handleConfirmInstallmentPay = async () => {
+    if (!installmentToPay || !installmentPayDateStr) return;
+    const payDate = new Date(installmentPayDateStr + 'T12:00:00');
     await saveWorkplacePayment({
-      ...item,
-      date: todayDate.toISOString(),
+      ...installmentToPay,
+      date: payDate.toISOString(),
       isPendingInstallment: false,
     });
-    setSelectedDayStr(toDateStr(todayDate));
+    setInstallmentToPay(null);
+    setSelectedDayStr(toDateStr(payDate));
     setCurrentView('main');
     loadData();
   };
@@ -1494,11 +1539,14 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                           <div
                             style={{ fontWeight: 700, color: 'var(--accent)' }}
                           >
-                            ${item.cost.toFixed(2)}
+                            ${item.feeCalculated.toFixed(2)}
                           </div>
                           <button
                             type="button"
-                            onClick={() => handleAddPendingInstallment(item)}
+                            onClick={() => {
+                              setInstallmentToPay(item);
+                              setInstallmentPayDateStr(toDateStr(new Date()));
+                            }}
                             style={{
                               marginTop: '8px',
                               background: 'var(--accent)',
@@ -1522,6 +1570,58 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
             ))
           )}
         </SectionInner>
+
+        {installmentToPay && (
+          <ModalOverlay onClick={() => setInstallmentToPay(null)}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ margin: '0 0 16px 0', color: 'var(--text)' }}>
+                Fecha de pago de cuota
+              </h3>
+              <FormGroup>
+                <Label>Fecha</Label>
+                <Input
+                  type="date"
+                  value={installmentPayDateStr}
+                  onChange={(e) => setInstallmentPayDateStr(e.target.value)}
+                />
+              </FormGroup>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button
+                  type="button"
+                  onClick={() => setInstallmentToPay(null)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border)',
+                    background: 'transparent',
+                    color: 'var(--text)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmInstallmentPay}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Confirmar
+                </button>
+              </div>
+            </ModalContent>
+          </ModalOverlay>
+        )}
       </ScreenContainer>
     );
   }
