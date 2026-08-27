@@ -6,8 +6,20 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
-import api from '../services/api';
 import { setDatabaseUser, migrateFromLegacyDB } from '../db/clinicDB';
+
+// ─── MODO OFFLINE: Descomenta las líneas de 'api' y elimina MOCK_USER
+// ─── cuando el backend esté operativo nuevamente. ─────────────────────────────
+// import api from '../services/api';
+
+const MOCK_USER = {
+  id: 'offline-user-001',
+  email: 'demo@clinicmanager.local',
+  name: 'Usuario Demo',
+  plan: 'FULL_ACCESS' as const,
+  role: 'ADMIN' as const,
+  createdAt: new Date().toISOString(),
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,19 +54,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// ─── Helpers (no usados en modo offline, pero mantenidos para restaurar fácil) ─
 const STORAGE_KEYS = {
   ACCESS: 'cm_access_token',
   REFRESH: 'cm_refresh_token',
   USER: 'cm_user',
 } as const;
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-function clearStorage() {
-  localStorage.removeItem(STORAGE_KEYS.ACCESS);
-  localStorage.removeItem(STORAGE_KEYS.REFRESH);
-  localStorage.removeItem(STORAGE_KEYS.USER);
-}
+void STORAGE_KEYS; // evita warning de unused en modo offline
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
@@ -65,7 +72,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const setUser = useCallback((newUser: AuthUser | null) => {
     if (newUser) {
       setDatabaseUser(newUser.id);
-      // Run migration async in background
       migrateFromLegacyDB(newUser.id).catch(err => {
         console.error('Migration error:', err);
       });
@@ -75,119 +81,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     _setUser(newUser);
   }, []);
 
-  // ── Initialize from localStorage ─────────────────────────────────────────
+  // ── MODO OFFLINE: Auto-login con usuario mock ─────────────────────────────
+  // TODO: Restaurar lógica original cuando el backend esté operativo.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const initialize = useCallback(async () => {
-    const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-    const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS);
-
-    if (!storedUser || !accessToken) {
-      // No hay sesión guardada → ir a login
-      setIsLoading(false);
-      return;
-    }
-
-    // ── Cache-First / Offline-First ──────────────────────────────────────
-    // Para cualquier plan: si el token no ha expirado, entramos inmediatamente
-    // con los datos de localStorage. La validación con el servidor se hace en
-    // segundo plano para no bloquear la app cuando no hay red.
-    try {
-      const payloadPart = accessToken.split('.')[1];
-      if (payloadPart) {
-        const decoded = JSON.parse(atob(payloadPart));
-        const isExpired = decoded.exp * 1000 < Date.now();
-
-        if (!isExpired) {
-          // ✅ Fast Path (todos los planes): entrar directo con caché local
-          setUser(JSON.parse(storedUser));
-          setIsLoading(false);
-
-          // Validar y refrescar sesión en segundo plano
-          api.get<AuthUser>('/auth/me').then(({ data }) => {
-            setUser(data);
-            localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data));
-          }).catch(() => {
-            // Sin red u otro error transitorio: no cerramos sesión,
-            // el usuario ya está dentro. Se reintentará en la próxima carga.
-          });
-          return;
-        }
-      }
-    } catch {
-      // Si falla la decodificación del JWT, intentamos con el servidor
-    }
-
-    // Token expirado o no decodificable → intentar refresh vía interceptor
-    try {
-      const { data } = await api.get<AuthUser>('/auth/me');
-      setUser(data);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data));
-    } catch {
-      // Token inválido y sin posibilidad de refresh → logout
-      clearStorage();
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
+    setUser(MOCK_USER);
+    setIsLoading(false);
   }, []);
+  // ── FIN MODO OFFLINE ──────────────────────────────────────────────────────
 
-  useEffect(() => {
-    // Check for OAuth callback tokens in URL
-    const params = new URLSearchParams(window.location.search);
-    const accessToken = params.get('accessToken');
-    const refreshToken = params.get('refreshToken');
-    const userParam = params.get('user');
-
-    if (accessToken && refreshToken && userParam) {
-      try {
-        const parsedUser = JSON.parse(decodeURIComponent(userParam));
-        localStorage.setItem(STORAGE_KEYS.ACCESS, accessToken);
-        localStorage.setItem(STORAGE_KEYS.REFRESH, refreshToken);
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(parsedUser));
-        setUser(parsedUser);
-        // Plant floor entries BEFORE cleaning the URL so Google OAuth pages
-        // are buried deep. Three entries ensure pressing back always hits our
-        // floor first, never Google directly.
-        window.history.replaceState({ appFloor: true }, '', '/');
-        window.history.pushState({ appFloor: true }, '', '/');
-        window.history.pushState({ appFloor: true }, '', '/');
-        // (InnerApp will detect these and not plant its own, just push the section)
-      } catch (e) {
-        console.error('Failed to parse auth callback params', e);
-      }
-      setIsLoading(false);
-    } else {
-      initialize();
-    }
-  }, [initialize]);
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const signInWithGoogle = useCallback(() => {
-    window.location.href = `${API_BASE}/auth/google`;
+    // MODO OFFLINE: login directo sin Google OAuth
+    setUser(MOCK_USER);
   }, []);
 
   const signOut = useCallback(() => {
-    // 1. Limpiar storage y estado inmediatamente para que el UI reaccione sin esperar
-    clearStorage();
-    setUser(null);
-
-    // 2. Hacer la petición de logout en segundo plano (fire-and-forget)
-    // Así si Render está dormido, no bloquea al usuario.
-    api.post('/auth/logout').catch(() => {
-      // ignore
-    });
-
-    // 3. Forzar redirección para limpiar el stack de navegación (history traps de la PWA) y variables en memoria
+    // MODO OFFLINE: solo limpia el estado local
+    _setUser(null);
+    setDatabaseUser();
     window.location.href = '/';
   }, []);
 
   const refreshUser = useCallback(async () => {
-    try {
-      const { data } = await api.get<AuthUser>('/auth/me');
-      setUser(data);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data));
-    } catch {
-      clearStorage();
-      setUser(null);
-    }
+    // MODO OFFLINE: no-op
+  }, []);
+
+  // Inicializar al montar
+  useEffect(() => {
+    initialize();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value: AuthContextValue = {
@@ -195,7 +118,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: !!user,
     isLoading,
     plan: user?.plan ?? null,
-    // Todos los usuarios autenticados tienen acceso completo
     isFullAccess: !!user,
     isTrial: false,
     signInWithGoogle,
