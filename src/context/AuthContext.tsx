@@ -81,45 +81,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS);
 
     if (!storedUser || !accessToken) {
+      // No hay sesión guardada → ir a login
       setIsLoading(false);
       return;
     }
 
+    // ── Cache-First / Offline-First ──────────────────────────────────────
+    // Para cualquier plan: si el token no ha expirado, entramos inmediatamente
+    // con los datos de localStorage. La validación con el servidor se hace en
+    // segundo plano para no bloquear la app cuando no hay red.
     try {
-      // Intentar decodificar el payload del JWT
       const payloadPart = accessToken.split('.')[1];
       if (payloadPart) {
         const decoded = JSON.parse(atob(payloadPart));
         const isExpired = decoded.exp * 1000 < Date.now();
-        const plan = decoded.plan;
 
-        if (!isExpired && (plan === 'FULL_ACCESS' || plan === 'FREE_TRIAL')) {
-          // Fast Path para PRO: Entrar inmediatamente usando caché local
+        if (!isExpired) {
+          // ✅ Fast Path (todos los planes): entrar directo con caché local
           setUser(JSON.parse(storedUser));
           setIsLoading(false);
 
-          // Actualizar la sesión en segundo plano silenciosamente
+          // Validar y refrescar sesión en segundo plano
           api.get<AuthUser>('/auth/me').then(({ data }) => {
             setUser(data);
             localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data));
           }).catch(() => {
-            // Si el token es revocado, eventualmente se cerrará la sesión en otra llamada,
-            // por ahora no bloqueamos.
+            // Sin red u otro error transitorio: no cerramos sesión,
+            // el usuario ya está dentro. Se reintentará en la próxima carga.
           });
           return;
         }
       }
-    } catch (e) {
-      // Falla la decodificación, seguimos con el flujo normal
+    } catch {
+      // Si falla la decodificación del JWT, intentamos con el servidor
     }
 
+    // Token expirado o no decodificable → intentar refresh vía interceptor
     try {
-      // Validate token with backend (Slow Path para Free o usuarios sin token largo)
       const { data } = await api.get<AuthUser>('/auth/me');
       setUser(data);
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data));
     } catch {
-      // Token invalid — try refresh (handled by interceptor)
+      // Token inválido y sin posibilidad de refresh → logout
       clearStorage();
       setUser(null);
     } finally {
@@ -192,8 +195,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: !!user,
     isLoading,
     plan: user?.plan ?? null,
-    isFullAccess: user?.plan === 'FULL_ACCESS' || user?.plan === 'FREE_TRIAL' || user?.role === 'ADMIN',
-    isTrial: user?.plan === 'FREE_TRIAL',
+    // Todos los usuarios autenticados tienen acceso completo
+    isFullAccess: !!user,
+    isTrial: false,
     signInWithGoogle,
     signOut,
     refreshUser,

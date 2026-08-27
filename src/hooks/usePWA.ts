@@ -11,7 +11,7 @@ export interface PWAState {
   isInstallable: boolean;
   isInstalled: boolean;
   triggerInstall: () => void;
-  // Update
+  // Update (mantenido por compatibilidad con PWABanners)
   hasUpdate: boolean;
   applyUpdate: () => void;
   dismissUpdate: () => void;
@@ -23,26 +23,26 @@ export function usePWA(): PWAState {
   const [isInstalled, setIsInstalled] = useState(false);
   const [updateDismissed, setUpdateDismissed] = useState(false);
 
+  // Con registerType: 'autoUpdate', el SW se actualiza en silencio.
+  // needRefresh se activa igual, pero updateServiceWorker(true) fuerza el reload.
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
       console.log('[PWA] Service Worker registrado:', r);
-      // Poll for updates every 60 s in long sessions
+      // Buscar actualizaciones cada 5 min en sesiones largas
       if (r) {
-        setInterval(() => {
-          console.log('[PWA] Buscando actualizaciones...');
-          r.update();
-        }, 60 * 1000);
+        setInterval(() => r.update(), 5 * 60 * 1000);
       }
     },
     onNeedRefresh() {
-      console.log('[PWA] Nueva versión disponible — activando banner');
-      setNeedRefresh(true);
+      console.log('[PWA] Nueva versión disponible — recargando automáticamente');
+      // autoUpdate: aplicar la actualización directamente sin pedir confirmación
+      updateServiceWorker(true);
     },
     onOfflineReady() {
-      console.log('[PWA] App lista para uso offline');
+      console.log('[PWA] ✅ App cacheada y lista para uso offline');
     },
     onRegisterError(error) {
       console.error('[PWA] Error al registrar SW:', error);
@@ -50,13 +50,13 @@ export function usePWA(): PWAState {
   });
 
   useEffect(() => {
-    // Detect if already installed (standalone mode)
+    // Detectar si ya está instalada (modo standalone)
     const mq = window.matchMedia('(display-mode: standalone)');
     setIsInstalled(mq.matches);
     const mqHandler = (e: MediaQueryListEvent) => setIsInstalled(e.matches);
     mq.addEventListener('change', mqHandler);
 
-    // Capture install prompt
+    // Capturar prompt de instalación
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
@@ -85,10 +85,11 @@ export function usePWA(): PWAState {
   }, [updateServiceWorker]);
 
   const dismissUpdate = useCallback(() => {
+    setNeedRefresh(false);
     setUpdateDismissed(true);
-  }, []);
+  }, [setNeedRefresh]);
 
-  // hasUpdate is true when needRefresh fires AND user hasn't dismissed
+  // hasUpdate: mantenido por compatibilidad, con autoUpdate raramente se activa
   const hasUpdate = needRefresh && !updateDismissed;
 
   return { isInstallable, isInstalled, triggerInstall, hasUpdate, applyUpdate, dismissUpdate };

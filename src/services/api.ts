@@ -5,6 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
+  timeout: 10_000, // 10 s: evita que peticiones offline cuelguen indefinidamente
 });
 
 // ── Request interceptor: attach access token ────────────────────────────────

@@ -2,18 +2,36 @@ import { VitePWA, VitePWAOptions } from 'vite-plugin-pwa';
 import { defineConfig } from 'vite';
 
 const manifestForPlugin: Partial<VitePWAOptions> = {
-  registerType: 'prompt',
+  registerType: 'autoUpdate',
   injectRegister: 'auto',
   devOptions: {
     enabled: true,
-    type: 'module',
   },
   workbox: {
-    globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-    // skipWaiting: false → new SW waits in 'waiting' state until user confirms
-    // clientsClaim must NOT be true, or the new SW takes over immediately
-    skipWaiting: false,
-    clientsClaim: false,
+    globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff}'],
+    // Aumentar límite para que el bundle principal (~2.4 MB) se precachee
+    // Sin esto el SW omite el JS principal y la app falla offline
+    maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
+    // skipWaiting: true → el nuevo SW toma control inmediatamente sin esperar
+    // clientsClaim: true → el SW activo controla todas las pestañas abiertas
+    skipWaiting: true,
+    clientsClaim: true,
+    runtimeCaching: [
+      {
+        // API calls: NetworkFirst con fallback a caché si no hay red
+        urlPattern: ({ url }: { url: URL }) =>
+          url.pathname.startsWith('/auth') || url.pathname.startsWith('/api'),
+        handler: 'NetworkFirst' as const,
+        options: {
+          cacheName: 'api-cache',
+          networkTimeoutSeconds: 8,
+          expiration: {
+            maxEntries: 50,
+            maxAgeSeconds: 60 * 60 * 24, // 24 h
+          },
+        },
+      },
+    ],
   },
   includeAssets: ['**/*'],
   manifest: {
