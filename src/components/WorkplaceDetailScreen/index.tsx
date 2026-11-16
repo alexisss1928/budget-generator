@@ -1850,66 +1850,84 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                 </button>
               </div>
 
-              {/* List */}
-              <div style={{ maxHeight: '55vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                {[...filteredPayments]
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .map((p) => {
-                    const breakdown = parseProceduresFromNotes(p.procedure, p.notes);
+              {/* List grouped by date */}
+              <div style={{ maxHeight: '55vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+                {(() => {
+                  // Build ordered map: dateKey → payments[]
+                  const byDate = new Map<string, typeof filteredPayments>();
+                  [...filteredPayments]
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    .forEach((p) => {
+                      const key = new Date(p.date).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
+                      if (!byDate.has(key)) byDate.set(key, []);
+                      byDate.get(key)!.push(p);
+                    });
+
+                  return Array.from(byDate.entries()).map(([dateLabel, dayPayments]) => {
+                    const dayTotal = dayPayments.reduce((acc, p) => acc + p.feeCalculated, 0);
                     return (
-                      <div
-                        key={p.id}
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: '10px',
-                          background: 'var(--bg)',
-                          border: '1px solid var(--border)',
-                        }}
-                      >
-                        {/* Header row: patient + total */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {p.patientName}
-                            </div>
-                            {!breakdown && (
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {p.procedure}
-                              </div>
-                            )}
-                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                              {new Date(p.date).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </div>
-                          </div>
-                          <div style={{ fontSize: '15px', fontWeight: 800, color: '#10b981', whiteSpace: 'nowrap' }}>
-                            ${p.feeCalculated.toFixed(2)}
-                          </div>
+                      <div key={dateLabel}>
+                        {/* Date header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            {dateLabel}
+                          </span>
+                          
                         </div>
-                        {/* Breakdown rows when multi-procedure */}
-                        {breakdown && (
-                          <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            {breakdown.map((item, i) => (
+                        {/* Payments of this day */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {dayPayments.map((p) => {
+                            const breakdown = parseProceduresFromNotes(p.procedure, p.notes);
+                            return (
                               <div
-                                key={i}
+                                key={p.id}
                                 style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  paddingLeft: '10px',
-                                  borderLeft: '2px solid var(--accent)',
-                                  gap: '8px',
+                                  padding: '10px 12px',
+                                  borderRadius: '10px',
+                                  background: 'var(--bg)',
+                                  border: '1px solid var(--border)',
                                 }}
                               >
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {item.procedure}
-                                </span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {p.patientName}
+                                    </div>
+                                    {!breakdown && (
+                                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {p.procedure}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#10b981', whiteSpace: 'nowrap' }}>
+                                    ${p.feeCalculated.toFixed(2)}
+                                  </div>
+                                </div>
+                                {breakdown && (
+                                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {breakdown.map((item, i) => (
+                                      <div
+                                        key={i}
+                                        style={{
+                                          paddingLeft: '10px',
+                                          borderLeft: '2px solid var(--accent)',
+                                        }}
+                                      >
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                          {item.procedure}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            ))}
-                          </div>
-                        )}
+                            );
+                          })}
+                        </div>
                       </div>
                     );
-                  })}
+                  });
+                })()}
               </div>
 
               {/* Total row */}
@@ -1923,40 +1941,48 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                 onClick={() => {
                   const period = isFilterActive ? `${filterFrom} al ${filterTo}` : 'Este mes';
 
-                  // Group by patient + date (same key = same session)
-                  const grouped = new Map<string, { patientName: string; dateStr: string; payments: typeof filteredPayments }>();
+                  // Group by date, then by patient within each date
+                  const byDate = new Map<string, typeof filteredPayments>();
                   [...filteredPayments]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                     .forEach((p) => {
-                      const dateStr = new Date(p.date).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
-                      const key = `${p.patientName}__${dateStr}`;
-                      if (!grouped.has(key)) grouped.set(key, { patientName: p.patientName, dateStr, payments: [] });
-                      grouped.get(key)!.payments.push(p);
+                      const key = new Date(p.date).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
+                      if (!byDate.has(key)) byDate.set(key, []);
+                      byDate.get(key)!.push(p);
                     });
 
-                  const lines = Array.from(grouped.values()).map(({ patientName, dateStr, payments }) => {
-                    const sessionTotal = payments.reduce((acc, p) => acc + p.feeCalculated, 0);
+                  const blocks = Array.from(byDate.entries()).map(([dateLabel, dayPayments]) => {
+                    const dayTotal = dayPayments.reduce((acc, p) => acc + p.feeCalculated, 0);
 
-                    // Collect all individual procedures across all payment records in the session
-                    const allProcs: string[] = [];
-                    payments.forEach((p) => {
-                      const breakdown = parseProceduresFromNotes(p.procedure, p.notes);
-                      if (breakdown) {
-                        breakdown.forEach((item) => allProcs.push(`   ↳ ${item.procedure}`));
-                      } else {
-                        allProcs.push(`   ↳ ${p.procedure}`);
+                    // Group patients within the day
+                    const byPatient = new Map<string, typeof filteredPayments>();
+                    dayPayments.forEach((p) => {
+                      if (!byPatient.has(p.patientName)) byPatient.set(p.patientName, []);
+                      byPatient.get(p.patientName)!.push(p);
+                    });
+
+                    const patientLines = Array.from(byPatient.entries()).map(([patientName, pps]) => {
+                      const sessionTotal = pps.reduce((acc, p) => acc + p.feeCalculated, 0);
+                      const allProcs: string[] = [];
+                      pps.forEach((p) => {
+                        const breakdown = parseProceduresFromNotes(p.procedure, p.notes);
+                        if (breakdown) {
+                          breakdown.forEach((item) => allProcs.push(`   ↳ ${item.procedure}`));
+                        } else {
+                          allProcs.push(`   ↳ ${p.procedure}`);
+                        }
+                      });
+                      if (allProcs.length === 1) {
+                        const procName = allProcs[0].replace(/^\s*↳\s*/, '');
+                        return `  • ${patientName} (${procName}): $${sessionTotal.toFixed(2)}`;
                       }
-                    });
+                      return `  • ${patientName}: $${sessionTotal.toFixed(2)}\n${allProcs.join('\n')}`;
+                    }).join('\n');
 
-                    if (allProcs.length === 1) {
-                      // Single procedure: show inline
-                      const procName = allProcs[0].replace(/^\s*↳\s*/, '').replace(/:\s*\$[\d.]+$/, '');
-                      return `• ${dateStr} — ${patientName} (${procName}): $${sessionTotal.toFixed(2)}`;
-                    }
-                    return `• ${dateStr} — ${patientName}: $${sessionTotal.toFixed(2)}\n${allProcs.join('\n')}`;
-                  }).join('\n');
+                    return `📅 *${dateLabel}*\n${patientLines}`;
+                  }).join('\n\n');
 
-                  const text = `📋 *Resumen de Ganancias — ${workplace.name}*\n📅 Período: ${period}\n\n${lines}\n\n💰 *Total: $${filteredTotal.toFixed(2)}*`;
+                  const text = `📋 *Resumen de Ganancias — ${workplace.name}*\n📆 Período: ${period}\n\n${blocks}\n\n💰 *Total: $${filteredTotal.toFixed(2)}*`;
                   const encoded = encodeURIComponent(text);
                   window.open(`https://wa.me/?text=${encoded}`, '_blank');
                 }}
