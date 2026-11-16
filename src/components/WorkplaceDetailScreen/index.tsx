@@ -1864,7 +1864,6 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                     });
 
                   return Array.from(byDate.entries()).map(([dateLabel, dayPayments]) => {
-                    const dayTotal = dayPayments.reduce((acc, p) => acc + p.feeCalculated, 0);
                     return (
                       <div key={dateLabel}>
                         {/* Date header */}
@@ -1952,8 +1951,6 @@ export default function WorkplaceDetailScreen({ workplaceId, onBack }: Props) {
                     });
 
                   const blocks = Array.from(byDate.entries()).map(([dateLabel, dayPayments]) => {
-                    const dayTotal = dayPayments.reduce((acc, p) => acc + p.feeCalculated, 0);
-
                     // Group patients within the day
                     const byPatient = new Map<string, typeof filteredPayments>();
                     dayPayments.forEach((p) => {
