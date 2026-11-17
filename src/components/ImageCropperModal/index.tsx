@@ -191,6 +191,8 @@ export default function ImageCropperModal({
   const [step, setStep] = useState<'pick' | 'crop'>('pick');
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [shouldRemoveBg, setShouldRemoveBg] = useState(removeBackground);
+  const [isTransparentPng, setIsTransparentPng] = useState(false);
 
   // Crop state (canvas-display coordinates)
   const [crop, setCrop] = useState<CropRect>({ x: 20, y: 20, w: 200, h: 200 });
@@ -218,11 +220,34 @@ export default function ImageCropperModal({
       canvas.height = Math.round(img.naturalHeight * scale);
       canvasDisplaySize.current = { w: canvas.width, h: canvas.height };
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Detectar si la imagen ya tiene fondo transparente
+      try {
+        const testData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        let transparentPixels = 0;
+        const totalSample = testData.length / 4;
+        for (let i = 3; i < testData.length; i += 4) {
+          if (testData[i] < 200) {
+            transparentPixels++;
+          }
+        }
+        const hasAlpha = (transparentPixels / totalSample) > 0.005;
+        setIsTransparentPng(hasAlpha);
+        if (hasAlpha) {
+          // Si ya tiene transparencia (ej. archivo PNG transparente), conservar transparencia original
+          setShouldRemoveBg(false);
+        } else {
+          setShouldRemoveBg(removeBackground);
+        }
+      } catch (err) {
+        setShouldRemoveBg(removeBackground);
+      }
+
       const pad = 10;
       setCrop({ x: pad, y: pad, w: canvas.width - pad * 2, h: canvas.height - pad * 2 });
     };
     img.src = imageSrc;
-  }, [imageSrc]);
+  }, [imageSrc, removeBackground]);
 
   const loadFile = (file: File) => {
     originalFileRef.current = file;
@@ -319,10 +344,6 @@ export default function ImageCropperModal({
 
   const processImage = (croppedDataUrl: string): Promise<string> => {
     return new Promise((resolve) => {
-      const originalFile = originalFileRef.current;
-      const isPng = originalFile?.type === 'image/png' ||
-                    croppedDataUrl.startsWith('data:image/png');
-
       const img = new Image();
       img.onload = () => {
         const out = document.createElement('canvas');
@@ -334,30 +355,38 @@ export default function ImageCropperModal({
         const imageData = ctx.getImageData(0, 0, out.width, out.height);
         const d = imageData.data;
 
-        // Step 1: Contrast boost (stronger for non-PNG which may be JPEG artifacts)
-        const cf = isPng ? 2.8 : 3.8;
-        const bo = -20;
-        for (let i = 0; i < d.length; i += 4) {
-          d[i]     = Math.min(255, Math.max(0, cf * (d[i]     - 128) + 128 + bo));
-          d[i + 1] = Math.min(255, Math.max(0, cf * (d[i + 1] - 128) + 128 + bo));
-          d[i + 2] = Math.min(255, Math.max(0, cf * (d[i + 2] - 128) + 128 + bo));
+        // Comprobación de seguridad: si la imagen ya tiene píxeles transparentes (>0.5% del total),
+        // es un PNG transparente y NO debe procesarse para evitar pintar de negro el fondo transparente
+        let transparentCount = 0;
+        const total = d.length / 4;
+        for (let i = 3; i < d.length; i += 4) {
+          if (d[i] < 200) transparentCount++;
+        }
+        if (transparentCount / total > 0.005) {
+          resolve(croppedDataUrl);
+          return;
         }
 
-        // Step 2: Two-threshold removal with quadratic falloff
-        const UPPER = 180; // brighter → background (transparent)
-        const LOWER = 85;  // darker   → ink (opaque)
+        // Si es una foto/escaneo sobre papel blanco opaco:
+        const UPPER = 180; // más claro → fondo transparente
+        const LOWER = 85;  // más oscuro → tinta opaca
 
         for (let i = 0; i < d.length; i += 4) {
+          const origAlpha = d[i + 3];
+          if (origAlpha < 30) {
+            d[i + 3] = 0;
+            continue;
+          }
+
           const r = d[i], g = d[i + 1], b = d[i + 2];
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
           if (lum >= UPPER) {
             d[i + 3] = 0;
           } else if (lum <= LOWER) {
-            d[i + 3] = 255;
+            d[i + 3] = origAlpha;
           } else {
-            // t goes 0 (at UPPER) → 1 (at LOWER); t² punishes mid-grays hard
             const t = (UPPER - lum) / (UPPER - LOWER);
-            d[i + 3] = Math.round(t * t * 255);
+            d[i + 3] = Math.round(t * t * origAlpha);
           }
         }
 
@@ -389,7 +418,7 @@ export default function ImageCropperModal({
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
     const croppedDataUrl = out.toDataURL('image/png');
 
-    if (removeBackground) {
+    if (shouldRemoveBg) {
       setIsProcessing(true);
       try {
         const processed = await processImage(croppedDataUrl);
@@ -405,6 +434,8 @@ export default function ImageCropperModal({
   const handleReset = () => {
     setImageSrc(null);
     setStep('pick');
+    setIsTransparentPng(false);
+    setShouldRemoveBg(removeBackground);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
@@ -496,6 +527,47 @@ export default function ImageCropperModal({
             <CropHint>
               Arrastra los bordes o esquinas para ajustar el área · Aspecto: {aspectHint}
             </CropHint>
+
+            {removeBackground && !isTransparentPng && (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  backgroundColor: 'var(--surface-alt)',
+                  fontSize: '12px',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={shouldRemoveBg}
+                  onChange={(e) => setShouldRemoveBg(e.target.checked)}
+                  style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
+                />
+                <span>Eliminar fondo blanco (para fotos de firmas en papel)</span>
+              </label>
+            )}
+
+            {isTransparentPng && (
+              <div
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                  color: '#16a34a',
+                  fontSize: '11px',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                }}
+              >
+                ✓ Imagen con fondo transparente detectada (se conservará la transparencia original)
+              </div>
+            )}
 
             <ActionRow>
               <ActionBtn onClick={handleReset} disabled={isProcessing}>

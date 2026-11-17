@@ -70,9 +70,9 @@ const BudgetReportPrint = ({
     return `${val}$`;
   };
 
-  const logoSrc = (isFullAccess && doctorProfile.logoDataUrl) ? doctorProfile.logoDataUrl : LogoApp;
-  const selloSrc = isFullAccess ? doctorProfile.selloDataUrl : undefined;
-  const firmaSrc = isFullAccess ? doctorProfile.firmaDataUrl : undefined;
+  const logoSrc = doctorProfile.logoDataUrl || LogoApp;
+  const selloSrc = doctorProfile.selloDataUrl;
+  const firmaSrc = doctorProfile.firmaDataUrl;
   const doctorName = `${doctorProfile.prefix} ${doctorProfile.nombre} ${doctorProfile.apellido}`;
 
   return (
@@ -333,12 +333,20 @@ const BudgetReportPrint = ({
         >
           {firmaSrc && (
             <div style={{ textAlign: 'center' }}>
-              <img src={firmaSrc} style={{ width: '150px' }} alt="Firma" />
+              <img
+                src={firmaSrc}
+                style={{ maxWidth: '160px', maxHeight: '90px', width: 'auto', height: 'auto', objectFit: 'contain', backgroundColor: 'transparent' }}
+                alt="Firma"
+              />
             </div>
           )}
           {selloSrc && (
             <div style={{ textAlign: 'center' }}>
-              <img src={selloSrc} style={{ width: '150px' }} alt="Sello" />
+              <img
+                src={selloSrc}
+                style={{ maxWidth: '140px', maxHeight: '90px', width: 'auto', height: 'auto', objectFit: 'contain', backgroundColor: 'transparent' }}
+                alt="Sello"
+              />
             </div>
           )}
         </div>
