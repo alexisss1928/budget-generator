@@ -444,22 +444,50 @@ export default function CurrencyConverterModal({ onClose }: Props) {
   const fetchBCV = useCallback(async () => {
     setIsFetching(true);
     try {
-      const [resUsd, resEur] = await Promise.all([
-        fetch('https://ve.dolarapi.com/v1/dolares/oficial'),
-        fetch('https://ve.dolarapi.com/v1/euros/oficial'),
-      ]);
-      const dataUsd = await resUsd.json();
-      const dataEur = await resEur.json();
-      const newData: BcvData = {
-        usd: dataUsd.promedio || dataUsd.venta || 0,
-        eur: dataEur.promedio || dataEur.venta || 0,
-        date: new Date().toLocaleString('es-VE'),
-        savedAt: new Date().toISOString(),
-      };
+      let usd = 0;
+      let eur = 0;
+      let date = new Date().toLocaleString('es-VE');
+      let savedAt = new Date().toISOString();
+
+      try {
+        const res = await fetch('https://clinic-inventory-backend.onrender.com/api/exchange-rates');
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        const data = await res.json();
+
+        const rawUsd = Number(data.USD) || 0;
+        const rawEur = Number(data.EUR) || 0;
+        usd = rawUsd;
+        // Si el euro viene en relación al dólar (ej. ~1.008), se convierte a Bs. multiplicando por USD
+        eur = rawEur > 0 && rawEur < 50 ? rawEur * rawUsd : rawEur;
+
+        if (data.lastUpdated) {
+          const parsedDate = new Date(data.lastUpdated);
+          if (!isNaN(parsedDate.getTime())) {
+            date = parsedDate.toLocaleString('es-VE');
+            savedAt = parsedDate.toISOString();
+          }
+        }
+      } catch (backendError) {
+        console.warn('Error al consultar clinic-inventory-backend, intentando fallback:', backendError);
+        const [resUsd, resEur] = await Promise.all([
+          fetch('https://ve.dolarapi.com/v1/dolares/oficial'),
+          fetch('https://ve.dolarapi.com/v1/euros/oficial'),
+        ]);
+        const dataUsd = await resUsd.json();
+        const dataEur = await resEur.json();
+        usd = dataUsd.promedio || dataUsd.venta || 0;
+        eur = dataEur.promedio || dataEur.venta || 0;
+      }
+
+      if (!usd && !eur) {
+        throw new Error('No se pudieron obtener las tasas de cambio.');
+      }
+
+      const newData: BcvData = { usd, eur, date, savedAt };
       setBcvData(newData);
       localStorage.setItem('bcv_rates', JSON.stringify(newData));
     } catch {
-      alert('Error al obtener tasas del BCV. Verifique su conexión.');
+      alert('Error al obtener tasas de cambio. Verifique su conexión.');
     } finally {
       setIsFetching(false);
     }

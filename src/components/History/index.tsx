@@ -11,6 +11,8 @@ import {
   DoctorProfile,
 } from '../../db/clinicDB';
 import WhatsAppModal from '../WhatsAppModal';
+import BudgetCurrencyModal, { BudgetCurrencySelection } from '../BudgetCurrencyModal';
+import { BudgetCurrencyConfig } from '../BudgetReportPrint';
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 
@@ -404,8 +406,8 @@ function formatDate(iso: string) {
 type HistoryProps = {
   doctorProfile: DoctorProfile;
   onLoadRecord: (record: HistoryRecord) => void;
-  onDownloadRecord: (record: HistoryRecord) => void;
-  onShareHistoryRecordPdf?: (record: HistoryRecord) => Promise<void>;
+  onDownloadRecord: (record: HistoryRecord, currencyConfig?: BudgetCurrencyConfig) => void;
+  onShareHistoryRecordPdf?: (record: HistoryRecord, currencyConfig?: BudgetCurrencyConfig) => Promise<void>;
 };
 
 const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistoryRecordPdf }: HistoryProps) => {
@@ -415,6 +417,8 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
   const [openId, setOpenId] = useState<number | null>(null);
   const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
   const [waRecord, setWaRecord] = useState<HistoryRecord | null>(null);
+  const [waCurrencyConfig, setWaCurrencyConfig] = useState<BudgetCurrencyConfig | undefined>(undefined);
+  const [budgetModalRecord, setBudgetModalRecord] = useState<{ record: HistoryRecord; action: 'download' | 'share' } | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<{ id: number; name: string } | null>(null);
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -458,15 +462,30 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handleShare = (record: HistoryRecord) => {
+  const handleShare = (record: HistoryRecord, config?: BudgetCurrencySelection) => {
     const fecha = new Date(record.date).toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
     const patient = record.patientName ? `Paciente: ${record.patientName}` : '';
     let msg = '';
 
     if (record.type === 'presupuesto' && record.data.treatments) {
-      const items = record.data.treatments.map((t) => `- ${t.nombre}${t.quantity && t.quantity !== '1' ? ` x${t.quantity}` : ''}${t.precio ? ` - $${t.precio}` : ''}${t.observations ? `\n  ${t.observations}` : ''}`).join('\n');
-      const total = record.data.treatments.reduce((acc, t) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1), 0);
-      msg = `*Plan de Tratamiento*\nFecha: ${fecha}\n${patient}\n\n${items}\n\n*Total: $${total.toFixed(2)}*`;
+      if (config && config.currency === 'Bs.' && config.rate > 0) {
+        const items = record.data.treatments.map((t) => {
+          const qty = t.quantity && t.quantity !== '1' ? ` x${t.quantity}` : '';
+          const priceBs = (parseFloat(t.precio) || 0) * config.rate;
+          const priceStr = `Bs. ${priceBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          const obs = t.observations ? `\n  ${t.observations}` : '';
+          return `- ${t.nombre}${qty} - ${priceStr}${obs}`;
+        }).join('\n');
+        const totalUsd = record.data.treatments.reduce((acc, t) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1), 0);
+        const totalBs = totalUsd * config.rate;
+        const totalFormatted = `*Total: Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}*`;
+        const rateNote = config.rateLabel ? `_${config.rateLabel}_` : `_Tasa de cambio: 1 USD = ${config.rate.toFixed(2)} Bs._`;
+        msg = `*Plan de Tratamiento (en Bolívares)*\nFecha: ${fecha}\n${patient}\n\n${items}\n\n${totalFormatted}\n${rateNote}`;
+      } else {
+        const items = record.data.treatments.map((t) => `- ${t.nombre}${t.quantity && t.quantity !== '1' ? ` x${t.quantity}` : ''}${t.precio ? ` - $${t.precio}` : ''}${t.observations ? `\n  ${t.observations}` : ''}`).join('\n');
+        const total = record.data.treatments.reduce((acc, t) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1), 0);
+        msg = `*Plan de Tratamiento*\nFecha: ${fecha}\n${patient}\n\n${items}\n\n*Total: $${total.toFixed(2)}*`;
+      }
     } else if (record.type === 'recipe' && record.data.medicines) {
       const items = record.data.medicines.map((m) => `- ${m.nombre}\n  ${m.indicaciones}`).join('\n');
       msg = `*Recipe Médico*\nFecha: ${fecha}\n${patient}\n\n${items}`;
@@ -480,6 +499,7 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
 
     setWaConfig({ message: msg, defaultPhone: record.patientPhone || undefined });
     setWaRecord(record);
+    setWaCurrencyConfig(config?.currency === 'Bs.' ? { currency: 'Bs.', rate: config.rate, rateLabel: config.rateLabel } : undefined);
   };
 
   return (
@@ -488,8 +508,31 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
         <WhatsAppModal
           message={waConfig.message}
           defaultPhone={waConfig.defaultPhone}
-          onClose={() => { setWaConfig(null); setWaRecord(null); }}
-          onSharePdf={waRecord && onShareHistoryRecordPdf ? async () => { await onShareHistoryRecordPdf(waRecord); } : undefined}
+          onClose={() => { setWaConfig(null); setWaRecord(null); setWaCurrencyConfig(undefined); }}
+          onSharePdf={waRecord && onShareHistoryRecordPdf ? async () => { await onShareHistoryRecordPdf(waRecord, waCurrencyConfig); } : undefined}
+        />
+      )}
+      {budgetModalRecord !== null && (
+        <BudgetCurrencyModal
+          isOpen={budgetModalRecord !== null}
+          onClose={() => setBudgetModalRecord(null)}
+          actionType={budgetModalRecord.action}
+          totalUsd={
+            budgetModalRecord.record.data?.treatments?.reduce(
+              (acc: number, t: any) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1),
+              0
+            ) || 0
+          }
+          onConfirm={(config) => {
+            const { record, action } = budgetModalRecord;
+            setBudgetModalRecord(null);
+            const currencyConfig = config.currency === 'Bs.' ? { currency: 'Bs.' as const, rate: config.rate, rateLabel: config.rateLabel } : undefined;
+            if (action === 'download') {
+              onDownloadRecord(record, currencyConfig);
+            } else {
+              handleShare(record, config);
+            }
+          }}
         />
       )}
       <Wrapper>
@@ -587,10 +630,30 @@ const History = ({ doctorProfile, onLoadRecord, onDownloadRecord, onShareHistory
               )}
 
               <CardActions>
-                <ActionBtn title="Compartir" onClick={(e) => { e.stopPropagation(); handleShare(record); }}>
+                <ActionBtn
+                  title="Compartir"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (record.type === 'presupuesto') {
+                      setBudgetModalRecord({ record, action: 'share' });
+                    } else {
+                      handleShare(record);
+                    }
+                  }}
+                >
                   <Share2 size={16} />
                 </ActionBtn>
-                <ActionBtn title="Descargar PDF" onClick={(e) => { e.stopPropagation(); onDownloadRecord(record); }}>
+                <ActionBtn
+                  title="Descargar PDF"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (record.type === 'presupuesto') {
+                      setBudgetModalRecord({ record, action: 'download' });
+                    } else {
+                      onDownloadRecord(record);
+                    }
+                  }}
+                >
                   <Download size={16} />
                 </ActionBtn>
                 <ActionBtn title="Editar documento" onClick={(e) => { e.stopPropagation(); onLoadRecord(record); }}>

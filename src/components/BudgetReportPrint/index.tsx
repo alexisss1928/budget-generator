@@ -19,6 +19,12 @@ type CurrentTreatmentListItem = {
   observations: string;
 };
 
+export type BudgetCurrencyConfig = {
+  currency: 'USD' | 'Bs.';
+  rate: number;
+  rateLabel?: string;
+};
+
 type BudgetReportPrintType = {
   personalData: PersonalDataType;
   section: string;
@@ -28,6 +34,7 @@ type BudgetReportPrintType = {
   doctorProfile?: DoctorProfile;
   isFullAccess?: boolean;
   documentDate?: string;
+  currencyConfig?: BudgetCurrencyConfig;
 };
 
 const BudgetReportPrint = ({
@@ -39,6 +46,7 @@ const BudgetReportPrint = ({
   doctorProfile = DEFAULT_DOCTOR_PROFILE,
   isFullAccess,
   documentDate,
+  currencyConfig,
 }: BudgetReportPrintType) => {
   const date = documentDate ? new Date(documentDate + 'T12:00:00') : new Date();
 
@@ -49,6 +57,17 @@ const BudgetReportPrint = ({
 
   const InsuranceCoverage = {
     color: '#58c36b',
+  };
+
+  const isBs = currencyConfig?.currency === 'Bs.' && (currencyConfig.rate || 0) > 0;
+  const rate = isBs ? (currencyConfig?.rate || 1) : 1;
+
+  const formatPrice = (amountUsd: number) => {
+    const val = amountUsd * rate;
+    if (isBs) {
+      return `Bs. ${val.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return `${val}$`;
   };
 
   const logoSrc = (isFullAccess && doctorProfile.logoDataUrl) ? doctorProfile.logoDataUrl : LogoApp;
@@ -202,6 +221,11 @@ const BudgetReportPrint = ({
         {/* Presupuesto table */}
         {section === 'Presupuesto' ? (
           <>
+            {isBs && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px', marginBottom: '-10px', fontSize: '11px', color: '#666', fontStyle: 'italic' }}>
+                * Presupuesto expresado en Bolívares (Bs.) — Tasa: {currencyConfig?.rateLabel || `1 USD = ${rate.toFixed(2)} Bs.`}
+              </div>
+            )}
             <div style={{ display: 'flex', textAlign: 'center', marginTop: '20px' }}>
               <h3 style={{ flex: '2', textAlign: 'left', textDecoration: 'underline' }}>Procedimiento</h3>
               <h3 style={{ flex: '1', textDecoration: 'underline' }}>Cantidad</h3>
@@ -217,16 +241,16 @@ const BudgetReportPrint = ({
                 <p style={{ flex: '2', textAlign: 'left' }}>{treatment.nombre}</p>
                 <p style={{ flex: '1' }}>{treatment.quantity}</p>
                 <p style={{ flex: '1' }}>
-                  {treatment.precio}${' '}
+                  {formatPrice(+treatment.precio || 0)}{' '}
                   {insuranceCoverageisActive && (
-                    <span style={InsuranceCoverage}>({treatment.insuranceCoverage}$)</span>
+                    <span style={InsuranceCoverage}>({formatPrice(+treatment.insuranceCoverage || 0)})</span>
                   )}
                 </p>
                 <p style={{ flex: '1' }}>
-                  {+treatment.quantity * +treatment.precio}${' '}
+                  {formatPrice((+treatment.quantity || 1) * (+treatment.precio || 0))}{' '}
                   {insuranceCoverageisActive && (
                     <span style={InsuranceCoverage}>
-                      ({+treatment.quantity * +treatment.insuranceCoverage}$)
+                      ({formatPrice((+treatment.quantity || 1) * (+treatment.insuranceCoverage || 0))})
                     </span>
                   )}
                 </p>
@@ -259,19 +283,22 @@ const BudgetReportPrint = ({
                   borderRadius: '0 5px 5px 0',
                 }}
               >
-                {treatmentsList.reduce(
-                  (acc, t) => acc + +t.precio * +t.quantity,
-                  0
-                )}
-                ${' '}
+                {formatPrice(
+                  treatmentsList.reduce(
+                    (acc, t) => acc + (+t.precio || 0) * (+t.quantity || 1),
+                    0
+                  )
+                )}{' '}
                 {insuranceCoverageisActive && (
                   <span style={InsuranceCoverage}>
                     (
-                    {treatmentsList.reduce(
-                      (acc, t) => acc + +t.insuranceCoverage * +t.quantity,
-                      0
+                    {formatPrice(
+                      treatmentsList.reduce(
+                        (acc, t) => acc + (+t.insuranceCoverage || 0) * (+t.quantity || 1),
+                        0
+                      )
                     )}
-                    $)
+                    )
                   </span>
                 )}
               </p>

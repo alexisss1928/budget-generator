@@ -15,6 +15,8 @@ import ContactQRModal from '../ContactQRModal';
 import DoseCalculatorModal from '../DoseCalculatorModal';
 import NegatoscopioScreen from '../NegatoscopioScreen';
 import CurrencyConverterModal from '../CurrencyConverterModal';
+import BudgetCurrencyModal, { BudgetCurrencySelection } from '../BudgetCurrencyModal';
+import { BudgetCurrencyConfig } from '../BudgetReportPrint';
 import { useAuth } from '../../context/AuthContext';
 
 // ─── Animations ──────────────────────────────────────────────────────────────
@@ -837,8 +839,8 @@ interface HomeScreenProps {
   onNewDoc: (type: 'presupuesto' | 'recipe' | 'informe') => void;
   doctorProfile: DoctorProfile;
   onLoadRecord: (record: HistoryRecord) => void;
-  onDownloadRecord: (record: HistoryRecord) => void;
-  onSharePdf: (record: HistoryRecord) => Promise<void>;
+  onDownloadRecord: (record: HistoryRecord, currencyConfig?: BudgetCurrencyConfig) => void;
+  onSharePdf: (record: HistoryRecord, currencyConfig?: BudgetCurrencyConfig) => Promise<void>;
   isFullAccess: boolean;
   onProRequired: () => void;
 }
@@ -851,6 +853,8 @@ const HomeScreen = ({ onNavigate, onNavigateWorkplace, onNewDoc, doctorProfile, 
   const [pendingDeleteId, setPendingDeleteId] = useState<{ id: number; name: string } | null>(null);
   const [waConfig, setWaConfig] = useState<{ message: string; defaultPhone?: string } | null>(null);
   const [waRecord, setWaRecord] = useState<HistoryRecord | null>(null);
+  const [waCurrencyConfig, setWaCurrencyConfig] = useState<BudgetCurrencyConfig | undefined>(undefined);
+  const [budgetModalRecord, setBudgetModalRecord] = useState<{ record: HistoryRecord; action: 'download' | 'share' } | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRecord[]>([]);
   const [isContactQRModalOpen, setIsContactQRModalOpen] = useState(false);
@@ -911,16 +915,31 @@ const HomeScreen = ({ onNavigate, onNavigateWorkplace, onNewDoc, doctorProfile, 
     setOpenId((prev) => (prev === id ? null : id));
   };
 
-  const handleShare = (record: HistoryRecord) => {
+  const handleShare = (record: HistoryRecord, config?: BudgetCurrencySelection) => {
     const fecha = new Date(record.date).toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' });
     const patient = record.patientName ? `Paciente: ${record.patientName}` : '';
     let msg = '';
     if (record.type === 'presupuesto' && record.data.treatments) {
-      const items = record.data.treatments.map((t) =>
-        `- ${t.nombre}${t.quantity && t.quantity !== '1' ? ` x${t.quantity}` : ''}${t.precio ? ` - $${t.precio}` : ''}${t.observations ? `\n  ${t.observations}` : ''}`
-      ).join('\n');
-      const total = record.data.treatments.reduce((acc, t) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1), 0);
-      msg = `*Plan de Tratamiento*\nFecha: ${fecha}\n${patient}\n\n${items}\n\n*Total: $${total.toFixed(2)}*`;
+      if (config && config.currency === 'Bs.' && config.rate > 0) {
+        const items = record.data.treatments.map((t) => {
+          const qty = t.quantity && t.quantity !== '1' ? ` x${t.quantity}` : '';
+          const priceBs = (parseFloat(t.precio) || 0) * config.rate;
+          const priceStr = `Bs. ${priceBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          const obs = t.observations ? `\n  ${t.observations}` : '';
+          return `- ${t.nombre}${qty} - ${priceStr}${obs}`;
+        }).join('\n');
+        const totalUsd = record.data.treatments.reduce((acc, t) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1), 0);
+        const totalBs = totalUsd * config.rate;
+        const totalFormatted = `*Total: Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}*`;
+        const rateNote = config.rateLabel ? `_${config.rateLabel}_` : `_Tasa de cambio: 1 USD = ${config.rate.toFixed(2)} Bs._`;
+        msg = `*Plan de Tratamiento (en Bolívares)*\nFecha: ${fecha}\n${patient}\n\n${items}\n\n${totalFormatted}\n${rateNote}`;
+      } else {
+        const items = record.data.treatments.map((t) =>
+          `- ${t.nombre}${t.quantity && t.quantity !== '1' ? ` x${t.quantity}` : ''}${t.precio ? ` - $${t.precio}` : ''}${t.observations ? `\n  ${t.observations}` : ''}`
+        ).join('\n');
+        const total = record.data.treatments.reduce((acc, t) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1), 0);
+        msg = `*Plan de Tratamiento*\nFecha: ${fecha}\n${patient}\n\n${items}\n\n*Total: $${total.toFixed(2)}*`;
+      }
     } else if (record.type === 'recipe' && record.data.medicines) {
       const items = record.data.medicines.map((m) => `- ${m.nombre}\n  ${m.indicaciones}`).join('\n');
       msg = `*Recipe Médico*\nFecha: ${fecha}\n${patient}\n\n${items}`;
@@ -932,6 +951,7 @@ const HomeScreen = ({ onNavigate, onNavigateWorkplace, onNewDoc, doctorProfile, 
     if (doctorProfile.telefono) msg += `\nTel: ${doctorProfile.telefono}`;
     setWaConfig({ message: msg, defaultPhone: record.patientPhone || undefined });
     setWaRecord(record);
+    setWaCurrencyConfig(config?.currency === 'Bs.' ? { currency: 'Bs.', rate: config.rate, rateLabel: config.rateLabel } : undefined);
   };
 
   const confirmDelete = async () => {
@@ -955,8 +975,8 @@ const HomeScreen = ({ onNavigate, onNavigateWorkplace, onNewDoc, doctorProfile, 
         <WhatsAppModal
           message={waConfig.message}
           defaultPhone={waConfig.defaultPhone}
-          onClose={() => { setWaConfig(null); setWaRecord(null); }}
-          onSharePdf={waRecord ? async () => { await onSharePdf(waRecord); } : undefined}
+          onClose={() => { setWaConfig(null); setWaRecord(null); setWaCurrencyConfig(undefined); }}
+          onSharePdf={waRecord ? async () => { await onSharePdf(waRecord, waCurrencyConfig); } : undefined}
         />
       )}
 
@@ -987,6 +1007,30 @@ const HomeScreen = ({ onNavigate, onNavigateWorkplace, onNewDoc, doctorProfile, 
 
       {isCurrencyConverterOpen && (
         <CurrencyConverterModal onClose={() => setIsCurrencyConverterOpen(false)} />
+      )}
+
+      {budgetModalRecord !== null && (
+        <BudgetCurrencyModal
+          isOpen={budgetModalRecord !== null}
+          onClose={() => setBudgetModalRecord(null)}
+          actionType={budgetModalRecord.action}
+          totalUsd={
+            budgetModalRecord.record.data?.treatments?.reduce(
+              (acc: number, t: any) => acc + (parseFloat(t.precio) || 0) * (parseInt(t.quantity) || 1),
+              0
+            ) || 0
+          }
+          onConfirm={(config) => {
+            const { record, action } = budgetModalRecord;
+            setBudgetModalRecord(null);
+            const currencyConfig = config.currency === 'Bs.' ? { currency: 'Bs.' as const, rate: config.rate, rateLabel: config.rateLabel } : undefined;
+            if (action === 'download') {
+              onDownloadRecord(record, currencyConfig);
+            } else {
+              handleShare(record, config);
+            }
+          }}
+        />
       )}
 
       {isQuickAddOpen && (
@@ -1375,13 +1419,27 @@ const HomeScreen = ({ onNavigate, onNavigateWorkplace, onNewDoc, doctorProfile, 
                         <RecentActions>
                           <RecentActionBtn
                             title="Compartir por WhatsApp"
-                            onClick={(e) => { e.stopPropagation(); handleShare(record); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (record.type === 'presupuesto') {
+                                setBudgetModalRecord({ record, action: 'share' });
+                              } else {
+                                handleShare(record);
+                              }
+                            }}
                           >
                             <Share2 size={14} />
                           </RecentActionBtn>
                           <RecentActionBtn
                             title="Descargar PDF"
-                            onClick={(e) => { e.stopPropagation(); onDownloadRecord(record); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (record.type === 'presupuesto') {
+                                setBudgetModalRecord({ record, action: 'download' });
+                              } else {
+                                onDownloadRecord(record);
+                              }
+                            }}
                           >
                             <Download size={14} />
                           </RecentActionBtn>
